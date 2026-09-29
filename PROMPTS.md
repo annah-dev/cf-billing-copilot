@@ -1,0 +1,424 @@
+# Prompt history
+
+Every prompt given to any agent while building this repo, in order. Each entry records an ISO-8601
+timestamp with offset, the role, the harness, the prompt text (copied from its file, never retyped)
+and a one-line outcome. Raw session transcripts are exported under prompt-history/transcripts/ near
+the end of the build.
+
+Planning and decision review also happened in a separate Claude (Cowork) conversation with the
+owner, where the architect kickoff prompt (entry 2) was drafted. That conversation is not an agent
+session in this repo, so it is noted here rather than exported.
+
+## 1. Assignment
+
+- Timestamp: 2026-09-29T14:26:29-07:00 (committed to the repo; given to the Architect as its governing input)
+- Role: Architect (input document for every agent)
+- Harness: Claude Code
+- Source: prompt-history/prompts/00-assignment.md
+- Outcome: governs product scope, design principles and acceptance criteria for every lane.
+
+````text
+## Goal
+
+Build and deploy **cf-billing-copilot**, a small AI-powered billing assistant that runs entirely on Cloudflare. It is my optional assignment for Cloudflare's **Senior Director of Engineering, Billing Platform** application. The finished code goes in the public repo **https://github.com/annah-dev/cf-billing-copilot** (create it if it doesn't exist).
+
+Reviewers are Cloudflare engineering leaders. The app should show senior billing-platform judgment (correctness, auditability, clean architecture), not just a chatbot. Aim for a working, deployed demo in about 4–6 hours of agent time. Keep it small and polished rather than broad and fragile.
+
+## Cloudflare's required components (all four must be present and visible in the README)
+
+1. **LLM**: Llama 3.3 on Workers AI (`@cf/meta/llama-3.3-70b-instruct-fp8-fast` or the current Llama 3.3 model ID).
+2. **Workflow / coordination**: Cloudflare Workflows and/or Durable Objects.
+3. **User input via chat**: a chat UI served from Cloudflare (Pages, or static assets on the Worker).
+4. **Memory or state**: per-customer state and conversation history persisted in a Durable Object (SQLite storage).
+
+Cloudflare's notes: "AI-assisted coding is encouraged, but you have to submit prompt history." Their suggested starting points: https://agents.cloudflare.com/ and https://developers.cloudflare.com/agents/
+
+**Before scaffolding, read the current Cloudflare Agents, Workers AI, Durable Objects and Workflows docs. Model IDs, template names and APIs may have changed. Prefer the Cloudflare Agents SDK (e.g. the `agents-starter` template via `npm create cloudflare@latest`) if it's still current.**
+
+## Product concept
+
+A copilot for a customer of a usage-based SaaS product (Cloudflare-style metered services) that answers billing questions accurately and can start a credit request that needs a human to approve it.
+
+Core user stories:
+
+1. **Explain my invoice**: "Why is my September bill $412.87?" gives a line-by-line explanation that ties back to usage, plan, tiers, credits and tax.
+2. **What changed**: "Why did my bill go up 38% vs August?" gives a usage-delta breakdown by product and a plain-language summary.
+3. **Plan simulation**: "What would I have paid on the Pro plan?" gives a deterministic re-rating of the same usage under a different plan, with the difference.
+4. **Anomaly flag**: the copilot notices an unusual usage spike (for example a 5x jump in one meter over one day) and mentions it proactively.
+5. **Credit request with human approval**: "I was double-charged, can I get a credit?" The copilot gathers the details and starts a **Workflow** that validates the claim against the ledger, creates a pending credit memo, **waits for an approver event** (e.g. `step.waitForEvent`), then applies or rejects it and records an audit entry. The approver gets a simple admin page/endpoint to approve or reject.
+6. **Memory**: the copilot remembers the customer's account, prior questions and open credit requests across sessions.
+
+## Non-negotiable design principles (the "billing leader" signal)
+
+- **The LLM never does money math.** All rating, totals, proration, tiering, credits and tax are computed by deterministic TypeScript functions using **integer minor units (cents)**. The LLM only chooses tools and explains results. State this in the README.
+- **Tool-calling architecture**: expose typed tools such as `getAccount`, `getInvoice`, `explainLineItem`, `compareInvoices`, `simulatePlan`, `detectAnomalies`, `startCreditRequest` and `getCreditRequestStatus`. Validate all tool inputs with a schema (e.g. zod).
+- **Auditability**: every state change (credit requested, approved, rejected, applied) writes an append-only audit record with a timestamp, actor and reason. Show the audit trail in the UI.
+- **Idempotency**: credit requests carry an idempotency key, so retrying never creates duplicate credits.
+- **Grounding**: every answer that cites a number must come from a tool result. If data is missing, the copilot says so rather than guessing.
+- **Synthetic data only**: generate a small fictional dataset (2–3 customers, 3 months of daily usage across ~4 meters, 2–3 plans with tiered pricing, one invoice per month, one duplicate charge seeded for the credit story, one usage spike seeded for the anomaly story). No real company, customer or personal data.
+- **Security**: no secrets in the repo. Use `wrangler secret` and bindings. Add a simple shared-secret or token check on the approver endpoint and note in the README that it's demo-grade.
+- **Cost**: stay within Cloudflare's free or low-cost tiers.
+
+## Suggested architecture
+
+- **Worker + Agents SDK**: a chat agent class (Durable Object) per customer that holds conversation history and account context in SQLite.
+- **Billing engine module**: pure TypeScript functions (rating, invoice build, compare, simulate, anomaly detection) plus unit tests. No Cloudflare dependencies, so it's easy to test and review.
+- **Ledger / data**: seeded into Durable Object SQLite or D1. Pick one, justify it in the README, and keep a single source of truth.
+- **Workflow**: `CreditRequestWorkflow` (validate → create pending memo → wait for approval → apply/reject → audit).
+- **UI**: minimal, clean chat page plus a small panel showing the current invoice, open credit requests and the audit trail. An `/admin` view lists pending approvals.
+
+## Suggested multi-agent roles
+
+- **Architect**: reads current Cloudflare docs, confirms the stack and APIs, writes `docs/ARCHITECTURE.md` (with a Mermaid diagram) and the task plan. Gates the other agents.
+- **Billing-engine engineer**: data model, seed data, deterministic rating/compare/simulate/anomaly code, and unit tests (including tiers, proration and rounding edge cases).
+- **Agent/Workflow engineer**: Agents SDK chat agent, tool wiring to Llama 3.3, Durable Object state, CreditRequestWorkflow with the human-approval wait.
+- **Frontend engineer**: chat UI, invoice/audit side panel, admin approval view.
+- **QA / evals**: a small scripted eval set (10–15 questions with expected numeric answers) that checks the copilot's answers against the billing engine. Report the pass rate in the README.
+- **Reviewer**: checks security (no secrets, input validation), correctness (no LLM math), README accuracy and prompt-history completeness before each merge.
+
+## Prompt history (required by Cloudflare)
+
+- Keep **`PROMPTS.md`** at the repo root. Append every prompt given to any agent (including this one), in order, with timestamp, agent role and a one-line note of the outcome. Don't include secrets or tokens.
+- If the environment can export raw session transcripts, also save them under `prompt-history/`.
+
+## Deliverables and acceptance criteria
+
+- [ ] Public repo `annah-dev/cf-billing-copilot` with an MIT license.
+- [ ] Deployed demo URL on `*.workers.dev` (or Pages), linked at the top of the README.
+- [ ] README includes: a one-paragraph pitch; how each of Cloudflare's four required components is used; an architecture diagram; the "LLM never does money math" principle; demo script (5 clicks/questions that show every user story); local setup and deploy commands; eval results; known limitations and what I'd build next for a production billing platform (e.g. metering pipeline at scale, revenue recognition, tax engine integration, reconciliation jobs, SLOs); and an honest note that the project was built with AI-assisted coding under my direction.
+- [ ] `npm test` passes (billing-engine unit tests plus the eval harness).
+- [ ] The duplicate-charge credit flow works end to end: request → pending → approve in admin → credit applied → audit visible.
+- [ ] `PROMPTS.md` complete.
+- [ ] No real customer, employer or personal data anywhere in the repo.
+
+## Working rules
+
+- Start by having the Architect confirm the plan and current Cloudflare APIs, then build in small, reviewable commits.
+- If a Cloudflare API or template differs from this prompt, follow the current docs and note the change in `docs/DECISIONS.md`.
+- Ask me before creating paid resources, changing account settings, or doing anything outside this repo and my Cloudflare account.
+- Don't write claims about my career or employers into the repo beyond my name as author.
+````
+
+## 2. Architect kickoff (Stop 1 and Stop 2)
+
+- Timestamp: 2026-09-29T14:30:12-07:00
+- Role: Architect
+- Harness: Claude Code
+- Source: prompt-history/prompts/01-architect.md
+- Outcome: (pending; filled in at the end of the session)
+
+````text
+# 01 - Architect kickoff
+
+Role: Architect. Harness: Claude Code. Session 1 of the build.
+Drafted with Claude (Cowork) from the assignment and my environment conventions; reviewed and sent by me.
+
+The assignment is prompt-history/prompts/00-assignment.md. Read all of it first. It governs product
+scope, design principles and acceptance criteria. This file governs how the build runs. Where the two
+conflict on process, this file wins. Flag any other conflict to me instead of resolving it silently.
+
+## How this build runs
+
+- Parallel lanes, one agent session per lane, each in its own git worktree that I create. You do not
+  create worktrees, start other agents, or write outside your worktree.
+- Authoring and review are split across harnesses. Codex CLI authors the lanes that implement a
+  written contract; Claude Code takes the Agent/Workflow lane. Every PR is reviewed by the harness
+  that did not write it: Codex-authored PRs go through the no-mistakes gate (Claude reviews),
+  Claude-authored PRs get a Codex review.
+- Codex runs with low reasoning effort by default on this machine. Every Codex launch command you
+  write (lanes and reviews) passes `-c model_reasoning_effort=high`.
+- I merge every PR (squash). No agent runs `gh pr merge`, `wrangler deploy`, `wrangler secret put`
+  or `wrangler login`. When one of those is needed, give me the exact command and stop.
+- Each stop below ends with a PR from a fresh branch off origin/main. After I merge, start the next
+  branch from a fresh origin/main (squash merges leave the old branch unusable).
+
+## Stop 1: plan (docs only, no code)
+
+1. Read the current Cloudflare docs before deciding anything: the Agents SDK
+   (https://agents.cloudflare.com/, https://developers.cloudflare.com/agents/), Workers AI (the
+   Llama 3.3 model page, function calling), Durable Objects (SQLite storage), Workflows
+   (step.waitForEvent, sending an event to an instance, Free-plan limits), and
+   https://github.com/cloudflare/agents-starter as it is today. Record the versions, model ID and API
+   names you actually found.
+2. Write docs/ARCHITECTURE.md (with a Mermaid diagram) and docs/DECISIONS.md. DECISIONS.md opens
+   with every point where the assignment differs from the current docs, then the ledger store choice
+   (Durable Object SQLite vs D1) with its reasoning.
+3. Write docs/agent/plan.md: the lanes below, the directories each lane owns, what each lane must not
+   touch, merge order, a definition of done per lane, and the exact command I run to start each lane
+   and each cross-review.
+4. Propose an answer, with a recommendation, for each of these:
+   - how a reviewer approves a credit in the public demo without a secret in the repo;
+   - how a reviewer resets the demo to the seeded story after someone has applied a credit;
+   - what happens when an approval never arrives (waitForEvent timeout, Free-plan Workflow state
+     retention). Expiry must be an explicit terminal state with its own audit record;
+   - abuse of the public chat URL (a simple per-session or per-IP message cap).
+5. Open the PR and stop. Report what you read (with links), the deviations from the assignment, and
+   the decisions you need from me.
+
+Lanes for the plan (adjust directories to the scaffold's layout):
+
+- engine (Codex): billing engine, seed data, unit tests. Pure TypeScript, no Cloudflare imports.
+- agent (Claude Code): chat agent Durable Object, tool wiring to Llama 3.3, CreditRequestWorkflow,
+  and the HTTP endpoints the UI and admin page call.
+- ui (Codex): chat page, invoice / credit requests / audit side panel, /admin approvals view.
+- evals (Codex, after engine and agent merge): scripted eval set and harness.
+- release (Claude Code, last): Reviewer pass over the whole repo, README, deploy checklist,
+  prompt-history export.
+
+## Stop 2: foundation on main (after I approve Stop 1)
+
+6. Scaffold from agents-starter with create-cloudflare pinned to an exact version (resolve it; never
+   run @latest) and with `--no-deploy --no-git`, since C3 deploys by default. The repo already has
+   README.md and .gitignore, so scaffold into a scratch directory outside the repo and copy in. Merge
+   the two .gitignore files: .dev.vars*, .env* and .wrangler/ must be ignored before any secret
+   exists. Record the C3 version and the template commit in docs/DECISIONS.md.
+7. Repo rules: AGENTS.md (canonical rules for every agent, pointing to the done-contract), CLAUDE.md
+   as a small shim ("Read AGENTS.md"), docs/agent/verification.md (the done-contract: exact commands,
+   the evidence each PR must carry, and a rule that every report names what was not verified), an
+   MIT LICENSE whose copyright holder is the name in `git config user.name`, and PROMPTS.md.
+8. .claude/settings.json with permissions.ask rules for gh pr merge, wrangler deploy, wrangler
+   secret, wrangler login and npm run deploy.
+9. Contracts, so the lanes can fork: shared types and zod schemas for money (integer cents), plans
+   and tiers, usage records, ledger entries, invoices and line items, every tool's input and output,
+   credit requests, audit records, and the HTTP request and response shapes the UI and admin page
+   use. Also the wrangler config with every binding declared (AI, the agent Durable Object with its
+   SQLite migration, the Workflow), so no lane has to edit it. Once this PR merges, contracts are
+   frozen: a lane that finds a contract wrong stops, and the fix goes to main as its own PR.
+10. `npm test` (vitest) runs and passes, and GitHub Actions runs `npm ci && npm test` on every PR.
+11. Quality gate: set up no-mistakes for this repo the same way ~/projects/job-search-automation does
+    (read its docs/agent/no-mistakes.md and .no-mistakes.yaml): agent: claude, commands.test:
+    npm test, the same auto_fix caps. The config reaches main by plain push first. If
+    `systemctl --user` cannot reach the daemon, say so and skip this item. Never restart the daemon
+    with --force.
+12. De-risk the model before the lanes fork: in local dev, one real round trip in which Llama 3.3
+    calls a stub tool (for example getAccount) through the scaffold's provider and answers from the
+    result. Report the model ID used and the raw tool call.
+13. Write one self-contained kickoff prompt per lane under prompt-history/prompts/ (02-engine.md,
+    03-agent.md, 04-ui.md, 05-evals.md, 06-release.md). Each lane agent sees only its file, the
+    assignment and the repo, never this conversation.
+14. Open the PR and stop. Report what you verified and what you did not.
+
+## Pre-decided (do not ask)
+
+- `npm test` is deterministic and offline. It runs the billing-engine unit tests and the eval harness
+  in replay mode against recorded model outputs. The live eval against the deployed URL is a separate
+  script, `npm run eval:live`, which re-records; the README reports its pass rate with the run date.
+- Workers AI on the Free plan is 10,000 neurons per day, reset at 00:00 UTC, and requests fail past
+  that. No live model calls in tests and no loops against the live model. Stay on the Free plan; ask
+  me before anything that needs Paid.
+- PROMPTS.md lists every prompt given to any agent, in order: ISO-8601 timestamp with offset, role,
+  harness, the prompt text, and a one-line outcome. At session start, append your own prompt by
+  copying its file with a tool, never by retyping it, and fill in the outcome at the end. Prompts I
+  type mid-session are logged too. Near the end, a script exports the raw Claude Code and Codex
+  session transcripts for this repo and its worktrees into prompt-history/transcripts/, scrubbed of
+  secrets, tokens and home-directory paths, and cross-checks PROMPTS.md against them.
+- The assignment prompt is recorded verbatim, including the line naming the role it was written for.
+  Nothing else about my career or employers goes in the repo.
+- Reviewer-facing docs live where the assignment puts them (README.md, PROMPTS.md,
+  docs/ARCHITECTURE.md, docs/DECISIONS.md). docs/agent/ holds only agent-operational files. No
+  duplicated content between the two.
+- Plain ASCII in docs and code comments: no em dashes, arrows or emoji. Small commits with
+  conventional messages and no agent co-author footers.
+
+## Ask me before
+
+Creating any Cloudflare resource beyond what I approved at Stop 1 (D1, KV, R2, queues, anything
+billed), upgrading the plan, registering or changing the workers.dev subdomain, changing account
+settings, or touching anything outside this repo and my Cloudflare account.
+````
+
+## 3. Stop 1 decisions and standing orders (typed mid-session)
+
+- Timestamp: 2026-09-29T15:46:24-07:00
+- Role: Architect
+- Harness: Claude Code
+- Source: prompt-history/prompts/01a-stop1-decisions.md
+- Outcome: decisions and standing orders folded into PR #1 (AGENTS.md, DECISIONS.md, ARCHITECTURE.md, plan.md); Codex reviewed PR #1 in three rounds; one item (D-13) returned to Anna.
+
+````text
+Codes: A1 B1 C1 D1 E2 F1 G1 H2
+
+Why the two overrides: E2 because per-browser sandboxes already isolate state, so a new sandbox is
+a clean reset without workflow termination and epoch fencing to build and test. H2 because about
+35 turns a day for everyone combined means a reviewer can find the demo out of budget; Workers
+Paid with a 50,000-neuron daily stop costs at most about $0.44 a day over the included allowance.
+
+Fold into PR #1:
+- B1: in D-2, drop "tested with Llama 3.3 tool calling"; the starter defaults to Kimi, so that is
+  unverified until the Stop 2 round trip. Add that the approval API (waitForApproval,
+  approveWorkflow, rejectWorkflow, WorkflowRejectedError) is the same in agents 0.17.4 and 0.24.0.
+  Every lane prompt must say: when web docs and the installed type definitions disagree, the
+  installed types win.
+- E2: reset creates a new sandbox and abandons the old one; the 7-day idle alarm cleans it up.
+- G1: also add a global cap on new sandboxes per UTC day in Quota, sized from the seed's
+  row-write count, and state that count in ARCHITECTURE.md.
+- H2: I have upgraded the account to Workers Paid. Set the global model stop to 50,000 estimated
+  neurons per UTC day and keep the per-sandbox caps. Update D-8, D-11 and the budget numbers in
+  ARCHITECTURE.md. Workflow retention is now 30 days; keep the ledger as the source of truth.
+
+Standing orders from here on. Put them in AGENTS.md under "Decision rights" so every lane
+inherits them, and put the review loop in every lane prompt.
+
+1. Cross-review runs without me. The author of a PR gets the other harness's review:
+   - Claude-authored PRs: run Codex headless in its default read-only sandbox against the local
+     branch diff (git diff origin/main...HEAD), for example:
+       codex exec -c model_reasoning_effort=high -o <review-output-file> "$(cat <review-prompt-file>)"
+   - Codex-authored PRs: gated push through no-mistakes; the lane agent reads parked review
+     findings itself (see ~/projects/job-search-automation/docs/agent/no-mistakes.md), fixes
+     them and pushes again.
+   Convergence: two full rounds, a third on the delta only, then stop. Anything still disputed
+   comes to me as a FOR ANNA list with both positions. Every review prompt is a file under
+   prompt-history/prompts/ and is logged in PROMPTS.md with role "automated cross-review".
+2. Agents decide, with a one-line reason in DECISIONS.md: implementation choices inside the
+   approved architecture, test design, layout inside a lane's own directories, fixes for review
+   findings, and taking the [REC] option on any reversible, in-repo question not listed in 3.
+3. I decide, batched into one message with a recommendation each: money or account changes,
+   scope changes against the assignment, contract changes after the freeze, the security and auth
+   model, anything irreversible (deletes, force-push, history rewrite), README claims about me or
+   about results, and merges. While waiting, keep working on anything the question does not block.
+4. Every entry in DECISIONS.md says "Decided by: Anna" or "Decided by: <role> under standing
+   orders".
+5. At the top of PROMPTS.md, note that planning and decision review also happened in a separate
+   Claude (Cowork) conversation, where the kickoff prompt was drafted.
+
+Now run the Codex review of PR #1 yourself, fold in its findings and my notes, and tell me when
+the PR is ready to merge.
+````
+
+## 4. PR #1 cross-review, round 1
+
+- Timestamp: 2026-09-29T15:48:21-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/01b-review-pr1-r1.md
+- Outcome: CHANGES REQUESTED, 11 findings (7 major, 4 minor); all accepted and fixed (PR #1 comment, commits cd5d7ec, 8acaceb, 444dd8a).
+
+````text
+You are the cross-reviewer for PR #1 on annah-dev/cf-billing-copilot, round 1 of 2 (full review).
+The PR was written by Claude Code (the Architect). You are Codex, running read-only: do not edit,
+commit, push or comment anywhere; your whole output is your review.
+
+Review the full branch diff: run `git diff origin/main...HEAD` and `git log origin/main..HEAD`.
+It is docs only: PROMPTS.md, AGENTS.md, docs/ARCHITECTURE.md, docs/DECISIONS.md,
+docs/agent/plan.md, prompt-history/prompts/01a-stop1-decisions.md.
+
+Check it against:
+1. prompt-history/prompts/00-assignment.md (product scope, design principles, acceptance criteria).
+2. prompt-history/prompts/01-architect.md, section "Stop 1: plan", items 1 to 5, and its
+   "Pre-decided" section (process rules win over the assignment on process).
+3. prompt-history/prompts/01a-stop1-decisions.md (the owner's answers and standing orders; every
+   instruction in "Fold into PR #1" and "Standing orders" must be reflected accurately).
+
+Look for, most important first:
+- Contradictions between the three documents in the diff, or between a document and the owner's
+  decisions (for example a leftover mention of a design the owner rejected, a number that differs
+  between files, a budget that does not add up).
+- Anything the Stop 1 checklist or the owner's fold-in list requires that is missing.
+- Design defects a billing-platform reviewer would catch: money math outside the engine, a write
+  path reachable by the model, missing idempotency, an audit gap, a state transition that is not
+  audited, a race in the credit flow, an auth hole in the approver token scheme.
+- Lane plan defects: two lanes owning the same path, a lane that cannot finish without touching a
+  path it does not own, a merge order that cannot work, a definition of done that cannot be
+  checked, a launch or review command that would not run as written.
+- Cloudflare API or limit claims you believe are wrong. You may not have network access; if you
+  cannot verify a claim, say so rather than guessing, and mark such findings as UNVERIFIED.
+- Plain-ASCII violations in docs and AGENTS.md (verbatim prompt text in PROMPTS.md and
+  prompt-history/ is exempt by the owner's decision A1).
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. Do not report style preferences as findings. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 5. PR #1 cross-review, round 2
+
+- Timestamp: 2026-09-29T15:56:21-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/01c-review-pr1-r2.md
+- Outcome: CHANGES REQUESTED, 5 findings (3 major, 2 minor); all accepted and fixed in commit 673f5dd (PR #1 comment).
+
+````text
+You are the cross-reviewer for PR #1 on annah-dev/cf-billing-copilot, round 2 of 2 (full review).
+The PR was written by Claude Code (the Architect). You are Codex, running read-only: do not edit,
+commit, push or comment anywhere; your whole output is your review.
+
+Review the full branch diff: run `git diff origin/main...HEAD` and `git log origin/main..HEAD`.
+It is docs only: PROMPTS.md, AGENTS.md, docs/ARCHITECTURE.md, docs/DECISIONS.md,
+docs/agent/plan.md, prompt-history/prompts/01a-stop1-decisions.md.
+
+Round 1 raised 11 findings; the author's responses are in the PR #1 comment "Automated
+cross-review, round 1" and in commits cd5d7ec, 8acaceb and 444dd8a (`git log origin/main..HEAD`).
+Review the whole diff again, not only those commits. For each round 1 finding, say whether the fix
+is adequate. Then report anything new, including problems the fixes introduced. The round 1
+review text is not in the repo; judge the fixes on the documents as they now stand.
+
+Check it against:
+1. prompt-history/prompts/00-assignment.md (product scope, design principles, acceptance criteria).
+2. prompt-history/prompts/01-architect.md, section "Stop 1: plan", items 1 to 5, and its
+   "Pre-decided" section (process rules win over the assignment on process).
+3. prompt-history/prompts/01a-stop1-decisions.md (the owner's answers and standing orders; every
+   instruction in "Fold into PR #1" and "Standing orders" must be reflected accurately).
+
+Look for, most important first:
+- Contradictions between the three documents in the diff, or between a document and the owner's
+  decisions (for example a leftover mention of a design the owner rejected, a number that differs
+  between files, a budget that does not add up).
+- Anything the Stop 1 checklist or the owner's fold-in list requires that is missing.
+- Design defects a billing-platform reviewer would catch: money math outside the engine, a write
+  path reachable by the model, missing idempotency, an audit gap, a state transition that is not
+  audited, a race in the credit flow, an auth hole in the approver token scheme.
+- Lane plan defects: two lanes owning the same path, a lane that cannot finish without touching a
+  path it does not own, a merge order that cannot work, a definition of done that cannot be
+  checked, a launch or review command that would not run as written.
+- Cloudflare API or limit claims you believe are wrong. You may not have network access; if you
+  cannot verify a claim, say so rather than guessing, and mark such findings as UNVERIFIED.
+- Plain-ASCII violations in docs and AGENTS.md (verbatim prompt text in PROMPTS.md and
+  prompt-history/ is exempt by the owner's decision A1).
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. Do not report style preferences as findings. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 6. PR #1 cross-review, round 3 (delta only)
+
+- Timestamp: 2026-09-29T16:04:28-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/01d-review-pr1-r3.md
+- Outcome: CHANGES REQUESTED; round 2 fixes 1, 2, 4 adequate, 3 and 5 partial; 2 new major findings on cost claims. Wording fixed and figures relabelled as estimates in commit e2f9879; the hard abuse-cost ceiling went to Anna as D-13. Review loop stopped after round 3.
+
+````text
+You are the cross-reviewer for PR #1 on annah-dev/cf-billing-copilot, round 3: delta only, and the
+last round. The PR was written by Claude Code (the Architect). You are Codex, running read-only: do
+not edit, commit, push or comment anywhere; your whole output is your review.
+
+Review only the round 2 fixes: run `git diff 912ca7f 673f5dd` (docs/ARCHITECTURE.md,
+docs/DECISIONS.md, docs/agent/plan.md). The author's responses to round 2 are in the PR #1 comment
+"Automated cross-review, round 2" (`gh pr view 1 --comments` if you can reach GitHub; otherwise
+judge from the diff). Round 2 found: (1) recovering from `requested` treated "already exists" as
+running; (2) a race between competing approve and reject decisions; (3) non-model traffic was not
+capped, so the budget claim did not hold; (4) only one alarm per Durable Object; (5) write-path
+wording contradicted the flows.
+
+For each of the five, say whether the fix is adequate. Then report only new defects the delta
+introduces: contradictions with the rest of the documents, arithmetic errors in the new budget
+figures, a recovery or decision path that can still strand a request or move money against the
+recorded decision, or a test the plan now requires that cannot be written. Do not reopen settled
+round 1 or round 2 points unless the delta broke them. Mark any claim you cannot verify
+UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), the five adequacy verdicts, then
+numbered new findings, most severe first, each with severity (blocker, major, minor, nit), file and
+line, what is wrong, and the fix you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
