@@ -19,6 +19,11 @@ export default {
     if (url.pathname === "/api/health") {
       return Response.json({ ok: true, model: MODEL_ID });
     }
+    // routeAgentRequest maps every Durable Object binding by name (LEDGER, QUOTA included),
+    // so only the BillingAgent namespace may reach it (DECISIONS.md D-18).
+    if (!url.pathname.startsWith("/agents/billing-agent/")) {
+      return notFound();
+    }
     return (await routeAgentRequest(request, env)) ?? notFound();
   }
 } satisfies ExportedHandler<Env>;

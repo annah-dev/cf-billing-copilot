@@ -17,6 +17,14 @@ describe("foundation bindings", () => {
     expect(await res.json()).toEqual({ error: { code: "not_found", message: "Not found" } });
   });
 
+  it.each(["/agents/ledger/x", "/agents/quota/global", "/agents/LEDGER/x", "/agents/billing-agent"])(
+    "refuses to route %s to a Durable Object",
+    async (path) => {
+      const res = await exports.default.fetch(`https://example.com${path}`);
+      expect(res.status).toBe(404);
+    }
+  );
+
   it("binds the Ledger and Quota Durable Objects", async () => {
     const ledger = env.LEDGER.get(env.LEDGER.idFromName("0".repeat(32)));
     const quota = env.QUOTA.get(env.QUOTA.idFromName("global"));
