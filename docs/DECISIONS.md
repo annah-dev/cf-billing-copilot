@@ -129,14 +129,17 @@ Decided by: Anna.
 
 - Per sandbox: 30 user messages per UTC day, 2,000 characters per message, 5 credit requests per day.
 - Per IP (`CF-Connecting-IP`, stored hashed in `Quota`): 5 new sandboxes per UTC day.
-- Global, in `Quota`: 200 new sandboxes per UTC day. With the 7-day lifetime that bounds live
-  sandboxes at about 1,400.
+- Global, in `Quota`: 200 new sandboxes per UTC day. With deletion 7 days after last activity that
+  gives about 1,400 live sandboxes in normal use; it is not a hard bound, since a visitor can keep
+  sandboxes active.
 - Per sandbox, non-model traffic: 200 sandbox-scoped API requests per UTC day (429 past it, no
   write), and refusals audited once per request, action and reason, so repeated refused calls
   cannot amplify writes.
-- Under every cap saturated all month the worst case is about $34 over the $5 plan (Workers AI
-  about $13, Durable Objects and Workflows about $21; arithmetic in docs/ARCHITECTURE.md,
-  "Budgets"). Normal demo traffic stays inside the included amounts. The agent lane measures real
+- Estimate for accepted traffic with every cap saturated all month and about 1,400 live sandboxes:
+  about $34 over the $5 plan (Workers AI about $13, a hard daily limit; Durable Objects and
+  Workflows about $21; arithmetic in docs/ARCHITECTURE.md, "Budgets"). It is an estimate, not a
+  ceiling: refused calls still cost Durable Object requests, and the live count is not hard-bounded
+  (D-13). Normal demo traffic stays inside the included amounts. The agent lane measures real
   rows written and a test fails above 2,500 per phase.
 - Global, in `Quota`: stop model calls at an estimated 50,000 neurons per UTC day. Each inference
   call, including tool continuations, reserves its worst-case estimate atomically before it runs
@@ -156,8 +159,8 @@ deduplication and the reservation mechanism by the Architect under standing orde
 The account is on Workers Paid. The 50,000-neuron stop allows roughly 170 to 200 tool-using turns
 per day across all visitors, so one `npm run eval:live` run (12 to 15 questions, about 40 model
 calls) no longer crowds out reviewers. Worst-case Workers AI spend is about $0.44 per day. Normal
-traffic keeps Durable Objects and Workflows inside the Paid included amounts; with every D-7 cap
-saturated all month they add about $21 (docs/ARCHITECTURE.md, "Budgets").
+traffic keeps Durable Objects and Workflows inside the Paid included amounts; accepted traffic with
+every D-7 cap saturated all month adds about $21 (an estimate, not a ceiling; see D-13).
 
 Decided by: Anna.
 
@@ -209,3 +212,21 @@ Decided by: Anna.
   routing alone would let anyone create agents and bypass the sandbox caps.
 
 Decided by: Architect under standing orders.
+
+## D-13 Hard ceiling on abuse cost (OPEN, for Anna)
+
+PR #1 review round 3 showed the D-7 caps bound accepted traffic, not total cost: caps are counted
+inside Durable Objects, so a refused call still costs one Durable Object request, and deletion 7 days
+after last activity does not bound the live sandbox count. Options:
+
+- Recommended: accept the estimate as an estimate, and add a per-IP limit before any Durable Object
+  is invoked, using the Workers Rate Limiting binding (for example 60 sandbox-scoped requests per 60
+  seconds per IP; per location and eventually consistent, so a brake rather than a ledger), plus a
+  Cloudflare billing notification that Anna sets on the account. The binding is a new wrangler
+  binding and the notification is an account setting, so both need Anna.
+- Alternative: also cap sandbox lifetime at 7 days after creation (changes the approved D-5 wording)
+  and cap live sandboxes globally in `Quota`.
+- Alternative: accept the estimate as is and document that the abuse cost is not hard-bounded.
+
+Decided by: pending Anna. Stop 1 can merge without it; the answer is applied in the Stop 2
+foundation PR (wrangler config and contracts).

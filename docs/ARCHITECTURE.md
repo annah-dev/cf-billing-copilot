@@ -123,8 +123,10 @@ Ledger invariants, each enforced inside one `transactionSync` and covered by tes
   for the same charge returns the first.
 - **Money moves once.** The credit ledger entry is UNIQUE on the request id.
 - **Who may write.** `BillingAgent` has read methods plus exactly one write, `createCreditRequest`,
-  which records a `requested` row and moves no money. Validation, memo, decision, application and
-  expiry are Workflow or Ledger-internal (sweeper) paths. No model tool can approve or apply.
+  which records a `requested` row and moves no money. The approver's decision is written only by
+  the token-authenticated admin endpoint through `recordDecision` (first writer wins). Validation,
+  memo, application and expiry are Workflow or Ledger-internal (alarm) paths. No model tool can
+  decide, approve or apply.
 
 Recovery for non-terminal states, run by the Ledger alarm and covered by failure-injection tests
 (including a failure after the Workflow instance is created but before `createPendingMemo`):
@@ -250,18 +252,21 @@ same status without writing.
   written (the SQL cursor's `rowsWritten`) for seeding and deletion in an integration test that
   fails above 2,500 per phase.
 - Durable Objects: 1M requests and 50M rows written per month included, then $0.15 per million
-  requests and $1.00 per million rows. Worst case under saturated abuse: the global cap of 200 new
-  sandboxes per UTC day and the 7-day lifetime bound live sandboxes at about 1,400. Each can write
-  about 800 rows a day under its caps (200 API requests at about 2 writes, 30 chat messages at about
-  10, 5 credit requests at about 15), plus about 5,000 per new sandbox: about 2.1M rows per day, or
-  63M per month, about $13 over the included amount; requests add about $2. Normal demo traffic
-  stays inside the included amounts.
-- Workflows: 500,000 steps per month included, 30-day retention of completed instances, waiting
-  instances do not count toward concurrency. A credit request uses about 6 steps and each sandbox
-  may start 5 per day: at most about 1,400 x 5 x 6 x 30 = 1.26M steps per month under saturated
-  abuse (about $6 over), far less in practice.
-- Worst case in total, every cap saturated all month: about $13 Workers AI plus about $21 Durable
-  Objects and Workflows, on top of the $5 plan.
+  requests and $1.00 per million rows.
+- Cost estimate for accepted traffic, not a ceiling. Assume every cap is saturated all month and
+  about 1,400 live sandboxes (200 new per day, each deleted 7 days after its last activity; a
+  visitor who keeps sandboxes active can exceed this, because idle deletion does not bound the live
+  count). Each live sandbox writes about 800 rows a day under its caps (200 API requests at about 2
+  writes, 30 chat messages at about 10, 5 credit requests at about 15), plus about 5,000 per new
+  sandbox: about 2.1M rows per day, or 63M per month, about $13 over the included amount. Accepted
+  requests add about $2. Workflows: 500,000 steps per month included; 1,400 x 5 x 6 x 30 = 1.26M
+  steps, about $6 over. Workers AI: at most about $13 (the neuron stop is a hard daily limit). Total
+  about $34 over the $5 plan. Normal demo traffic stays inside the included amounts.
+- Not covered by that estimate: refused traffic. The per-sandbox caps are counted inside the
+  Ledger, so a call refused with 429 or 404 still costs one Durable Object request (no write).
+  Bounding that needs a limit before any Durable Object is invoked; it is an open decision (D-13).
+- Workflows: 30-day retention of completed instances; waiting instances do not count toward
+  concurrency.
 
 ## Testing
 
