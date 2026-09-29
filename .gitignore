@@ -1,18 +1,33 @@
-# local-only material
-*.local
-*.local.*
+# secrets and local-only material (must stay ignored before any secret exists)
 .env
 .env.*
+.dev.vars
+.dev.vars*
+!.dev.vars.example
+*.local
+*.local.*
 
-# dependencies
+# Cloudflare local state
+.wrangler/
+
+# dependencies and build output
 node_modules/
-.venv/
+dist/
+coverage/
+*.tsbuildinfo
+*.tgz
+
+# logs
+logs/
+*.log
 
 # editor/OS noise
 .DS_Store
 Thumbs.db
 *.swp
+.vscode/
 
 # python bytecode
 __pycache__/
 *.pyc
+.venv/
