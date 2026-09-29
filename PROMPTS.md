@@ -233,7 +233,7 @@ settings, or touching anything outside this repo and my Cloudflare account.
 - Role: Architect
 - Harness: Claude Code
 - Source: prompt-history/prompts/01a-stop1-decisions.md
-- Outcome: (pending)
+- Outcome: decisions and standing orders folded into PR #1 (AGENTS.md, DECISIONS.md, ARCHITECTURE.md, plan.md); Codex reviewed PR #1 in three rounds; one item (D-13) returned to Anna.
 
 ````text
 Codes: A1 B1 C1 D1 E2 F1 G1 H2
@@ -393,7 +393,7 @@ you suggest. Do not report style preferences as findings. End with:
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/01d-review-pr1-r3.md
-- Outcome: (pending)
+- Outcome: CHANGES REQUESTED; round 2 fixes 1, 2, 4 adequate, 3 and 5 partial; 2 new major findings on cost claims. Wording fixed and figures relabelled as estimates in commit e2f9879; the hard abuse-cost ceiling went to Anna as D-13. Review loop stopped after round 3.
 
 ````text
 You are the cross-reviewer for PR #1 on annah-dev/cf-billing-copilot, round 3: delta only, and the
