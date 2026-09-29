@@ -24,12 +24,13 @@ template commit land at Stop 2).
 | DEV-12 | (implicit) local dev is free | "AI models always run remotely": every `npm run dev` model call spends real neurons and needs `wrangler login` | Tests stub the AI binding; manual dev model calls are deliberate and few. | Architect |
 | DEV-13 | DO SQLite via migrations | Docs now also offer an `exports` block (`"storage": "sqlite"`). After one deploy with `exports` a Worker cannot go back to `migrations`. The starter uses `migrations` with `new_sqlite_classes`. | Keep `migrations` + `new_sqlite_classes` (D-10). | Architect |
 | DEV-14 | Function-calling examples in the docs | The Workers AI function-calling page and AI SDK page still use deprecated model ids (`hermes-2-pro-mistral-7b`, `llama-2-7b-chat-int8`); `workers-ai-provider` 4 targets AI SDK v7 | Do not copy model ids from those examples. | Architect |
-| DEV-15 | (implicit) the SDK approval helper takes a timeout | In both `agents` 0.17.4 and 0.24.0 the doc comment shows `waitForApproval(step, { timeout: '7 days' })`, but the installed type is `WaitForApprovalOptions = { eventType?: string }`: no timeout | Installed types win. The Workflow calls `step.waitForEvent` directly with an explicit timeout, using the event type that `approveWorkflow` and `rejectWorkflow` send (D-6). | Architect |
+| DEV-15 | (implicit) use the SDK approval helper as documented | In both `agents` 0.17.4 and 0.24.0, `waitForApproval(step, { stepName?, timeout?, eventType? })` waits for type `"approval"` and, on `approved: false`, calls `step.reportError` and throws `WorkflowRejectedError`. The web docs do not describe the rejection path. | The Workflow calls `step.waitForEvent` directly with the same event type and payload shape, so a rejection is a normal audited outcome rather than a Workflow error (D-6). | Architect |
 
-Unverified at Stop 1, to settle in Stop 2 with a local test: whether `waitForEvent` resolves to the
-raw payload or an event wrapper, the error name on timeout, which event type `approveWorkflow`
-sends, and whether streaming with tools returns `tool_calls` for Llama 3.3 through
-`workers-ai-provider`.
+Settled from the installed `agents` source (0.17.4 and 0.24.0): `waitForEvent` resolves to an
+event object whose data is under `.payload`, and `approveWorkflow` / `rejectWorkflow` send type
+`"approval"` with payload `{ approved, reason?, metadata? }`. Still unverified until the Stop 2 local
+test: the error name on a `waitForEvent` timeout, and whether streaming with tools returns
+`tool_calls` for Llama 3.3 through `workers-ai-provider`.
 
 ## D-1 Ledger store: Durable Object SQLite, not D1
 
@@ -44,9 +45,10 @@ One `Ledger` Durable Object per sandbox holds every billing table and the audit 
 - No extra resource. SQLite-backed Durable Objects are already required for the chat agent. D1
   would be one more resource to create and approve.
 - Colocation. The Ledger's queries run next to the data with a synchronous API.
-- Separation of concerns. The ledger is a different object from the chat agent: `BillingAgent` has
-  read-only RPC methods on it, and only `CreditRequestWorkflow` calls the transition methods. The
-  model cannot reach a write path.
+- Separation of concerns. The ledger is a different object from the chat agent. `BillingAgent` has
+  read methods plus one narrow write, `createCreditRequest`, which records a `requested` row and
+  moves no money. Validation, memo, decision, application and expiry run only in
+  `CreditRequestWorkflow` or the Ledger's own sweeper alarm. No model tool can approve or apply.
 - Trade-off accepted: cross-sandbox reporting needs fan-out. Nothing in scope needs it. In
   production the ledger would be sharded per billing account and fed to a warehouse for reporting.
 
@@ -61,7 +63,7 @@ calling on this set is unverified until the Stop 2 round trip. Upgrade to `agent
 `workers-ai-provider` 4 only if that round trip fails, as its own PR.
 
 The workflow approval API is the same in both versions (checked in the installed `.d.ts` files of
-`agents` 0.17.4 and 0.24.0): `waitForApproval<T>(step, options?: { eventType?: string })`,
+`agents` 0.17.4 and 0.24.0): `waitForApproval<T>(step, { stepName?, timeout?, eventType? })`,
 `approveWorkflow(workflowId, { reason?, metadata? })`, `rejectWorkflow(workflowId, { reason? })`,
 and `WorkflowRejectedError(reason?, workflowId?)`. So a later upgrade does not reshape the credit
 flow. Every lane prompt states that installed type definitions win over web docs.
@@ -102,16 +104,18 @@ Decided by: Anna.
 
 ## D-6 When an approval never arrives
 
-- The Workflow waits with `step.waitForEvent("approval", { type, timeout: APPROVAL_TIMEOUT })`, not
-  `waitForApproval`, which has no timeout parameter (DEV-15). `APPROVAL_TIMEOUT` is a wrangler var
-  defaulting to `24 hours`.
+- The Workflow waits with
+  `step.waitForEvent("wait-for-approval", { type: "approval", timeout: APPROVAL_TIMEOUT })`, using the
+  SDK's approval payload shape but not `waitForApproval`, which turns a rejection into a Workflow
+  error (DEV-15). `APPROVAL_TIMEOUT` is a wrangler var defaulting to `24 hours`.
 - On timeout the Workflow runs `step.do("expire")`: status `expired`, memo `void`, audit record
   `credit_expired` with actor `system` and reason "no approver decision within 24 hours". Expired is
   terminal.
 - Defense in depth: the Ledger sets an alarm at each request's deadline plus 1 hour and expires any
   request still pending (actor `system:sweeper`), covering a Workflow that errored.
-- An approval that arrives after expiry is refused with HTTP 409 and audited as
-  `approval_refused_expired`.
+- The decision endpoint records the decision in the Ledger before sending the event, and only while
+  the request is pending; otherwise HTTP 409 and an audit record such as `approval_refused_expired`.
+  The expire step honours a decision recorded just before the timeout.
 - Reviewers see the state without waiting a day: the seed includes one historical expired request
   with its audit trail, and tests cover expiry with `forceEventTimeout`.
 
@@ -121,18 +125,23 @@ Decided by: Anna.
 
 - Per sandbox: 30 user messages per UTC day, 2,000 characters per message, 5 credit requests per day.
 - Per IP (`CF-Connecting-IP`, stored hashed in `Quota`): 5 new sandboxes per UTC day.
-- Global, in `Quota`: 500 new sandboxes per UTC day. A seeded sandbox writes about 1,250 rows,
-  about 2,500 counting index writes (docs/ARCHITECTURE.md, "Budgets"); 500 a day is at most about
-  1.25M rows per day, about 37.5M per month, inside the 50M rows written per month that Workers
-  Paid includes. The engine lane measures the real count and a test keeps it under 2,500.
-- Global, in `Quota`: stop model calls at an estimated 50,000 neurons per UTC day, from AI SDK token
-  usage. At most 40,000 neurons over the included 10,000, about $0.44 per day.
+- Global, in `Quota`: 250 new sandboxes per UTC day. A sandbox's seeding plus its eventual deletion
+  writes about 5,000 rows counting index updates (docs/ARCHITECTURE.md, "Budgets"); 250 a day is
+  about 1.25M rows per day, about 37.5M per month, inside the 50M rows written per month that
+  Workers Paid includes. The agent lane measures real rows written and a test fails above 2,500 per
+  phase.
+- Global, in `Quota`: stop model calls at an estimated 50,000 neurons per UTC day. Each inference
+  call, including tool continuations, reserves its worst-case estimate atomically before it runs
+  (bounded `maxOutputTokens`, small step limit) and reconciles with actual usage after, so
+  concurrent turns cannot overspend. At most 40,000 neurons over the included 10,000, about $0.44
+  per day.
 - Past any cap the agent answers with a fixed message that names the cap and the 00:00 UTC reset;
   it never calls the model.
 - The Workers Rate Limiting binding only supports 10 or 60 second windows and is per location, so it
   cannot hold daily caps; `Quota` is a single Durable Object for exact counting.
 
-Decided by: Anna (the global sandbox cap of 500 is sized by the Architect under standing orders).
+Decided by: Anna (the global sandbox cap of 250 and the reservation mechanism by the Architect under
+standing orders).
 
 ## D-8 Capacity for the live demo
 
@@ -146,8 +155,9 @@ Decided by: Anna.
 ## D-9 AgentWorkflow for the credit flow
 
 `CreditRequestWorkflow extends AgentWorkflow<BillingAgent, Params>` so the agent starts it with
-`this.runWorkflow("CREDIT_WORKFLOW", params)` and gets progress callbacks it can broadcast to the
-chat. The Workflow still writes only through the `Ledger`, never through agent state.
+`this.runWorkflow("CREDIT_WORKFLOW", params, { id: requestId })` (without `id` the SDK generates a
+random one) and gets progress callbacks it can broadcast to the chat. An "already exists" error on
+create means the Workflow for that request is running and is treated as success. The Workflow still writes only through the `Ledger`, never through agent state.
 
 Decided by: Architect under standing orders.
 
@@ -167,3 +177,18 @@ three SQLite Durable Object classes (`BillingAgent`, `Ledger`, `Quota`) and one 
 used as is.
 
 Decided by: Anna.
+
+## D-12 Ledger invariants, recovery and admission (from PR #1 review, round 1)
+
+- No double credit across idempotency keys: pending plus applied memos per disputed ledger entry
+  never exceed the engine's creditable amount; the pending memo is the reservation, written
+  atomically. Reason: a UNIQUE idempotency key alone lets two different keys credit one charge.
+- Idempotent transitions: reaching an already-reached target state returns the recorded result
+  without a new audit record. Reason: a Workflow step can replay after its transaction committed.
+- Recovery: the Ledger alarm re-drives `requested` without a Workflow, re-applies `approved` without
+  a credit, and expires or decides stale `pending_approval`. Reason: no non-terminal state may strand.
+- Admission: every sandbox-scoped route, including the agent route, requires a sandbox created by
+  `POST /api/sandboxes` and a seeded customer; read and chat routes never seed. Reason: name-based
+  routing alone would let anyone create agents and bypass the sandbox caps.
+
+Decided by: Architect under standing orders.

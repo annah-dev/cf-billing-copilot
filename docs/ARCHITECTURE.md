@@ -83,9 +83,9 @@ Tables, all amounts `INTEGER` cents, all timestamps ISO-8601 UTC:
 - `usage_daily` (customer, meter, date, quantity)
 - `invoices`, `invoice_lines` (materialised from the engine at seed time; immutable once issued)
 - `ledger_entries` (charges, payments, credits; append-only; the seeded duplicate charge lives here)
-- `credit_requests` (id, idempotency_key UNIQUE, customer, invoice, line, claimed amount, validated
-  amount, status, workflow instance id, deadline)
-- `credit_memos` (request id UNIQUE, amount, status `pending | applied | void`)
+- `credit_requests` (id, idempotency_key UNIQUE, customer, invoice, disputed ledger entry, claimed
+  amount, validated amount, status, workflow instance id, deadline, recorded decision)
+- `credit_memos` (request id UNIQUE, disputed ledger entry, amount, status `pending | applied | void`)
 - `audit_log` (seq, at, actor, action, subject, reason, before, after; insert only, no UPDATE or
   DELETE path exists in code)
 - `meta` (seed version, approver token hash, last activity for the idle-deletion alarm)
@@ -106,22 +106,46 @@ stateDiagram-v2
   applied --> [*]
 ```
 
-Every transition is one Ledger method that checks the current state, writes the new state, and
-appends the audit record inside one `transactionSync`. A transition from the wrong state is refused
-and the refusal itself is audited (for example an approval arriving after expiry).
+Ledger invariants, each enforced inside one `transactionSync` and covered by tests:
+
+- **One transition, one audit record.** Every transition is one Ledger method that checks the
+  current state, writes the new state and appends the audit record in the same transaction.
+- **Idempotent transitions.** A transition whose target state is already reached by the same request
+  returns the recorded result without a second audit record, so a Workflow step replayed after its
+  transaction committed succeeds instead of failing. A genuinely conflicting transition (approve
+  after expire, apply after reject) is refused and the refusal is audited.
+- **No double credit across keys.** For each disputed ledger entry, pending plus applied credit
+  memos never exceed the creditable amount the engine computes for it. The pending memo is the
+  reservation: `createPendingMemo` checks the sum and writes the memo atomically, so two requests
+  with different idempotency keys for the same charge cannot both reserve it. A second open request
+  for the same charge returns the first.
+- **Money moves once.** The credit ledger entry is UNIQUE on the request id.
+- **Who may write.** `BillingAgent` has read methods plus exactly one write, `createCreditRequest`,
+  which records a `requested` row and moves no money. Validation, memo, decision, application and
+  expiry are Workflow or Ledger-internal (sweeper) paths. No model tool can approve or apply.
+
+Recovery for non-terminal states, run by the Ledger alarm and covered by failure-injection tests:
+`requested` with no running Workflow after 5 minutes is re-driven (the Workflow is created again with
+the same id; an "already exists" error means it is running); `approved` without an applied credit is
+re-applied through the idempotent apply; `pending_approval` past its deadline plus 1 hour is expired,
+or decided if a decision was recorded (next section).
 
 ## Flows
 
 ### Chat turn
 
 1. The UI connects to `BillingAgent` over the Agents SDK WebSocket (`useAgentChat`).
-2. `onChatMessage` checks caps (per-sandbox message count, global neuron budget), trims history to
-   fit the 24k-token context, and calls `streamText` with Llama 3.3 and the typed tools.
+2. `onChatMessage` checks the per-sandbox caps, trims history to fit the 24k-token context, and
+   calls `streamText` with Llama 3.3, the typed tools, a bounded `maxOutputTokens` and a small step
+   limit. A model middleware reserves an estimated neuron cost in `Quota` before every inference
+   call, including tool continuations (input tokens estimated from the prompt, output at the
+   `maxOutputTokens` bound); `Quota` grants or refuses atomically, so concurrent turns cannot
+   overspend the daily stop.
 3. Each tool validates its input with the contract zod schema, reads from `Ledger` over RPC, runs
    the engine, validates its output, and returns structured data.
 4. The system prompt requires every number in the answer to come from a tool result, and to say
    when data is missing. The UI shows which tools were called.
-5. Token usage from the response feeds the `Quota` neuron estimate.
+5. After each call the middleware reconciles the reservation with the actual token usage.
 
 Tools: `getAccount`, `getInvoice`, `explainLineItem`, `compareInvoices`, `simulatePlan`,
 `detectAnomalies`, `startCreditRequest`, `getCreditRequestStatus`. `startCreditRequest` uses the AI
@@ -139,12 +163,12 @@ sequenceDiagram
   C->>A: "I was double-charged"
   A->>A: gather invoice + line, customer confirms (needsApproval)
   A->>L: createCreditRequest(idempotencyKey) (returns existing on retry)
-  A->>W: runWorkflow(id = request id)
+  A->>W: runWorkflow("CREDIT_WORKFLOW", params, { id: requestId })
   W->>L: step validate: engine.validateCreditClaim(ledger entries)
-  W->>L: step createPendingMemo (audit: credit_requested, memo_pending)
-  W->>W: step.waitForEvent("approval", { type, timeout })
-  P->>L: POST decision + approver token (Worker checks token)
-  P-->>W: sendEvent({ type: "approval", payload })
+  W->>L: step createPendingMemo, reserves the charge (audit: memo_pending)
+  W->>W: step.waitForEvent("wait-for-approval", { type: "approval", timeout })
+  P->>L: POST decision + approver token: Worker checks token, Ledger records decision (audit)
+  P-->>W: sendEvent({ type: "approval", payload: { approved, reason, metadata } })
   W->>L: step apply or reject (audit: approved + applied, or rejected)
   W->>A: progress, A broadcasts to UI
   Note over W,L: on timeout: step expire (audit: expired, memo void)
@@ -152,26 +176,40 @@ sequenceDiagram
 
 ### Approval never arrives
 
-The Workflow uses `step.waitForEvent` directly because the SDK's `waitForApproval` helper takes no
-timeout (DEV-15). `waitForEvent` throws when its timeout (default 24 hours) elapses; the docs name
-no error class, so the Workflow wraps that one call in try/catch. The catch runs a
+The Workflow calls `step.waitForEvent` directly, with the SDK's approval event shape (type
+`"approval"`, payload `{ approved, reason?, metadata? }`, the shape `approveWorkflow` sends), rather
+than `waitForApproval`: that helper reports a rejection as a Workflow error (`step.reportError`,
+then `WorkflowRejectedError`), and a rejected credit is a normal outcome with its own audit record,
+not an error (DEV-15). `waitForEvent` throws when its timeout (default 24 hours) elapses; the docs
+name no error class, so the Workflow wraps that one call in try/catch. The catch runs a
 `step.do("expire")` that moves the request to `expired`, voids the memo and writes an audit record
 with actor `system` and the reason. Workflow instance state is kept 30 days after completion on
 Workers Paid, but the Ledger, not the Workflow, stays the source of truth for status. A Ledger alarm
 also sweeps requests past their deadline plus a grace period, so a request whose Workflow errored
-still reaches a terminal state. An approval that arrives after expiry gets HTTP 409 and its own
-audit record.
+still reaches a terminal state.
+
+The decision endpoint records the decision in the Ledger (audit `decision_received`) before sending
+the event, and only while the request is `pending_approval`; otherwise it answers HTTP 409 and
+audits the refusal (for example `approval_refused_expired`). The expire step checks for a recorded
+decision first, so a decision that lands just as the wait times out is honoured, not lost.
 
 ## HTTP surface (shapes frozen in src/contracts at Stop 2)
 
 | Method and path | Caller | Auth | Purpose |
 |---|---|---|---|
-| `GET/WS /agents/billing-agent/:sandbox.:customer` | chat UI | sandbox id | Agents SDK chat channel |
+| `GET/WS /agents/billing-agent/:sandbox.:customer` | chat UI | admitted sandbox + seeded customer | Agents SDK chat channel |
 | `POST /api/sandboxes` | chat UI | per-IP and global caps | create a seeded sandbox (also used by "Reset demo"), returns id and approver token |
 | `GET /api/sandboxes/:sid/customers/:cid/panel` | chat UI | sandbox id | invoice, credit requests, audit trail |
 | `GET /api/sandboxes/:sid/admin/credit-requests` | /admin | approver token | list credit requests, pending first |
 | `POST /api/sandboxes/:sid/admin/credit-requests/:rid/decision` | /admin | approver token | approve or reject with reason |
 | `POST /api/sandboxes/:sid/customers/:cid/turn` | eval harness | sandbox id, caps | one non-streaming turn, returns text and tool calls with inputs and outputs |
+
+Admission: a sandbox exists only if `POST /api/sandboxes` created it (the Ledger's `meta` row marks
+it admitted). Before routing, every sandbox-scoped route, including the agent route through
+`routeAgentRequest`'s `onBeforeConnect` and `onBeforeRequest` hooks, checks that the name is
+well-formed, the Ledger is admitted and the customer is one of its seeded customers; otherwise 404.
+Read and chat routes never seed or write, so a fabricated name costs one empty Durable Object lookup
+and stores nothing. Tests cover fabricated sandbox ids and customer ids.
 
 ## Budgets that shape the design (Workers Paid)
 
@@ -180,12 +218,16 @@ audit record.
   about 250 to 300 neurons. `Quota` stops model calls at an estimated 50,000 neurons per UTC day
   (roughly 170 to 200 turns, at most about $0.44 per day over the included amount), and per-sandbox
   caps limit any one visitor (D-7).
-- Seed size: a seeded sandbox writes about 1,250 rows (3 customers x 92 days x 4 meters = 1,104
+- Seed size: a seeded sandbox inserts about 1,250 rows (3 customers x 92 days x 4 meters = 1,104
   daily usage rows, plus about 150 rows of plans, tiers, subscriptions, invoices, lines, ledger
-  entries, the historical credit request and audit records), about 2,500 counting index writes.
-  The global cap of 500 new sandboxes per UTC day therefore bounds seeding at about 1.25M rows per
-  day, inside the 50M rows written per month that Workers Paid includes. The engine lane measures
-  the real count; a test keeps it under 2,500.
+  entries, the historical credit request and audit records), about 2,500 rows written counting
+  index updates. Deletion by the idle alarm is billed as writes too, so a sandbox's lifecycle costs
+  about 5,000 rows written before any chat. The global cap of 250 new sandboxes per UTC day bounds
+  that at about 1.25M rows per day, about 37.5M per month, inside the 50M rows written per month
+  that Workers Paid includes; chat history, counters and audit writes are small beside it. The
+  engine lane asserts the seed's record count; the agent lane measures real rows written (the SQL
+  cursor's `rowsWritten`) for seeding and deletion in an integration test that fails above 2,500
+  per phase.
 - Workflows: 500,000 steps per month included, 30-day retention of completed instances, waiting
   instances do not count toward concurrency. A credit request uses about 6 steps and each sandbox
   may start 5 per day.
