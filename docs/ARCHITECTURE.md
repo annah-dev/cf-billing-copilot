@@ -88,7 +88,9 @@ Tables, all amounts `INTEGER` cents, all timestamps ISO-8601 UTC:
 - `credit_memos` (request id UNIQUE, disputed ledger entry, amount, status `pending | applied | void`)
 - `audit_log` (seq, at, actor, action, subject, reason, before, after; insert only, no UPDATE or
   DELETE path exists in code)
-- `meta` (seed version, approver token hash, last activity for the idle-deletion alarm)
+- `meta` (admitted flag, seed version, approver token hash, created and last-activity times,
+  per-UTC-day API request counter)
+- `timers` (kind, subject, due_at): the single alarm's work queue
 
 State machine for `credit_requests.status`:
 
@@ -124,11 +126,22 @@ Ledger invariants, each enforced inside one `transactionSync` and covered by tes
   which records a `requested` row and moves no money. Validation, memo, decision, application and
   expiry are Workflow or Ledger-internal (sweeper) paths. No model tool can approve or apply.
 
-Recovery for non-terminal states, run by the Ledger alarm and covered by failure-injection tests:
-`requested` with no running Workflow after 5 minutes is re-driven (the Workflow is created again with
-the same id; an "already exists" error means it is running); `approved` without an applied credit is
-re-applied through the idempotent apply; `pending_approval` past its deadline plus 1 hour is expired,
-or decided if a decision was recorded (next section).
+Recovery for non-terminal states, run by the Ledger alarm and covered by failure-injection tests
+(including a failure after the Workflow instance is created but before `createPendingMemo`):
+
+- `requested` for more than 5 minutes: look up the instance by the request id. No instance: create
+  it. `queued`, `running`, `waiting` or `paused`: leave it. `errored` or `terminated`: `restart()` it;
+  every step is an idempotent Ledger call, so re-running completed steps is safe. `complete` while
+  the Ledger still says `requested`: finish through the idempotent Ledger transitions directly.
+- `approved` without an applied credit: re-apply through the idempotent apply.
+- `pending_approval` with a recorded decision older than 5 minutes: resend the approval event, or
+  finish through the Ledger transitions if the instance is no longer waiting.
+- `pending_approval` past its deadline plus 1 hour with no recorded decision: expire it.
+
+One alarm per Durable Object: the Ledger keeps its due work in a `timers` table (request recovery,
+deadlines, idle deletion), sets the alarm to the earliest due time after every change, processes all
+due work when it fires and reschedules. A later timer never postpones an earlier one. The agent's
+own idle deletion uses the Agents SDK scheduler, which multiplexes onto that object's alarm.
 
 ## Flows
 
@@ -188,10 +201,15 @@ Workers Paid, but the Ledger, not the Workflow, stays the source of truth for st
 also sweeps requests past their deadline plus a grace period, so a request whose Workflow errored
 still reaches a terminal state.
 
-The decision endpoint records the decision in the Ledger (audit `decision_received`) before sending
-the event, and only while the request is `pending_approval`; otherwise it answers HTTP 409 and
-audits the refusal (for example `approval_refused_expired`). The expire step checks for a recorded
-decision first, so a decision that lands just as the wait times out is honoured, not lost.
+Decisions are first-writer-wins and immutable. The authenticated decision endpoint calls the Ledger's
+`recordDecision`, which succeeds only while the request is `pending_approval` with no decision
+recorded, and writes the decision and a `decision_received` audit record in one transaction. An
+identical retry returns the recorded decision; a conflicting one gets HTTP 409 and an audited refusal;
+a decision on an expired or finished request gets 409 (for example `approval_refused_expired`). The
+approval event is only a wake-up: the Workflow and the sweeper act on the decision recorded in the
+Ledger, never on the event payload, so money cannot move against the recorded decision. The expire
+step checks for a recorded decision first, so a decision that lands as the wait times out is
+honoured. Tests cover competing decisions and a lost event.
 
 ## HTTP surface (shapes frozen in src/contracts at Stop 2)
 
@@ -208,8 +226,14 @@ Admission: a sandbox exists only if `POST /api/sandboxes` created it (the Ledger
 it admitted). Before routing, every sandbox-scoped route, including the agent route through
 `routeAgentRequest`'s `onBeforeConnect` and `onBeforeRequest` hooks, checks that the name is
 well-formed, the Ledger is admitted and the customer is one of its seeded customers; otherwise 404.
-Read and chat routes never seed or write, so a fabricated name costs one empty Durable Object lookup
-and stores nothing. Tests cover fabricated sandbox ids and customer ids.
+A rejected name causes no seeding and no write, so a fabricated name costs one empty Durable Object
+lookup and stores nothing; only `POST /api/sandboxes` seeds. Tests cover fabricated sandbox ids and
+customer ids.
+
+Non-model traffic is capped too: each admitted sandbox may make 200 sandbox-scoped API requests per
+UTC day (counted in the Ledger in the same call as the admission check; over the cap it answers 429
+and writes nothing). Refusals are audited once per request, action and reason; repeats return the
+same status without writing.
 
 ## Budgets that shape the design (Workers Paid)
 
@@ -221,17 +245,23 @@ and stores nothing. Tests cover fabricated sandbox ids and customer ids.
 - Seed size: a seeded sandbox inserts about 1,250 rows (3 customers x 92 days x 4 meters = 1,104
   daily usage rows, plus about 150 rows of plans, tiers, subscriptions, invoices, lines, ledger
   entries, the historical credit request and audit records), about 2,500 rows written counting
-  index updates. Deletion by the idle alarm is billed as writes too, so a sandbox's lifecycle costs
-  about 5,000 rows written before any chat. The global cap of 250 new sandboxes per UTC day bounds
-  that at about 1.25M rows per day, about 37.5M per month, inside the 50M rows written per month
-  that Workers Paid includes; chat history, counters and audit writes are small beside it. The
-  engine lane asserts the seed's record count; the agent lane measures real rows written (the SQL
-  cursor's `rowsWritten`) for seeding and deletion in an integration test that fails above 2,500
-  per phase.
+  index updates. Deletion is billed as writes too, so a sandbox's lifecycle costs about 5,000 rows
+  written. The engine lane asserts the seed's record count; the agent lane measures real rows
+  written (the SQL cursor's `rowsWritten`) for seeding and deletion in an integration test that
+  fails above 2,500 per phase.
+- Durable Objects: 1M requests and 50M rows written per month included, then $0.15 per million
+  requests and $1.00 per million rows. Worst case under saturated abuse: the global cap of 200 new
+  sandboxes per UTC day and the 7-day lifetime bound live sandboxes at about 1,400. Each can write
+  about 800 rows a day under its caps (200 API requests at about 2 writes, 30 chat messages at about
+  10, 5 credit requests at about 15), plus about 5,000 per new sandbox: about 2.1M rows per day, or
+  63M per month, about $13 over the included amount; requests add about $2. Normal demo traffic
+  stays inside the included amounts.
 - Workflows: 500,000 steps per month included, 30-day retention of completed instances, waiting
   instances do not count toward concurrency. A credit request uses about 6 steps and each sandbox
-  may start 5 per day.
-- Durable Objects: SQLite backend; 1M requests and 50M rows written per month included.
+  may start 5 per day: at most about 1,400 x 5 x 6 x 30 = 1.26M steps per month under saturated
+  abuse (about $6 over), far less in practice.
+- Worst case in total, every cap saturated all month: about $13 Workers AI plus about $21 Durable
+  Objects and Workflows, on top of the $5 plan.
 
 ## Testing
 

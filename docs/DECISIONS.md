@@ -47,8 +47,9 @@ One `Ledger` Durable Object per sandbox holds every billing table and the audit 
 - Colocation. The Ledger's queries run next to the data with a synchronous API.
 - Separation of concerns. The ledger is a different object from the chat agent. `BillingAgent` has
   read methods plus one narrow write, `createCreditRequest`, which records a `requested` row and
-  moves no money. Validation, memo, decision, application and expiry run only in
-  `CreditRequestWorkflow` or the Ledger's own sweeper alarm. No model tool can approve or apply.
+  moves no money. The approver's decision is recorded by the token-authenticated admin endpoint
+  (`recordDecision`, first writer wins). Validation, memo, application and expiry run only in
+  `CreditRequestWorkflow` or the Ledger's own alarm. No model tool can decide, approve or apply.
 - Trade-off accepted: cross-sandbox reporting needs fan-out. Nothing in scope needs it. In
   production the ledger would be sharded per billing account and fed to a warehouse for reporting.
 
@@ -97,7 +98,8 @@ Decided by: Anna.
 sandbox is abandoned, not modified: no Workflow termination and no epoch fencing are needed,
 because nothing in the new sandbox shares state with the old one. A Workflow still waiting in the
 old sandbox times out there and expires its request in the old Ledger. Every sandbox's Ledger and
-agents set a Durable Object alarm that deletes their storage after 7 days without activity. The
+agents delete their storage 7 days after creation or last activity, whichever is later (the
+Ledger through its single alarm, the agents through the SDK scheduler). The
 reset counts against the per-IP and global sandbox caps (D-7).
 
 Decided by: Anna.
@@ -111,11 +113,13 @@ Decided by: Anna.
 - On timeout the Workflow runs `step.do("expire")`: status `expired`, memo `void`, audit record
   `credit_expired` with actor `system` and reason "no approver decision within 24 hours". Expired is
   terminal.
-- Defense in depth: the Ledger sets an alarm at each request's deadline plus 1 hour and expires any
-  request still pending (actor `system:sweeper`), covering a Workflow that errored.
-- The decision endpoint records the decision in the Ledger before sending the event, and only while
-  the request is pending; otherwise HTTP 409 and an audit record such as `approval_refused_expired`.
-  The expire step honours a decision recorded just before the timeout.
+- Defense in depth: the Ledger's alarm (one per object, driven by a `timers` table) expires any
+  request still pending an hour past its deadline with no decision (actor `system:sweeper`), and
+  restarts an errored Workflow instead of assuming an existing id means a running one.
+- Decisions are first-writer-wins and immutable in the Ledger; an identical retry returns the
+  recorded decision, a conflicting one gets an audited 409, and a decision on an expired request
+  gets 409 audited as `approval_refused_expired`. The Workflow acts on the recorded decision, never
+  on the event payload, and the expire step honours a decision recorded just before the timeout.
 - Reviewers see the state without waiting a day: the seed includes one historical expired request
   with its audit trail, and tests cover expiry with `forceEventTimeout`.
 
@@ -125,11 +129,15 @@ Decided by: Anna.
 
 - Per sandbox: 30 user messages per UTC day, 2,000 characters per message, 5 credit requests per day.
 - Per IP (`CF-Connecting-IP`, stored hashed in `Quota`): 5 new sandboxes per UTC day.
-- Global, in `Quota`: 250 new sandboxes per UTC day. A sandbox's seeding plus its eventual deletion
-  writes about 5,000 rows counting index updates (docs/ARCHITECTURE.md, "Budgets"); 250 a day is
-  about 1.25M rows per day, about 37.5M per month, inside the 50M rows written per month that
-  Workers Paid includes. The agent lane measures real rows written and a test fails above 2,500 per
-  phase.
+- Global, in `Quota`: 200 new sandboxes per UTC day. With the 7-day lifetime that bounds live
+  sandboxes at about 1,400.
+- Per sandbox, non-model traffic: 200 sandbox-scoped API requests per UTC day (429 past it, no
+  write), and refusals audited once per request, action and reason, so repeated refused calls
+  cannot amplify writes.
+- Under every cap saturated all month the worst case is about $34 over the $5 plan (Workers AI
+  about $13, Durable Objects and Workflows about $21; arithmetic in docs/ARCHITECTURE.md,
+  "Budgets"). Normal demo traffic stays inside the included amounts. The agent lane measures real
+  rows written and a test fails above 2,500 per phase.
 - Global, in `Quota`: stop model calls at an estimated 50,000 neurons per UTC day. Each inference
   call, including tool continuations, reserves its worst-case estimate atomically before it runs
   (bounded `maxOutputTokens`, small step limit) and reconciles with actual usage after, so
@@ -140,15 +148,16 @@ Decided by: Anna.
 - The Workers Rate Limiting binding only supports 10 or 60 second windows and is per location, so it
   cannot hold daily caps; `Quota` is a single Durable Object for exact counting.
 
-Decided by: Anna (the global sandbox cap of 250 and the reservation mechanism by the Architect under
-standing orders).
+Decided by: Anna (the global sandbox cap of 200, the non-model request cap, refusal-audit
+deduplication and the reservation mechanism by the Architect under standing orders).
 
 ## D-8 Capacity for the live demo
 
 The account is on Workers Paid. The 50,000-neuron stop allows roughly 170 to 200 tool-using turns
 per day across all visitors, so one `npm run eval:live` run (12 to 15 questions, about 40 model
-calls) no longer crowds out reviewers. Worst-case Workers AI spend is about $0.44 per day; Durable
-Objects and Workflows stay inside the Paid included amounts under the D-7 caps.
+calls) no longer crowds out reviewers. Worst-case Workers AI spend is about $0.44 per day. Normal
+traffic keeps Durable Objects and Workflows inside the Paid included amounts; with every D-7 cap
+saturated all month they add about $21 (docs/ARCHITECTURE.md, "Budgets").
 
 Decided by: Anna.
 
@@ -156,8 +165,10 @@ Decided by: Anna.
 
 `CreditRequestWorkflow extends AgentWorkflow<BillingAgent, Params>` so the agent starts it with
 `this.runWorkflow("CREDIT_WORKFLOW", params, { id: requestId })` (without `id` the SDK generates a
-random one) and gets progress callbacks it can broadcast to the chat. An "already exists" error on
-create means the Workflow for that request is running and is treated as success. The Workflow still writes only through the `Ledger`, never through agent state.
+random one) and gets progress callbacks it can broadcast to the chat. On an "already exists" error
+the caller reads the instance status: active states are left alone, `errored` or `terminated`
+instances are restarted (every step is an idempotent Ledger call). The Workflow still writes only
+through the `Ledger`, never through agent state.
 
 Decided by: Architect under standing orders.
 
@@ -178,17 +189,23 @@ used as is.
 
 Decided by: Anna.
 
-## D-12 Ledger invariants, recovery and admission (from PR #1 review, round 1)
+## D-12 Ledger invariants, recovery and admission (from PR #1 review, rounds 1 and 2)
 
 - No double credit across idempotency keys: pending plus applied memos per disputed ledger entry
   never exceed the engine's creditable amount; the pending memo is the reservation, written
   atomically. Reason: a UNIQUE idempotency key alone lets two different keys credit one charge.
 - Idempotent transitions: reaching an already-reached target state returns the recorded result
   without a new audit record. Reason: a Workflow step can replay after its transaction committed.
-- Recovery: the Ledger alarm re-drives `requested` without a Workflow, re-applies `approved` without
-  a credit, and expires or decides stale `pending_approval`. Reason: no non-terminal state may strand.
+- Recovery: the Ledger alarm re-drives `requested` (create, leave, or restart by instance status),
+  re-applies `approved` without a credit, and expires or decides stale `pending_approval`, all from
+  one alarm driven by a `timers` table. Reason: no non-terminal state may strand, and a Durable
+  Object has only one alarm.
+- Decisions: first writer wins, immutable, the Workflow acts on the recorded decision. Reason: two
+  competing decisions must not let money move against the recorded one (round 2).
+- Non-model caps and refusal-audit deduplication. Reason: refused calls must not amplify writes
+  (round 2).
 - Admission: every sandbox-scoped route, including the agent route, requires a sandbox created by
-  `POST /api/sandboxes` and a seeded customer; read and chat routes never seed. Reason: name-based
+  `POST /api/sandboxes` and a seeded customer; a rejected name seeds and writes nothing. Reason: name-based
   routing alone would let anyone create agents and bypass the sandbox caps.
 
 Decided by: Architect under standing orders.

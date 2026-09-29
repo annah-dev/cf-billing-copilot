@@ -66,7 +66,8 @@ entries in timestamp order, and renumbering only the new entries.
 - Must not touch: `src/engine/` (reads only), UI files, `evals/`.
 - Builds: `BillingAgent` (`AIChatAgent`) with the 8 typed tools on Llama 3.3, history trimming and
   memory; `Ledger` DO with the schema, seeding from the engine, state machine, idempotency, audit
-  log, deadline sweep alarm and 7-day idle deletion; `CreditRequestWorkflow` (`AgentWorkflow`) with
+  log, single-alarm `timers` queue (recovery, deadlines, 7-day idle deletion), non-model request
+  cap; `CreditRequestWorkflow` (`AgentWorkflow`) with
   validate, pending memo, `step.waitForEvent` with an explicit timeout, apply, reject, expire;
   `Quota` DO (per-IP and global sandbox caps, neuron budget); every HTTP endpoint in
   docs/ARCHITECTURE.md with the approver token check and caps.
@@ -78,8 +79,13 @@ entries in timestamp order, and renumbering only the new entries.
   global sandbox caps hold; message and neuron caps return the fixed message without a model call;
   concurrent credit requests with different idempotency keys for the same charge produce at most
   one reservation; a Workflow step replayed after its transaction committed succeeds without a
-  second audit record; failure injection leaves no request stranded in `requested` or `approved`
-  after the sweep; a decision recorded just before the timeout is honoured; fabricated sandbox and
+  second audit record; failure injection (including after instance creation but before the pending
+  memo) leaves no request stranded in `requested` or `approved` after the sweep, and an errored
+  instance is restarted; competing decisions leave exactly one recorded decision and money follows
+  it; a lost approval event is recovered from the recorded decision; a decision recorded just before
+  the timeout is honoured; the single alarm fires for the earliest of several timers and is
+  rescheduled; the non-model request cap answers 429 without writing and repeated refusals add no
+  audit records; fabricated sandbox and
   customer ids get 404 and write nothing; concurrent turns near the neuron stop never exceed it;
   real rows written (`rowsWritten`) for seeding and for deletion each stay under 2,500. Evidence also includes one local-dev chat turn against real Llama
   3.3 (a few calls, not a loop) and the credit flow driven by curl in local dev.
