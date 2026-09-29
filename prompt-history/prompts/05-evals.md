@@ -61,8 +61,13 @@ is not deployed yet, finish everything else, say so, and give the owner the exac
 
 1. Rebase on origin/main, run the done-contract commands, commit.
 2. Push through the gate: `git push no-mistakes feat/evals`. Claude reviews there
-   (docs/agent/no-mistakes.md). Log each gate run in PROMPTS.md with role "automated cross-review",
-   harness "no-mistakes v1.41.2 (Claude)", source "no-mistakes built-in review step, run <id>".
+   (docs/agent/no-mistakes.md). Capture each gate review prompt: `no-mistakes axi logs --step review
+   --full` shows what the gate sent to Claude. Save that prompt text verbatim with a tool to
+   `prompt-history/prompts/05g-evals-gate-review-r<round>.md` and append it to PROMPTS.md with
+   role "automated cross-review", harness "no-mistakes v1.41.2 (Claude)" and the run id. If the log
+   does not contain the prompt text, save the log lines that identify the run, step and version,
+   say in that file and in PROMPTS.md that the prompt text was not available, and list it under NOT
+   VERIFIED in the PR.
 3. Read parked findings yourself (`no-mistakes axi status`, `no-mistakes axi logs --step review
    --full`), fix them on your branch (after `no-mistakes axi sync` if offered), push through the
    gate again. Two full rounds, a third on the delta only, then stop. Anything still disputed goes

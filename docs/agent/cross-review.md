@@ -32,7 +32,11 @@ and a suggested fix, and ends with VERIFIED and NOT VERIFIED lines.
 The lane pushes with `git push no-mistakes`. Review findings park (auto_fix.review is 0); the lane
 agent reads them with `no-mistakes axi status` and `no-mistakes axi logs --step review --full`,
 fixes them on its branch (after `no-mistakes axi sync` when the run offers it) and pushes through
-the gate again. Same convergence rule. See docs/agent/no-mistakes.md.
+the gate again. Same convergence rule. The lane saves each gate review prompt verbatim (from
+`no-mistakes axi logs --step review --full`) to
+`prompt-history/prompts/<NN>g-<lane>-gate-review-r<round>.md` and logs it in PROMPTS.md; if the
+log does not contain the prompt text, it says so there and in the PR's NOT VERIFIED line. See
+docs/agent/no-mistakes.md.
 
 ## What the reviewer checks
 

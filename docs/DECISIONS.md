@@ -303,3 +303,17 @@ Decided by: Architect under standing orders.
   `/agents/billing-agent/` to it, with a test; the agent lane keeps that guard.
 
 Decided by: Architect under standing orders.
+
+## D-19 Foundation fixes from PR #2 review, round 1
+
+- Tier charges expose `unitPrice` as `Money` plus an engine-written `rateDisplay`; a contract test
+  fails if any tool or HTTP output schema has a `*Cents` or `*Bps` field. Reason: raw prices would
+  make the model convert (D-15).
+- Both vitest projects load tests/setup/no-network.ts, which makes every global fetch fail; a test
+  in each project proves it. Reason: `remoteBindings: false` keeps bindings local but does not stop
+  an ordinary fetch.
+- The root tsconfig excludes tests/agent, which has its own project with the `cloudflare:test`
+  types; the foundation test imports `introspectWorkflowInstance` to keep that proven.
+- There is no `computeCreditMemo`: `validateCreditClaim.creditableAmount` is the memo amount.
+
+Decided by: Architect under standing orders.

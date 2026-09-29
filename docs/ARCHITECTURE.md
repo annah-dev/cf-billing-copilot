@@ -264,7 +264,9 @@ same status without writing.
   about $34 over the $5 plan. Normal demo traffic stays inside the included amounts.
 - Not covered by that estimate: refused traffic. The per-sandbox caps are counted inside the
   Ledger, so a call refused with 429 or 404 still costs one Durable Object request (no write).
-  Bounding that needs a limit before any Durable Object is invoked; it is an open decision (D-13).
+  The per-IP `RATE_LIMITER` (60 requests a minute) runs in the Worker before any Durable Object is
+  invoked and slows that traffic, but it is per location and approximate, so it is a brake, not a
+  bound (D-13).
 - Workflows: 30-day retention of completed instances; waiting instances do not count toward
   concurrency.
 
