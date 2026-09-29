@@ -28,7 +28,9 @@ export const TERMINAL_CREDIT_STATUSES: readonly CreditRequestStatus[] = [
 ];
 
 /** Allowed transitions; anything else is refused and audited. */
-export const CREDIT_TRANSITIONS: Readonly<Record<CreditRequestStatus, readonly CreditRequestStatus[]>> = {
+export const CREDIT_TRANSITIONS: Readonly<
+  Record<CreditRequestStatus, readonly CreditRequestStatus[]>
+> = {
   requested: ["pending_approval", "rejected"],
   pending_approval: ["approved", "rejected", "expired"],
   approved: ["applied"],

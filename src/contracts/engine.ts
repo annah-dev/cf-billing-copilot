@@ -12,14 +12,26 @@ import {
 } from "./billing";
 import { AuditRecordSchema } from "./audit";
 import type { Money } from "./money";
-import { CreditMemoSchema, CreditRequestSchema, type ClaimValidation, type CreditMemo } from "./credit";
+import {
+  CreditMemoSchema,
+  CreditRequestSchema,
+  type ClaimValidation,
+  type CreditMemo
+} from "./credit";
 import type {
   AnomalyReport,
   InvoiceComparison,
   LineExplanation,
   PlanSimulation
 } from "./analysis";
-import type { CustomerId, InvoiceId, LedgerEntryId, LineItemId, Period, PlanId } from "./ids";
+import type {
+  CustomerId,
+  InvoiceId,
+  LedgerEntryId,
+  LineItemId,
+  Period,
+  PlanId
+} from "./ids";
 
 /**
  * Everything the engine needs, as plain data. The Ledger Durable Object stores
@@ -63,9 +75,17 @@ export interface BillingEngine {
   seed(): BillingDataset;
 
   /** Rate one customer's usage for one period under the subscriptions in force. */
-  buildInvoice(data: BillingDataset, customerId: CustomerId, period: Period): Invoice;
+  buildInvoice(
+    data: BillingDataset,
+    customerId: CustomerId,
+    period: Period
+  ): Invoice;
 
-  explainLineItem(data: BillingDataset, invoiceId: InvoiceId, lineId: LineItemId): LineExplanation;
+  explainLineItem(
+    data: BillingDataset,
+    invoiceId: InvoiceId,
+    lineId: LineItemId
+  ): LineExplanation;
 
   compareInvoices(
     data: BillingDataset,
@@ -75,9 +95,18 @@ export interface BillingEngine {
   ): InvoiceComparison;
 
   /** Re-rate the customer's usage for the period as if they had been on planId all period. */
-  simulatePlan(data: BillingDataset, customerId: CustomerId, period: Period, planId: PlanId): PlanSimulation;
+  simulatePlan(
+    data: BillingDataset,
+    customerId: CustomerId,
+    period: Period,
+    planId: PlanId
+  ): PlanSimulation;
 
-  detectAnomalies(data: BillingDataset, customerId: CustomerId, period: Period): AnomalyReport;
+  detectAnomalies(
+    data: BillingDataset,
+    customerId: CustomerId,
+    period: Period
+  ): AnomalyReport;
 
   /**
    * Check a double-charge claim against the ledger. existingMemos are the pending
@@ -86,7 +115,11 @@ export interface BillingEngine {
    */
   validateCreditClaim(
     data: BillingDataset,
-    claim: { customerId: CustomerId; invoiceId: InvoiceId; disputedLedgerEntryId: LedgerEntryId | null },
+    claim: {
+      customerId: CustomerId;
+      invoiceId: InvoiceId;
+      disputedLedgerEntryId: LedgerEntryId | null;
+    },
     existingMemos: readonly CreditMemo[]
   ): ClaimValidation;
 

@@ -45,39 +45,49 @@ const CreditRequestSummarySchema = CreditRequestSchema.pick({
 
 export const ToolSchemas = {
   getAccount: {
-    description: "Customer account: name, current plan, balance, invoices, open credit requests.",
+    description:
+      "Customer account: name, current plan, balance, invoices, open credit requests.",
     input: z.object({}),
     output: z.object({
       customerId: CustomerIdSchema,
       customerName: z.string(),
       plan: z.object({ planId: PlanIdSchema, name: z.string() }),
-      availablePlans: z.array(z.object({ planId: PlanIdSchema, name: z.string() })),
+      availablePlans: z.array(
+        z.object({ planId: PlanIdSchema, name: z.string() })
+      ),
       balance: MoneySchema,
       invoices: z.array(InvoiceSummarySchema),
       openCreditRequests: z.array(CreditRequestSummarySchema)
     })
   },
   getInvoice: {
-    description: "One invoice with every line. Give a period (YYYY-MM) or an invoice id.",
+    description:
+      "One invoice with every line. Give a period (YYYY-MM) or an invoice id.",
     input: z
-      .object({ period: PeriodSchema.optional(), invoiceId: InvoiceIdSchema.optional() })
+      .object({
+        period: PeriodSchema.optional(),
+        invoiceId: InvoiceIdSchema.optional()
+      })
       .refine((v) => (v.period === undefined) !== (v.invoiceId === undefined), {
         message: "give exactly one of period or invoiceId"
       }),
     output: InvoiceSchema
   },
   explainLineItem: {
-    description: "Step-by-step computation of one invoice line (tiers, proration, tax).",
+    description:
+      "Step-by-step computation of one invoice line (tiers, proration, tax).",
     input: z.object({ invoiceId: InvoiceIdSchema, lineId: LineItemIdSchema }),
     output: LineExplanationSchema
   },
   compareInvoices: {
-    description: "What changed between two monthly invoices, by product and meter.",
+    description:
+      "What changed between two monthly invoices, by product and meter.",
     input: z.object({ fromPeriod: PeriodSchema, toPeriod: PeriodSchema }),
     output: InvoiceComparisonSchema
   },
   simulatePlan: {
-    description: "Re-rate one month's usage under another plan and show the difference.",
+    description:
+      "Re-rate one month's usage under another plan and show the difference.",
     input: z.object({ period: PeriodSchema, planId: PlanIdSchema }),
     output: PlanSimulationSchema
   },
@@ -106,7 +116,10 @@ export const ToolSchemas = {
     input: z.object({ requestId: CreditRequestIdSchema.optional() }),
     output: z.object({
       requests: z.array(
-        z.object({ request: CreditRequestSummarySchema, audit: z.array(AuditRecordSchema) })
+        z.object({
+          request: CreditRequestSummarySchema,
+          audit: z.array(AuditRecordSchema)
+        })
       )
     })
   }
@@ -114,5 +127,9 @@ export const ToolSchemas = {
 
 export type ToolName = keyof typeof ToolSchemas;
 export const TOOL_NAMES = Object.keys(ToolSchemas) as ToolName[];
-export type ToolInput<N extends ToolName> = z.infer<(typeof ToolSchemas)[N]["input"]>;
-export type ToolOutput<N extends ToolName> = z.infer<(typeof ToolSchemas)[N]["output"]>;
+export type ToolInput<N extends ToolName> = z.infer<
+  (typeof ToolSchemas)[N]["input"]
+>;
+export type ToolOutput<N extends ToolName> = z.infer<
+  (typeof ToolSchemas)[N]["output"]
+>;

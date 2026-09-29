@@ -54,7 +54,12 @@ export const InvoiceComparisonSchema = z.object({
   ),
   /** Non-usage differences: subscription, proration, credits, tax. */
   otherChanges: z.array(
-    z.object({ label: z.string(), fromAmount: MoneySchema, toAmount: MoneySchema, delta: MoneySchema })
+    z.object({
+      label: z.string(),
+      fromAmount: MoneySchema,
+      toAmount: MoneySchema,
+      delta: MoneySchema
+    })
   ),
   /** Plain-language summary written by the engine from the numbers above. */
   summary: z.string().min(1)
@@ -100,4 +105,7 @@ export const AnomalyReportSchema = z.object({
 export type AnomalyReport = z.infer<typeof AnomalyReportSchema>;
 
 /** Line id reference used by tools. */
-export const LineRefSchema = z.object({ invoiceId: InvoiceIdSchema, lineId: LineItemIdSchema });
+export const LineRefSchema = z.object({
+  invoiceId: InvoiceIdSchema,
+  lineId: LineItemIdSchema
+});

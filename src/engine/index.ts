@@ -3,7 +3,10 @@
 import { EngineError, type BillingEngine } from "../contracts";
 
 const notImplemented = (name: string): never => {
-  throw new EngineError("unsupported", `engine.${name} is not implemented yet (engine lane)`);
+  throw new EngineError(
+    "unsupported",
+    `engine.${name} is not implemented yet (engine lane)`
+  );
 };
 
 export const engine: BillingEngine = {

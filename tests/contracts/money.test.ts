@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatUsd, money, MoneySchema, CentsSchema } from "../../src/contracts";
+import {
+  formatUsd,
+  money,
+  MoneySchema,
+  CentsSchema
+} from "../../src/contracts";
 
 describe("formatUsd", () => {
   it.each([
@@ -21,11 +26,16 @@ describe("formatUsd", () => {
 
 describe("MoneySchema", () => {
   it("accepts money() output", () => {
-    expect(MoneySchema.parse(money(41287))).toEqual({ cents: 41287, display: "$412.87" });
+    expect(MoneySchema.parse(money(41287))).toEqual({
+      cents: 41287,
+      display: "$412.87"
+    });
   });
 
   it("rejects a display string that does not match the cents", () => {
-    expect(MoneySchema.safeParse({ cents: 41287, display: "$412.88" }).success).toBe(false);
+    expect(
+      MoneySchema.safeParse({ cents: 41287, display: "$412.88" }).success
+    ).toBe(false);
   });
 
   it("rejects fractional and unsafe cents", () => {

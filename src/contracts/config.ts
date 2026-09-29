@@ -8,9 +8,13 @@ export const NEURONS_PER_MILLION_INPUT_TOKENS = 26_668;
 export const NEURONS_PER_MILLION_OUTPUT_TOKENS = 204_805;
 
 /** Estimated neurons for a call, rounded up. Integer math only. */
-export function estimateNeurons(inputTokens: number, outputTokens: number): number {
+export function estimateNeurons(
+  inputTokens: number,
+  outputTokens: number
+): number {
   const micro =
-    inputTokens * NEURONS_PER_MILLION_INPUT_TOKENS + outputTokens * NEURONS_PER_MILLION_OUTPUT_TOKENS;
+    inputTokens * NEURONS_PER_MILLION_INPUT_TOKENS +
+    outputTokens * NEURONS_PER_MILLION_OUTPUT_TOKENS;
   return Math.ceil(micro / 1_000_000);
 }
 

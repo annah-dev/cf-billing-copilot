@@ -9,7 +9,9 @@ export { Quota } from "./quota/quota";
 export { CreditRequestWorkflow } from "./workflows/credit-request";
 
 function notFound(): Response {
-  const body: ErrorResponse = { error: { code: "not_found", message: "Not found" } };
+  const body: ErrorResponse = {
+    error: { code: "not_found", message: "Not found" }
+  };
   return Response.json(body, { status: 404 });
 }
 

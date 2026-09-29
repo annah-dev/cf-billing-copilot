@@ -4,7 +4,12 @@ import { InvoiceSchema } from "./billing";
 import { CreditRequestSchema } from "./credit";
 import { AuditRecordSchema } from "./audit";
 import { ToolSchemas } from "./tools";
-import { CustomerIdSchema, IsoDateTimeSchema, PlanIdSchema, SandboxIdSchema } from "./ids";
+import {
+  CustomerIdSchema,
+  IsoDateTimeSchema,
+  PlanIdSchema,
+  SandboxIdSchema
+} from "./ids";
 
 /**
  * HTTP shapes for the chat UI, the /admin page and the eval harness.
@@ -20,23 +25,35 @@ import { CustomerIdSchema, IsoDateTimeSchema, PlanIdSchema, SandboxIdSchema } fr
 
 export const ROUTES = {
   sandboxes: "/api/sandboxes",
-  panel: (sid: string, cid: string) => `/api/sandboxes/${sid}/customers/${cid}/panel`,
-  adminCreditRequests: (sid: string) => `/api/sandboxes/${sid}/admin/credit-requests`,
-  decision: (sid: string, rid: string) => `/api/sandboxes/${sid}/admin/credit-requests/${rid}/decision`,
-  turn: (sid: string, cid: string) => `/api/sandboxes/${sid}/customers/${cid}/turn`
+  panel: (sid: string, cid: string) =>
+    `/api/sandboxes/${sid}/customers/${cid}/panel`,
+  adminCreditRequests: (sid: string) =>
+    `/api/sandboxes/${sid}/admin/credit-requests`,
+  decision: (sid: string, rid: string) =>
+    `/api/sandboxes/${sid}/admin/credit-requests/${rid}/decision`,
+  turn: (sid: string, cid: string) =>
+    `/api/sandboxes/${sid}/customers/${cid}/turn`
 } as const;
 
 /** Agent instance name: "<sandboxId>.<customerId>" (DECISIONS.md D-3). */
-export const agentInstanceName = (sandboxId: string, customerId: string) => `${sandboxId}.${customerId}`;
+export const agentInstanceName = (sandboxId: string, customerId: string) =>
+  `${sandboxId}.${customerId}`;
 export const AgentInstanceNameSchema = z
   .string()
-  .regex(/^[0-9a-f]{32}\.cus_[a-z0-9_]{1,40}$/, "expected <sandboxId>.<customerId>");
+  .regex(
+    /^[0-9a-f]{32}\.cus_[a-z0-9_]{1,40}$/,
+    "expected <sandboxId>.<customerId>"
+  );
 
 export const CreateSandboxResponseSchema = z.object({
   sandboxId: SandboxIdSchema,
   /** Shown once; only its SHA-256 is stored (D-4). */
-  approverToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/, "expected 32 random bytes, base64url"),
-  customers: z.array(z.object({ customerId: CustomerIdSchema, name: z.string() })).min(1),
+  approverToken: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{43}$/, "expected 32 random bytes, base64url"),
+  customers: z
+    .array(z.object({ customerId: CustomerIdSchema, name: z.string() }))
+    .min(1),
   createdAt: IsoDateTimeSchema,
   idleDeletionDays: z.number().int().positive()
 });
@@ -61,7 +78,9 @@ export const AdminCreditRequestsResponseSchema = z.object({
   /** pending_approval first, then newest first. */
   requests: z.array(CreditRequestSchema.extend({ customerName: z.string() }))
 });
-export type AdminCreditRequestsResponse = z.infer<typeof AdminCreditRequestsResponseSchema>;
+export type AdminCreditRequestsResponse = z.infer<
+  typeof AdminCreditRequestsResponseSchema
+>;
 
 export const DecisionRequestSchema = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -82,7 +101,12 @@ export const TurnRequestSchema = z.object({
 export type TurnRequest = z.infer<typeof TurnRequestSchema>;
 
 export const ToolCallRecordSchema = z.object({
-  name: z.enum(Object.keys(ToolSchemas) as [keyof typeof ToolSchemas, ...(keyof typeof ToolSchemas)[]]),
+  name: z.enum(
+    Object.keys(ToolSchemas) as [
+      keyof typeof ToolSchemas,
+      ...(keyof typeof ToolSchemas)[]
+    ]
+  ),
   input: z.unknown(),
   /** The validated tool output, or null when the tool failed. */
   output: z.unknown().nullable(),
@@ -119,7 +143,11 @@ export const ErrorResponseSchema = z.object({
     message: z.string(),
     /** Present for cap_reached and budget_exhausted. */
     cap: z
-      .object({ name: z.string(), limit: z.number().int().nonnegative(), resetsAt: IsoDateTimeSchema })
+      .object({
+        name: z.string(),
+        limit: z.number().int().nonnegative(),
+        resetsAt: IsoDateTimeSchema
+      })
       .optional()
   })
 });

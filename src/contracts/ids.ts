@@ -1,14 +1,23 @@
 import { z } from "zod";
 
 /** Calendar date in UTC, YYYY-MM-DD. */
-export const IsoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
+export const IsoDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
 /** Instant in UTC, ISO-8601 with Z. */
 export const IsoDateTimeSchema = z.iso.datetime();
 /** Billing period (one calendar month), YYYY-MM. */
-export const PeriodSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "expected YYYY-MM");
+export const PeriodSchema = z
+  .string()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "expected YYYY-MM");
 
 const slug = (prefix: string) =>
-  z.string().regex(new RegExp(`^${prefix}_[a-z0-9_]{1,40}$`), `expected ${prefix}_<slug>`);
+  z
+    .string()
+    .regex(
+      new RegExp(`^${prefix}_[a-z0-9_]{1,40}$`),
+      `expected ${prefix}_<slug>`
+    );
 
 export const CustomerIdSchema = slug("cus");
 export const PlanIdSchema = slug("plan");
@@ -20,9 +29,13 @@ export const CreditRequestIdSchema = slug("cr");
 export const CreditMemoIdSchema = slug("cm");
 
 /** Sandbox id: 128 random bits as 32 lowercase hex characters (DECISIONS.md D-3). */
-export const SandboxIdSchema = z.string().regex(/^[0-9a-f]{32}$/, "expected 32 hex characters");
+export const SandboxIdSchema = z
+  .string()
+  .regex(/^[0-9a-f]{32}$/, "expected 32 hex characters");
 /** Idempotency key for a credit request: 64 lowercase hex characters (SHA-256). */
-export const IdempotencyKeySchema = z.string().regex(/^[0-9a-f]{64}$/, "expected 64 hex characters");
+export const IdempotencyKeySchema = z
+  .string()
+  .regex(/^[0-9a-f]{64}$/, "expected 64 hex characters");
 
 export type IsoDate = z.infer<typeof IsoDateSchema>;
 export type IsoDateTime = z.infer<typeof IsoDateTimeSchema>;

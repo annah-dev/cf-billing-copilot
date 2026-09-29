@@ -15,7 +15,10 @@ import {
 
 function wranglerVars(): Record<string, string> {
   // wrangler.jsonc allows comments; strip them before JSON.parse.
-  const text = readFileSync(new URL("../../wrangler.jsonc", import.meta.url), "utf8")
+  const text = readFileSync(
+    new URL("../../wrangler.jsonc", import.meta.url),
+    "utf8"
+  )
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/^\s*\/\/.*$/gm, "");
   return JSON.parse(text).vars;
@@ -39,18 +42,28 @@ describe("tool contracts", () => {
 
   it("never lets the model pass a customer id", () => {
     for (const name of TOOL_NAMES) {
-      const shape = (ToolSchemas[name].input as unknown as { shape?: Record<string, unknown> }).shape;
+      const shape = (
+        ToolSchemas[name].input as unknown as {
+          shape?: Record<string, unknown>;
+        }
+      ).shape;
       if (shape) expect(Object.keys(shape)).not.toContain("customerId");
     }
-    expect(ToolSchemas.getAccount.input.safeParse({ customerId: "cus_other" }).data).toEqual({});
+    expect(
+      ToolSchemas.getAccount.input.safeParse({ customerId: "cus_other" }).data
+    ).toEqual({});
   });
 
   it("requires exactly one of period or invoiceId for getInvoice", () => {
     const input = ToolSchemas.getInvoice.input;
     expect(input.safeParse({ period: "2026-09" }).success).toBe(true);
-    expect(input.safeParse({ invoiceId: "inv_2026_09_acme" }).success).toBe(true);
+    expect(input.safeParse({ invoiceId: "inv_2026_09_acme" }).success).toBe(
+      true
+    );
     expect(input.safeParse({}).success).toBe(false);
-    expect(input.safeParse({ period: "2026-09", invoiceId: "inv_x" }).success).toBe(false);
+    expect(
+      input.safeParse({ period: "2026-09", invoiceId: "inv_x" }).success
+    ).toBe(false);
     expect(input.safeParse({ period: "2026-13" }).success).toBe(false);
   });
 });
@@ -66,7 +79,9 @@ describe("credit state machine", () => {
   });
 
   it("only reaches applied through approved", () => {
-    const into = CreditRequestStatusSchema.options.filter((s) => CREDIT_TRANSITIONS[s].includes("applied"));
+    const into = CreditRequestStatusSchema.options.filter((s) =>
+      CREDIT_TRANSITIONS[s].includes("applied")
+    );
     expect(into).toEqual(["approved"]);
   });
 });
@@ -80,8 +95,12 @@ describe("config", () => {
 
   it("keeps the turn message limit equal to MESSAGE_MAX_CHARS", () => {
     const max = EnvConfigSchema.parse(wranglerVars()).MESSAGE_MAX_CHARS;
-    expect(TurnRequestSchema.safeParse({ message: "x".repeat(max) }).success).toBe(true);
-    expect(TurnRequestSchema.safeParse({ message: "x".repeat(max + 1) }).success).toBe(false);
+    expect(
+      TurnRequestSchema.safeParse({ message: "x".repeat(max) }).success
+    ).toBe(true);
+    expect(
+      TurnRequestSchema.safeParse({ message: "x".repeat(max + 1) }).success
+    ).toBe(false);
   });
 
   it("estimates neurons with integer math, rounding up", () => {
@@ -94,6 +113,9 @@ describe("config", () => {
     const name = agentInstanceName("a".repeat(32), "cus_acme");
     expect(AgentInstanceNameSchema.safeParse(name).success).toBe(true);
     expect(AgentInstanceNameSchema.safeParse("default").success).toBe(false);
-    expect(AgentInstanceNameSchema.safeParse(`${"a".repeat(32)}.cus_acme/../x`).success).toBe(false);
+    expect(
+      AgentInstanceNameSchema.safeParse(`${"a".repeat(32)}.cus_acme/../x`)
+        .success
+    ).toBe(false);
   });
 });

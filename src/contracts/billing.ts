@@ -141,7 +141,9 @@ export const LedgerEntrySchema = z.object({
   customerId: CustomerIdSchema,
   at: IsoDateTimeSchema,
   kind: LedgerEntryKindSchema,
-  amount: MoneySchema.refine((m) => m.cents > 0, { message: "ledger amounts are positive" }),
+  amount: MoneySchema.refine((m) => m.cents > 0, {
+    message: "ledger amounts are positive"
+  }),
   invoiceId: InvoiceIdSchema.nullable(),
   /** External reference, for example a card-processor charge id. Duplicates share it. */
   reference: z.string().min(1),
