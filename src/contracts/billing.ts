@@ -82,11 +82,19 @@ export type UsageRecord = z.infer<typeof UsageRecordSchema>;
 
 // ---- Invoices -----------------------------------------------------------------
 
+/**
+ * One tier's share of an invoice line, as it reaches the model and the UI: the unit price is
+ * Money (the tier's priceCents) and rateDisplay is the engine-written rate, for example
+ * "$0.30 per 1,000,000 requests", so nobody converts a price (DECISIONS.md D-15).
+ */
 export const TierChargeSchema = z.object({
   tierIndex: z.number().int().nonnegative(),
   units: z.number().int().nonnegative(),
-  priceCents: CentsSchema.nonnegative(),
+  unitPrice: MoneySchema.refine((m) => m.cents >= 0, {
+    message: "prices are non-negative"
+  }),
   perUnits: z.number().int().positive(),
+  rateDisplay: z.string().min(1),
   amount: MoneySchema
 });
 export type TierCharge = z.infer<typeof TierChargeSchema>;

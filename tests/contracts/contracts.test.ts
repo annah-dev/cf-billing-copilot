@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
   CREDIT_TRANSITIONS,
   CreditRequestStatusSchema,
@@ -10,7 +11,11 @@ import {
   TurnRequestSchema,
   AgentInstanceNameSchema,
   agentInstanceName,
-  estimateNeurons
+  estimateNeurons,
+  PanelResponseSchema,
+  AdminCreditRequestsResponseSchema,
+  DecisionResponseSchema,
+  TurnResponseSchema
 } from "../../src/contracts";
 
 function wranglerVars(): Record<string, string> {
@@ -65,6 +70,40 @@ describe("tool contracts", () => {
       input.safeParse({ period: "2026-09", invoiceId: "inv_x" }).success
     ).toBe(false);
     expect(input.safeParse({ period: "2026-13" }).success).toBe(false);
+  });
+});
+
+function propertyNames(schema: z.ZodType): string[] {
+  const names: string[] = [];
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (node && typeof node === "object") {
+      const obj = node as Record<string, unknown>;
+      if (obj.properties && typeof obj.properties === "object") {
+        names.push(...Object.keys(obj.properties as object));
+      }
+      Object.values(obj).forEach(walk);
+    }
+  };
+  walk(z.toJSONSchema(schema, { unrepresentable: "any", io: "output" }));
+  return names;
+}
+
+describe("money never reaches the model or the UI as raw cents (D-15)", () => {
+  const outputs: Array<[string, z.ZodType]> = [
+    ...TOOL_NAMES.map(
+      (n) => [`tool ${n}`, ToolSchemas[n].output] as [string, z.ZodType]
+    ),
+    ["PanelResponse", PanelResponseSchema],
+    ["AdminCreditRequestsResponse", AdminCreditRequestsResponseSchema],
+    ["DecisionResponse", DecisionResponseSchema],
+    ["TurnResponse", TurnResponseSchema]
+  ];
+  it.each(outputs)("%s has no *Cents or *Bps field", (_name, schema) => {
+    const offenders = propertyNames(schema).filter((k) =>
+      /(Cents|Bps)$/.test(k)
+    );
+    expect(offenders).toEqual([]);
   });
 });
 
