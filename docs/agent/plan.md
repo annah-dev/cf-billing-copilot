@@ -2,15 +2,14 @@
 
 Agent-operational. Product design is in docs/ARCHITECTURE.md and docs/DECISIONS.md; this file only
 says who builds what, where, in which order, and how each lane starts and is reviewed. Directory
-names follow the agents-starter layout and are confirmed at Stop 2.
+names follow the agents-starter layout as scaffolded at Stop 2.
 
 ## Sequence
 
 1. Stop 1 (Architect, Claude Code): this plan. Docs only.
 2. Stop 2 (Architect, Claude Code): foundation on main. Scaffold, repo rules, contracts, wrangler
    config with every binding, vitest + CI, no-mistakes config, Llama 3.3 tool-call round trip, lane
-   prompts. After it merges, `src/contracts/`, `wrangler.jsonc`, `package.json` and the test config are
-   frozen.
+   prompts. After it merges, the shared files below are frozen (AGENTS.md, hard rule 4).
 3. Parallel burst: engine, agent and ui start together from the Stop 2 main.
 4. Merge order: engine, then agent (rebased on engine), then ui. The owner deploys after ui merges.
 5. evals starts after engine and agent merge (it needs real tools and the `/turn` endpoint).
@@ -18,9 +17,10 @@ names follow the agents-starter layout and are confirmed at Stop 2.
 
 ## Shared files nobody owns during the burst
 
-`src/contracts/`, `wrangler.jsonc`, `package.json`, `package-lock.json`, `vitest.config.ts`,
-`tsconfig.json`, `.github/`, `AGENTS.md`, `CLAUDE.md`, `docs/agent/verification.md`,
-`docs/ARCHITECTURE.md`. A lane that needs one of these changed (a contract is wrong, a dependency
+`src/contracts/`, `wrangler.jsonc`, `env.d.ts` (generated), `package.json`, `package-lock.json`,
+`vitest.config.ts`, `tsconfig.json`, `tests/agent/tsconfig.json`, `.github/`, `.claude/`,
+`.no-mistakes.yaml`, `AGENTS.md`, `CLAUDE.md`, `docs/agent/` (except this plan's lane notes, which
+only the Architect edits), `docs/ARCHITECTURE.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md`. A lane that needs one of these changed (a contract is wrong, a dependency
 is missing, a binding is missing) stops, says so, and the fix goes to main as its own PR that every
 open lane rebases onto.
 
@@ -41,7 +41,8 @@ entries in timestamp order, and renumbering only the new entries.
 
 ### engine (Codex)
 
-- Owns: `src/engine/` (including `src/engine/seed/`), `tests/engine/`.
+- Owns: `src/engine/` (including `src/engine/seed/`), `tests/engine/`. Replaces the stub in
+  `src/engine/index.ts`, which must keep exporting `engine: BillingEngine` (src/contracts/engine.ts).
 - Must not touch: anything outside those, and must not import `cloudflare:*`, `agents`,
   `@cloudflare/*`, `ai` or `workers-ai-provider`.
 - Builds: rating with tiers, proration on a mid-cycle plan change, tax, invoice build,
@@ -62,8 +63,15 @@ entries in timestamp order, and renumbering only the new entries.
 ### agent (Claude Code)
 
 - Owns: `src/server.ts`, `src/agent/`, `src/ledger/`, `src/workflows/`, `src/http/`, `src/quota/`,
-  `tests/agent/`.
+  `tests/agent/` (except its tsconfig.json). Replaces the foundation stubs of `BillingAgent`, `Ledger`,
+  `Quota` and `CreditRequestWorkflow` and keeps `tests/agent/foundation.test.ts` passing, including
+  the guard that routes only `/agents/billing-agent/` (D-18).
 - Must not touch: `src/engine/` (reads only), UI files, `evals/`.
+- Stop 2 findings it must build on: wrap the model with `simulateStreamingMiddleware` (D-14,
+  DEV-16); tools return contract outputs whose amounts are `Money` so the model only copies
+  (D-15); Llama 3.3 repeated an identical `getAccount` call before answering, so identical tool
+  calls within a turn are served from a per-turn cache and the step limit stays small; the
+  per-IP `RATE_LIMITER` runs in the Worker before any Durable Object call (D-13).
 - Builds: `BillingAgent` (`AIChatAgent`) with the 8 typed tools on Llama 3.3, history trimming and
   memory; `Ledger` DO with the schema, seeding from the engine, state machine, idempotency, audit
   log, single-alarm `timers` queue (recovery, deadlines, 7-day idle deletion), non-model request
@@ -93,21 +101,24 @@ entries in timestamp order, and renumbering only the new entries.
 ### ui (Codex)
 
 - Owns: `src/app.tsx`, `src/client.tsx`, `src/ui/`, `src/admin/`, `src/styles.css`, `index.html`,
-  any admin HTML entry, `public/`, `tests/ui/`.
+  any admin HTML entry, `public/`, `tests/ui/`. `tests/ui/` runs in the Node `unit` project with no
+  DOM, so UI tests cover pure helpers (formatting, state reducers, API clients against fixtures);
+  a lane that needs a DOM test environment stops and asks for a config PR.
 - Must not touch: server code, contracts, engine, evals.
 - Builds: chat page (Agents SDK `useAgentChat`), side panel with the current invoice, credit
   requests and audit trail, confirmation UI for `startCreditRequest` (`needsApproval`), the
-  sandbox bootstrap and "Reset demo" (creates a new sandbox and switches to it), the `/admin` page (list, approve, reject with reason), and
-  clear states for caps, budget exhaustion and errors. The UI formats cents; it never computes
-  money.
+  sandbox bootstrap and "Reset demo" (creates a new sandbox and switches to it), the `/admin`
+  page (list, approve, reject with reason), and clear states for caps, budget exhaustion and
+  errors. The UI shows `Money.display`; it never computes or formats money itself.
 - Done: works against the HTTP contract (fixture-backed until the agent lane merges); unit tests for
   formatting and state handling; screenshots at desktop and 390 px width of chat, panel, confirm,
   admin and a cap message; no arithmetic on amounts outside the formatter (reviewer greps).
 
 ### evals (Codex, after engine and agent merge)
 
-- Owns: `evals/` (cases, recordings, harness, results), `scripts/eval-live.*`, the `eval:live`
-  script entry (added by the Architect at Stop 2 so `package.json` stays frozen).
+- Owns: `evals/` (cases, recordings, harness, results, and `evals/vitest.live.config.ts`, which
+  the existing `eval:live` script runs). The `unit` project already collects `evals/**/*.test.ts`
+  into `npm test`; the live config must not match those files.
 - Must not touch: application code.
 - Builds: 12 to 15 cases covering all six user stories, each with expected numbers computed by
   calling the engine on the seed (never typed by hand); a replay mode that runs inside `npm test`
@@ -121,7 +132,9 @@ entries in timestamp order, and renumbering only the new entries.
 ### release (Claude Code, last)
 
 - Owns: `README.md`, `scripts/export-transcripts.*`, `prompt-history/transcripts/`, the final
-  `PROMPTS.md` pass, deploy checklist in the README.
+  `PROMPTS.md` pass, deploy checklist in the README. Keeps the README's "Cost and abuse controls"
+  section (D-13) and puts the off switch (disable the workers.dev route in the dashboard) in the
+  release checklist.
 - Must not touch: application code; findings go back as issues or small fix PRs by the owning lane.
 - Builds: Reviewer pass over the whole repo (secrets, input validation, no LLM math, README accuracy,
   prompt-history completeness, no personal or employer data); README with every section the
