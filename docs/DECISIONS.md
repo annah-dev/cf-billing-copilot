@@ -25,12 +25,13 @@ template commit land at Stop 2).
 | DEV-13 | DO SQLite via migrations | Docs now also offer an `exports` block (`"storage": "sqlite"`). After one deploy with `exports` a Worker cannot go back to `migrations`. The starter uses `migrations` with `new_sqlite_classes`. | Keep `migrations` + `new_sqlite_classes` (D-10). | Architect |
 | DEV-14 | Function-calling examples in the docs | The Workers AI function-calling page and AI SDK page still use deprecated model ids (`hermes-2-pro-mistral-7b`, `llama-2-7b-chat-int8`); `workers-ai-provider` 4 targets AI SDK v7 | Do not copy model ids from those examples. | Architect |
 | DEV-15 | (implicit) use the SDK approval helper as documented | In both `agents` 0.17.4 and 0.24.0, `waitForApproval(step, { stepName?, timeout?, eventType? })` waits for type `"approval"` and, on `approved: false`, calls `step.reportError` and throws `WorkflowRejectedError`. The web docs do not describe the rejection path. | The Workflow calls `step.waitForEvent` directly with the same event type and payload shape, so a rejection is a normal audited outcome rather than a Workflow error (D-6). | Architect |
+| DEV-16 | (implicit) Llama 3.3 tool calling works through the provider, streaming included | Measured at Stop 2 in local dev: with `streamText`, tool-call arguments arrive garbled (`{"customerId": "{"customerId": "cuscus_ac_acme"}me"}`), the tool never runs and no answer is produced, on both `workers-ai-provider` 3.3.1 / `ai` 6 and 4.0.0 / `ai` 7. Non-streaming `generateText` works on both. | Wrap the model in the AI SDK's `simulateStreamingMiddleware` (one non-streaming call per step, replayed as a stream), which works with `streamText` and `AIChatAgent` (D-14). | Architect |
 
 Settled from the installed `agents` source (0.17.4 and 0.24.0): `waitForEvent` resolves to an
 event object whose data is under `.payload`, and `approveWorkflow` / `rejectWorkflow` send type
-`"approval"` with payload `{ approved, reason?, metadata? }`. Still unverified until the Stop 2 local
-test: the error name on a `waitForEvent` timeout, and whether streaming with tools returns
-`tool_calls` for Llama 3.3 through `workers-ai-provider`.
+`"approval"` with payload `{ approved, reason?, metadata? }`. Settled by the Stop 2 round trip:
+native streaming with tools does not work for Llama 3.3 (DEV-16). Still unverified: the error name
+on a `waitForEvent` timeout (the agent lane settles it with `forceEventTimeout`).
 
 ## D-1 Ledger store: Durable Object SQLite, not D1
 
@@ -70,6 +71,12 @@ and `WorkflowRejectedError(reason?, workflowId?)`. So a later upgrade does not r
 flow. Every lane prompt states that installed type definitions win over web docs.
 
 Decided by: Anna.
+
+Stop 2 result: the round trip on these versions succeeded without streaming and failed with native
+streaming, and native streaming failed the same way on `ai` 7 / `workers-ai-provider` 4.0.0, so an
+upgrade would not fix it. The versions stay; simulated streaming (D-14) is the fix.
+
+Decided by: Architect under standing orders (applying D-2's upgrade condition).
 
 ## D-3 Demo tenancy: per-visitor sandbox
 
@@ -213,20 +220,85 @@ Decided by: Anna.
 
 Decided by: Architect under standing orders.
 
-## D-13 Hard ceiling on abuse cost (OPEN, for Anna)
+## D-13 Abuse cost: estimated bound, rate limiter, budget alert, off switch
 
 PR #1 review round 3 showed the D-7 caps bound accepted traffic, not total cost: caps are counted
 inside Durable Objects, so a refused call still costs one Durable Object request, and deletion 7 days
-after last activity does not bound the live sandbox count. Options:
+after last activity does not bound the live sandbox count.
 
-- Recommended: accept the estimate as an estimate, and add a per-IP limit before any Durable Object
-  is invoked, using the Workers Rate Limiting binding (for example 60 sandbox-scoped requests per 60
-  seconds per IP; per location and eventually consistent, so a brake rather than a ledger), plus a
-  Cloudflare billing notification that Anna sets on the account. The binding is a new wrangler
-  binding and the notification is an account setting, so both need Anna.
-- Alternative: also cap sandbox lifetime at 7 days after creation (changes the approved D-5 wording)
-  and cap live sandboxes globally in `Quota`.
-- Alternative: accept the estimate as is and document that the abuse cost is not hard-bounded.
+- Abuse cost is bounded by the caps at an estimated figure (about $34 a month above the $5 plan with
+  every cap saturated all month), not a hard ceiling. The README says so.
+- A per-IP Workers Rate Limiting binding (`RATE_LIMITER`, 60 requests per 60 seconds, namespace
+  1001) runs in the Worker before any Durable Object is invoked, on every `/api/*` and `/agents/*`
+  request. It is per location and approximate by design.
+- Anna set a $10 budget alert on the account. It only sends email.
+- Off switch: disable the workers.dev route in the dashboard. The demo goes offline and no data is
+  deleted. It is an item in the release checklist.
+- Not chosen: a hard sandbox lifetime. It only bounds storage, which costs cents, so it is not worth
+  reopening D-5.
 
-Decided by: pending Anna. Stop 1 can merge without it; the answer is applied in the Stop 2
-foundation PR (wrangler config and contracts).
+Decided by: Anna.
+
+## D-14 Simulated streaming for Llama 3.3 tool calls
+
+`BillingAgent` wraps the model as
+`wrapLanguageModel({ model: workersai(MODEL_ID), middleware: simulateStreamingMiddleware() })` and
+keeps `streamText` and `AIChatAgent`. Reason: native streaming garbles tool arguments (DEV-16);
+the simulated stream produced a correct tool call, tool result and answer in the Stop 2 round trip.
+Cost: the UI shows each step's text at once instead of token by token.
+
+Decided by: Architect under standing orders.
+
+## D-15 Money travels with its display string
+
+Every amount in a contract is `Money` (`{ cents, display }`), with `display` produced only by
+`formatUsd` and checked by the schema; ratios are `Percent` (basis points) and `Multiple`
+(hundredths) with display strings. Reason: in the Stop 2 round trip the model turned
+`balanceCents: 41287` into "$412.87" itself, which is the money math the assignment forbids. With
+display strings in every tool result, the model only copies.
+
+Decided by: Architect under standing orders.
+
+## D-16 Scaffold record
+
+- `npx -y create-cloudflare@2.73.1 cf-billing-copilot --template
+  cloudflare/agents-starter#4ea6a72cbabe2b62a66294214361ac106b4a247e --no-deploy --no-git --no-open
+  --no-agents --no-auto-update`, run in a scratch directory outside the repo and copied in.
+  `--no-agents` skips C3's generated AGENTS.md (this repo has its own); `--no-auto-update` stops C3
+  replacing itself with a newer version.
+- Installed versions: `agents` 0.17.4, `@cloudflare/ai-chat` 0.9.3, `ai` 6.0.233,
+  `workers-ai-provider` 3.3.1, `zod` 4.4.3, `vite` 8.1.5, `@cloudflare/vite-plugin` 1.46.0,
+  `typescript` 6.0.3. C3 raised `wrangler` to 4.144.0.
+- Not copied: the starter's README, LICENSE (its MIT notice is kept in THIRD_PARTY_NOTICES.md),
+  `.github/` workflows, `.vscode/` and banner image. `ChatAgent` became `BillingAgent`.
+- npm 11 blocked workerd's postinstall because the starter's `allowScripts` named an older workerd;
+  the installed versions were approved with `npm approve-scripts workerd`, not by hand.
+
+Decided by: Architect under standing orders.
+
+## D-17 Test setup
+
+- vitest 4.1.11 with `@cloudflare/vitest-pool-workers` 0.22.0 (the pool supports vitest ^4.1, not
+  5). Two projects in vitest.config.ts: `unit` (Node: contracts, engine, UI helpers, eval replay)
+  and `workers` (workerd: agent, Ledger, Quota, Workflow), with `remoteBindings: false`.
+- `npm test` passes with an empty HOME and no Cloudflare credentials.
+- Tests use `env` and `exports` from `cloudflare:workers`; the pool marks `env` and `SELF` from
+  `cloudflare:test` deprecated. `cloudflare:test` stays the source for helpers such as
+  `introspectWorkflowInstance`.
+- `npm run eval:live` runs `vitest run --config evals/vitest.live.config.ts`, a config the evals
+  lane creates; it is not part of `npm test`.
+
+Decided by: Architect under standing orders.
+
+## D-18 Contract and config details
+
+- Tool inputs never carry a customer id: each `BillingAgent` instance is bound to one customer.
+- The credit idempotency key is 64 hex characters: the agent derives it as SHA-256 of sandbox id,
+  customer id, invoice id and disputed ledger entry id, so a retried claim maps to the same request.
+- Binding names: `BillingAgent` (equal to the class, because the Agents SDK routes
+  `/agents/billing-agent/...` by binding name), `LEDGER`, `QUOTA`, `CREDIT_WORKFLOW`, `RATE_LIMITER`,
+  `AI`. Caps and timeouts are wrangler `vars`, parsed by `EnvConfigSchema`.
+- Because `routeAgentRequest` routes by binding name, the agent lane must refuse `/agents/*` paths
+  for any namespace other than `BillingAgent` before routing.
+
+Decided by: Architect under standing orders.
