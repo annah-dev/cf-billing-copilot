@@ -1,11 +1,43 @@
 # Agent rules
 
-Canonical rules for every agent working in this repo, whatever the harness. The full rule set, the
-done-contract (docs/agent/verification.md) and the CLAUDE.md shim arrive with the Stop 2 foundation
-PR; the sections below are already in force.
+Canonical rules for every agent working in this repo, whatever the harness. CLAUDE.md is a shim
+that points here.
 
-Product scope and acceptance criteria: prompt-history/prompts/00-assignment.md. Lanes, ownership and
-merge order: docs/agent/plan.md. Design: docs/ARCHITECTURE.md. Decisions: docs/DECISIONS.md.
+- Product scope and acceptance criteria: prompt-history/prompts/00-assignment.md.
+- Lanes, ownership, merge order and review loop: docs/agent/plan.md.
+- Done-contract (commands and evidence every PR carries): docs/agent/verification.md.
+- Review checklist: docs/agent/cross-review.md. Gated push: docs/agent/no-mistakes.md.
+- Design: docs/ARCHITECTURE.md. Decisions: docs/DECISIONS.md.
+
+## Commands
+
+    npm ci               install exactly what package-lock.json pins
+    npm run typecheck    tsc over src/ and tests/agent/
+    npm test             vitest: unit project (Node) and workers project (workerd); offline
+    npm run dev          local dev server; every chat message spends real Workers AI neurons
+    npm run eval:live    live evals against the deployed URL; spends neurons; never in CI
+
+## Hard rules
+
+1. The model never does money math. Amounts are integer cents computed by src/engine/ and travel
+   as `Money` (cents plus a display string from `formatUsd`). No float, no division, no rounding
+   of money outside the engine and `formatUsd`. The UI formats; it never computes.
+2. Every tool input and output is validated with its zod schema from src/contracts/.
+3. Every credit state change and every refused change writes an append-only audit record in the
+   same transaction.
+4. src/contracts/, wrangler.jsonc, package.json, package-lock.json, vitest.config.ts,
+   tsconfig.json, .github/ and this file are frozen after the Stop 2 foundation PR. A lane that
+   finds one wrong stops and says so; the fix is its own PR to main.
+5. No live model calls in tests, and no loops against the live model. A manual model call is
+   deliberate, counted and reported. A readiness probe or health check never hits a path that
+   calls the model.
+6. No secrets in the repo. No real customer, employer or personal data: synthetic data only.
+7. Plain ASCII in docs and code comments (verbatim prompt text in PROMPTS.md and prompt-history/
+   is exempt). Small commits with conventional messages and no agent co-author footers.
+8. Never hand-edit lock files or generated files (package-lock.json, env.d.ts: run
+   `npx wrangler types env.d.ts` instead).
+9. Log every prompt: at session start append your own kickoff prompt to PROMPTS.md by copying its
+   file with a tool, and log every review prompt you write. Fill in the outcome at the end.
 
 ## Sources of truth for APIs
 
