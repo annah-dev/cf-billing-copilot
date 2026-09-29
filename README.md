@@ -15,9 +15,9 @@ The public demo runs on the Workers Paid plan with these controls (docs/DECISION
 - **Estimated, not hard-bounded.** The caps bound abuse cost at an estimated figure (about $34 a
   month above the $5 plan with every cap saturated all month), not a hard ceiling. A request
   refused by a cap still costs one Durable Object request.
-- **Rate limiter.** A per-IP limit of 60 requests a minute to the API and agent routes runs before any Durable
-  Object is called (Workers Rate Limiting binding). It is per Cloudflare location and approximate
-  by design: a brake, not an accounting system.
+- **Rate limiter.** A per-IP limit of 60 requests a minute to the API and agent routes runs before
+  any Durable Object is called (Workers Rate Limiting binding). It is per Cloudflare location and
+  approximate by design: a brake, not an accounting system.
 - **Budget alert.** A $10 budget alert is set on the Cloudflare account. It only sends email; it
   does not stop anything.
 - **Off switch.** Disable the Worker's workers.dev route in the Cloudflare dashboard (the Worker's
