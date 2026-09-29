@@ -20,10 +20,22 @@ names follow the agents-starter layout and are confirmed at Stop 2.
 
 `src/contracts/`, `wrangler.jsonc`, `package.json`, `package-lock.json`, `vitest.config.ts`,
 `tsconfig.json`, `.github/`, `AGENTS.md`, `CLAUDE.md`, `docs/agent/verification.md`,
-`docs/ARCHITECTURE.md`, `docs/DECISIONS.md`. A lane that needs one of these changed (a contract is
-wrong, a dependency is missing, a binding is missing) stops, says so, and the fix goes to main as
-its own PR that every open lane rebases onto. Every lane may append its own prompt and outcome to
-`PROMPTS.md`; on rebase, keep both sides' entries in timestamp order.
+`docs/ARCHITECTURE.md`. A lane that needs one of these changed (a contract is wrong, a dependency
+is missing, a binding is missing) stops, says so, and the fix goes to main as its own PR that every
+open lane rebases onto.
+
+Append-only exceptions, open to every lane whatever it owns:
+
+- `docs/DECISIONS.md`: a lane appends new entries at the end, under a heading naming the lane
+  (`## <lane>: <decision>`), and never edits an existing entry. Changing an existing decision is a
+  main PR.
+- `PROMPTS.md`: a lane appends its own kickoff prompt, each review prompt it writes, and their
+  outcomes.
+- `prompt-history/prompts/`: a lane adds new files named `NN<letter>-<lane>-<purpose>.md` (for
+  example `02b-engine-review-r1.md`) and never edits another file.
+
+On rebase, conflicts in these files are resolved by keeping both sides' additions, `PROMPTS.md`
+entries in timestamp order, and renumbering only the new entries.
 
 ## Lanes
 
@@ -63,8 +75,13 @@ its own PR that every open lane rebases onto. Every lane may append its own prom
   with its audit record; a late approval refused with 409 and audited; a retried idempotency key
   returns the same request and never a second credit; a new sandbox is seeded fresh and shares no
   state with the old one; idle storage deletion fires; missing or wrong token gets 401; per-IP and
-  global sandbox caps hold; message and neuron caps return the fixed
-  message without a model call. Evidence also includes one local-dev chat turn against real Llama
+  global sandbox caps hold; message and neuron caps return the fixed message without a model call;
+  concurrent credit requests with different idempotency keys for the same charge produce at most
+  one reservation; a Workflow step replayed after its transaction committed succeeds without a
+  second audit record; failure injection leaves no request stranded in `requested` or `approved`
+  after the sweep; a decision recorded just before the timeout is honoured; fabricated sandbox and
+  customer ids get 404 and write nothing; concurrent turns near the neuron stop never exceed it;
+  real rows written (`rowsWritten`) for seeding and for deletion each stay under 2,500. Evidence also includes one local-dev chat turn against real Llama
   3.3 (a few calls, not a loop) and the credit flow driven by curl in local dev.
 
 ### ui (Codex)
@@ -108,22 +125,28 @@ its own PR that every open lane rebases onto. Every lane may append its own prom
 
 ## Starting each lane (the owner runs these)
 
-Create the worktree, then start the agent inside it. Each lane agent sees only its prompt file, the
-assignment and the repo.
+Create the worktree, change into it, then start the agent. `wt` leaves the calling shell in the
+main checkout and opens a herdr workspace; the `cd` makes each block work from either terminal.
+Each lane agent sees only its prompt file, the assignment and the repo.
 
     wt cf-billing-copilot engine
+    cd ~/projects/wt/cf-billing-copilot-engine
     codex -c model_reasoning_effort=high "$(cat prompt-history/prompts/02-engine.md)"
 
     wt cf-billing-copilot agent
+    cd ~/projects/wt/cf-billing-copilot-agent
     claude "$(cat prompt-history/prompts/03-agent.md)"
 
     wt cf-billing-copilot ui
+    cd ~/projects/wt/cf-billing-copilot-ui
     codex -c model_reasoning_effort=high "$(cat prompt-history/prompts/04-ui.md)"
 
     wt cf-billing-copilot evals          # after engine and agent merge
+    cd ~/projects/wt/cf-billing-copilot-evals
     codex -c model_reasoning_effort=high "$(cat prompt-history/prompts/05-evals.md)"
 
     wt cf-billing-copilot release        # after evals merges
+    cd ~/projects/wt/cf-billing-copilot-release
     claude "$(cat prompt-history/prompts/06-release.md)"
 
 ## Rules every lane prompt carries
