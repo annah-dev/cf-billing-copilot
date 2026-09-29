@@ -43,7 +43,8 @@ its own PR that every open lane rebases onto. Every lane may append its own prom
   with the contract schemas; integer cents only (a test fails on any non-integer amount); tests
   cover tier boundaries (exactly at, one below, one above), proration on the first and last day,
   rounding of fractional cents with the documented rule, tax, zero usage, the duplicate and spike
-  detection, and seed determinism; a test asserts no forbidden import under `src/engine/`;
+  detection, and seed determinism; a test reports the seed's row count and keeps it under 2,500
+  (it sizes the global sandbox cap, D-7); a test asserts no forbidden import under `src/engine/`;
   `npm test` passes; the PR carries the evidence docs/agent/verification.md requires.
 
 ### agent (Claude Code)
@@ -53,14 +54,16 @@ its own PR that every open lane rebases onto. Every lane may append its own prom
 - Must not touch: `src/engine/` (reads only), UI files, `evals/`.
 - Builds: `BillingAgent` (`AIChatAgent`) with the 8 typed tools on Llama 3.3, history trimming and
   memory; `Ledger` DO with the schema, seeding from the engine, state machine, idempotency, audit
-  log, epoch, deadline sweep alarm and idle deletion; `CreditRequestWorkflow` (`AgentWorkflow`) with
-  validate, pending memo, `waitForEvent`, apply, reject, expire; `Quota` DO; every HTTP endpoint in
+  log, deadline sweep alarm and 7-day idle deletion; `CreditRequestWorkflow` (`AgentWorkflow`) with
+  validate, pending memo, `step.waitForEvent` with an explicit timeout, apply, reject, expire;
+  `Quota` DO (per-IP and global sandbox caps, neuron budget); every HTTP endpoint in
   docs/ARCHITECTURE.md with the approver token check and caps.
 - Done: workers-pool tests with a stubbed AI binding prove: bad tool input is rejected by zod; the
   flow request, pending, approve, applied, with audit records in order; reject; timeout to expired
   with its audit record; a late approval refused with 409 and audited; a retried idempotency key
-  returns the same request and never a second credit; reset restores the seed and a straggler
-  Workflow from the old epoch cannot write; missing or wrong token gets 401; caps return the fixed
+  returns the same request and never a second credit; a new sandbox is seeded fresh and shares no
+  state with the old one; idle storage deletion fires; missing or wrong token gets 401; per-IP and
+  global sandbox caps hold; message and neuron caps return the fixed
   message without a model call. Evidence also includes one local-dev chat turn against real Llama
   3.3 (a few calls, not a loop) and the credit flow driven by curl in local dev.
 
@@ -71,7 +74,7 @@ its own PR that every open lane rebases onto. Every lane may append its own prom
 - Must not touch: server code, contracts, engine, evals.
 - Builds: chat page (Agents SDK `useAgentChat`), side panel with the current invoice, credit
   requests and audit trail, confirmation UI for `startCreditRequest` (`needsApproval`), the
-  sandbox bootstrap and "Reset demo", the `/admin` page (list, approve, reject with reason), and
+  sandbox bootstrap and "Reset demo" (creates a new sandbox and switches to it), the `/admin` page (list, approve, reject with reason), and
   clear states for caps, budget exhaustion and errors. The UI formats cents; it never computes
   money.
 - Done: works against the HTTP contract (fixture-backed until the agent lane merges); unit tests for
@@ -89,7 +92,8 @@ its own PR that every open lane rebases onto. Every lane may append its own prom
   answer traces to a tool result; `npm run eval:live` against the deployed URL that re-records,
   stops on the first budget or cap error, and writes the pass rate and run date.
 - Done: `npm test` passes offline with no network; a planted wrong number in a recording makes it
-  fail; one live run recorded (scheduled per D-8) with its pass rate.
+  fail; one live run recorded with its pass rate and run date (a few dozen model calls, well inside
+  the D-7 neuron stop).
 
 ### release (Claude Code, last)
 
@@ -122,29 +126,48 @@ assignment and the repo.
     wt cf-billing-copilot release        # after evals merges
     claude "$(cat prompt-history/prompts/06-release.md)"
 
-## Cross-review
+## Rules every lane prompt carries
 
-Codex-authored PRs (engine, ui, evals) go through the no-mistakes gate, where Claude reviews. The
-lane agent pushes with:
+Each kickoff prompt under prompt-history/prompts/ repeats these, because a lane agent sees only its
+prompt, the assignment and the repo:
+
+- When web docs and the installed type definitions disagree, the installed types win; record the
+  disagreement in docs/DECISIONS.md.
+- Decision rights and the review loop from AGENTS.md: decide inside the lane with a one-line reason
+  and "Decided by: <role> under standing orders" in docs/DECISIONS.md; batch owner questions into one
+  message with a recommendation each and keep working on anything they do not block.
+- The review loop below, run by the lane itself, until it converges or produces a FOR ANNA list.
+- Append its own prompt to PROMPTS.md by copying the file, and each review prompt it writes.
+
+## Cross-review (runs without the owner)
+
+Every PR gets a review from the harness that did not write it. Convergence: two full rounds, then a
+third on the delta only, then stop. Anything still disputed goes to the owner as a FOR ANNA list
+with both positions. Every review prompt is a file under prompt-history/prompts/, logged in
+PROMPTS.md with role "automated cross-review".
+
+Claude-authored PRs (Stop 1, Stop 2, agent, release): the author writes the review prompt to a file,
+then runs Codex headless in its default read-only sandbox from its own worktree, against the branch
+diff:
+
+    git fetch origin
+    codex exec -c model_reasoning_effort=high \
+        -o <scratch>/review-<pr>-r<round>.md "$(cat prompt-history/prompts/<review-prompt>.md)"
+
+The review prompt names the diff to review (`git diff origin/main...HEAD` for full rounds, the
+commits since the previous round for the delta round), the documents to check it against, and asks
+for findings with file and line, most severe first, ending with VERIFIED and NOT VERIFIED lines.
+The author fixes or rebuts each finding, records the fixes as decisions where they change a
+decision, posts a round summary on the PR, and re-runs.
+
+Codex-authored PRs (engine, ui, evals): the lane pushes through the gate, where Claude reviews:
 
     git push no-mistakes
 
-Claude-authored PRs (Stop 1, Stop 2, agent, release) get a Codex review from a detached worktree.
-From Stop 2 on, docs/agent/cross-review.md holds the checklist:
+Review findings park (`auto_fix.review: 0`). The lane agent reads them itself with
+`no-mistakes axi status` and `no-mistakes axi logs --step review --full`, fixes them on its branch
+(after `no-mistakes axi sync` when the run offers it) and pushes through the gate again. The same
+convergence rule applies.
 
-    git -C ~/projects/cf-billing-copilot fetch origin
-    git -C ~/projects/cf-billing-copilot worktree add --detach \
-        ~/projects/wt/cf-billing-copilot-review-<N> origin/<branch>
-    cd ~/projects/wt/cf-billing-copilot-review-<N> && npm ci
-    codex -c model_reasoning_effort=high "Review PR #<N> on annah-dev/cf-billing-copilot as cross-review. Read AGENTS.md, then docs/agent/verification.md, then follow docs/agent/cross-review.md exactly. Per-PR focus is in the PR thread."
-
-For this Stop 1 PR, which predates those files (no `npm ci`, docs only):
-
-    git -C ~/projects/cf-billing-copilot fetch origin
-    git -C ~/projects/cf-billing-copilot worktree add --detach \
-        ~/projects/wt/cf-billing-copilot-review-<N> origin/feat/architect
-    cd ~/projects/wt/cf-billing-copilot-review-<N>
-    codex -c model_reasoning_effort=high "Review PR #<N> on annah-dev/cf-billing-copilot as cross-review. It is docs only. Read prompt-history/prompts/00-assignment.md and 01-architect.md, then check docs/ARCHITECTURE.md, docs/DECISIONS.md and docs/agent/plan.md against them and against the current Cloudflare docs they cite. Flag factual errors about Cloudflare APIs or limits, gaps against the Stop 1 checklist, and conflicts with the assignment. Comment on the PR with the verdict first, then findings, then VERIFIED and NOT VERIFIED lines. Do not push, fix or merge."
-
-Close review worktrees with `wtd cf-billing-copilot-review-<N>`. The owner merges every PR
-(squash); no agent runs `gh pr merge`, `wrangler deploy`, `wrangler secret put` or `wrangler login`.
+The owner merges every PR (squash); no agent runs `gh pr merge`, `wrangler deploy`,
+`wrangler secret put` or `wrangler login`.

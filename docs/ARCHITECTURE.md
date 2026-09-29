@@ -6,9 +6,9 @@ SQLite, and runs credit requests through a Cloudflare Workflow that waits for a 
 All money math happens in a pure TypeScript billing engine. The model (Llama 3.3 on Workers AI)
 only chooses tools and explains their results.
 
-Status: this is the Stop 1 plan. Names of files and directories are provisional until the scaffold
-lands (Stop 2); class names, bindings and flows are the intended design. Open decisions are listed
-in docs/DECISIONS.md.
+Status: this is the Stop 1 plan, with the owner's Stop 1 decisions folded in. Names of files and
+directories are provisional until the scaffold lands (Stop 2); class names, bindings and flows are
+the intended design. The reasoning behind each choice is in docs/DECISIONS.md.
 
 ## Components
 
@@ -17,8 +17,8 @@ in docs/DECISIONS.md.
 | Worker entry (`src/server.ts`) | Worker | Routes `/agents/*` to the chat agent (`routeAgentRequest`), `/api/*` to the HTTP handlers, everything else to static assets. Enforces request caps. |
 | `BillingAgent` | Durable Object (SQLite), `AIChatAgent` from `@cloudflare/ai-chat` | One instance per (sandbox, customer). Holds conversation history and customer memory (account context, prior questions, open credit request ids). Runs the Llama 3.3 tool loop. Reads the ledger, never writes money. Starts credit requests. |
 | `Ledger` | Durable Object (SQLite) | One instance per sandbox. The single source of truth: plans, tiers, usage, invoices, ledger entries, credit requests, credit memos, append-only audit log. Enforces the credit state machine and idempotency keys. Seeds itself from the engine's seed data. |
-| `CreditRequestWorkflow` | Workflow (`AgentWorkflow` from `agents/workflows`) | validate, create pending memo, wait for approver event, apply or reject, or expire on timeout. Every transition is a Ledger call that writes an audit record in the same SQLite transaction. |
-| `Quota` | Durable Object (SQLite) | One global instance. Daily counters for the public demo: sandboxes per IP, estimated Workers AI neurons per UTC day. |
+| `CreditRequestWorkflow` | Workflow (`AgentWorkflow` from `agents/workflows`) | validate, create pending memo, wait for the approver event (`step.waitForEvent` with an explicit timeout), apply or reject, or expire on timeout. Every transition is a Ledger call that writes an audit record in the same SQLite transaction. |
+| `Quota` | Durable Object (SQLite) | One global instance. Daily counters for the public demo: new sandboxes per IP and in total, estimated Workers AI neurons per UTC day. |
 | Billing engine (`src/engine/`) | none (pure TypeScript) | Rating, tiers, proration, tax, invoice build, compare, plan simulation, anomaly detection, credit claim validation. Integer cents only. No Cloudflare imports. |
 | Contracts (`src/contracts/`) | none | zod schemas and types shared by every lane: money, plans, usage, ledger, invoices, tool inputs and outputs, credit requests, audit records, HTTP shapes. |
 | Chat UI and `/admin` | Workers static assets | Chat page with a side panel (current invoice, credit requests, audit trail); admin page listing pending approvals with approve and reject. |
@@ -43,7 +43,7 @@ flowchart LR
   ENG["Billing engine<br/>(pure TS, integer cents)"]
 
   UI -- WebSocket /agents/billing-agent/:name --> R
-  UI -- GET panel, POST reset --> R
+  UI -- GET panel, POST new sandbox --> R
   ADM -- list pending, POST decision + token --> R
   R --> A
   R --> L
@@ -61,13 +61,17 @@ flowchart LR
 ## Tenancy: the demo sandbox
 
 The public demo will be used by several reviewers at once, and one of them applying a credit must
-not change the story for the next. The proposal (docs/DECISIONS.md, D-3) is a per-visitor sandbox:
+not change the story for the next. Each visitor gets a sandbox (docs/DECISIONS.md, D-3):
 
 - The first visit calls `POST /api/sandboxes`. The Worker creates a random 128-bit sandbox id and an
   approver token, seeds a `Ledger` instance named by the sandbox id, and returns both. The browser
   keeps them in localStorage, so memory survives reloads and later visits from the same browser.
 - `BillingAgent` instances are named `<sandboxId>.<customerId>`. `Ledger` instances are named
   `<sandboxId>`. Every sandbox holds its own copy of the 3 seeded customers.
+- "Reset demo" creates a new sandbox and the browser switches to it (D-5). The old sandbox is
+  abandoned untouched; a Durable Object alarm deletes a sandbox's storage after 7 days without
+  activity, and a Workflow still waiting there simply expires its request in the old Ledger.
+- New sandboxes are capped per IP and globally per UTC day in `Quota` (D-7).
 - A production system would key the agent by authenticated account and shard the ledger per billing
   account; the sandbox is a demo construct and is labelled as such in the UI.
 
@@ -80,11 +84,11 @@ Tables, all amounts `INTEGER` cents, all timestamps ISO-8601 UTC:
 - `invoices`, `invoice_lines` (materialised from the engine at seed time; immutable once issued)
 - `ledger_entries` (charges, payments, credits; append-only; the seeded duplicate charge lives here)
 - `credit_requests` (id, idempotency_key UNIQUE, customer, invoice, line, claimed amount, validated
-  amount, status, workflow instance id, deadline, epoch)
+  amount, status, workflow instance id, deadline)
 - `credit_memos` (request id UNIQUE, amount, status `pending | applied | void`)
 - `audit_log` (seq, at, actor, action, subject, reason, before, after; insert only, no UPDATE or
   DELETE path exists in code)
-- `meta` (sandbox epoch, seed version, approver token hash)
+- `meta` (seed version, approver token hash, last activity for the idle-deletion alarm)
 
 State machine for `credit_requests.status`:
 
@@ -138,7 +142,7 @@ sequenceDiagram
   A->>W: runWorkflow(id = request id)
   W->>L: step validate: engine.validateCreditClaim(ledger entries)
   W->>L: step createPendingMemo (audit: credit_requested, memo_pending)
-  W->>W: waitForEvent("approval", timeout)
+  W->>W: step.waitForEvent("approval", { type, timeout })
   P->>L: POST decision + approver token (Worker checks token)
   P-->>W: sendEvent({ type: "approval", payload })
   W->>L: step apply or reject (audit: approved + applied, or rejected)
@@ -148,35 +152,44 @@ sequenceDiagram
 
 ### Approval never arrives
 
-`waitForEvent` throws when its timeout elapses (the docs name no error class, so the workflow wraps
-that one call in try/catch). The catch runs a `step.do("expire")` that moves the request to
-`expired`, voids the memo and writes an audit record with actor `system` and the reason. Because
-Workflow state on the Free plan is kept only 3 days after completion, the Ledger, not the Workflow,
-is the source of truth for status. A Ledger alarm also sweeps requests past their deadline plus a
-grace period, so a request whose Workflow errored still reaches a terminal state.
+The Workflow uses `step.waitForEvent` directly because the SDK's `waitForApproval` helper takes no
+timeout (DEV-15). `waitForEvent` throws when its timeout (default 24 hours) elapses; the docs name
+no error class, so the Workflow wraps that one call in try/catch. The catch runs a
+`step.do("expire")` that moves the request to `expired`, voids the memo and writes an audit record
+with actor `system` and the reason. Workflow instance state is kept 30 days after completion on
+Workers Paid, but the Ledger, not the Workflow, stays the source of truth for status. A Ledger alarm
+also sweeps requests past their deadline plus a grace period, so a request whose Workflow errored
+still reaches a terminal state. An approval that arrives after expiry gets HTTP 409 and its own
+audit record.
 
 ## HTTP surface (shapes frozen in src/contracts at Stop 2)
 
 | Method and path | Caller | Auth | Purpose |
 |---|---|---|---|
 | `GET/WS /agents/billing-agent/:sandbox.:customer` | chat UI | sandbox id | Agents SDK chat channel |
-| `POST /api/sandboxes` | chat UI | per-IP cap | create a seeded sandbox, returns id and approver token |
+| `POST /api/sandboxes` | chat UI | per-IP and global caps | create a seeded sandbox (also used by "Reset demo"), returns id and approver token |
 | `GET /api/sandboxes/:sid/customers/:cid/panel` | chat UI | sandbox id | invoice, credit requests, audit trail |
-| `POST /api/sandboxes/:sid/reset` | chat UI | approver token | restore the seeded story |
 | `GET /api/sandboxes/:sid/admin/credit-requests` | /admin | approver token | list credit requests, pending first |
 | `POST /api/sandboxes/:sid/admin/credit-requests/:rid/decision` | /admin | approver token | approve or reject with reason |
 | `POST /api/sandboxes/:sid/customers/:cid/turn` | eval harness | sandbox id, caps | one non-streaming turn, returns text and tool calls with inputs and outputs |
 
-## Budgets that shape the design (Free plan)
+## Budgets that shape the design (Workers Paid)
 
-- Workers AI: 10,000 neurons per day, reset 00:00 UTC, requests fail past it. Llama 3.3 costs
-  26,668 neurons per M input tokens and 204,805 per M output tokens, so a tool-using turn is about
-  250 to 300 neurons: roughly 35 turns per day for everyone combined. Hence the `Quota` budget, short
-  prompts and a live eval run that is budgeted in advance.
-- Workflows: 3,000 steps per day, 10 ms CPU per step, 3-day retention of completed instances,
-  waiting instances do not count toward the 100-concurrent limit. A credit request uses about 6
-  steps.
-- Durable Objects: SQLite backend only on Free; 100,000 requests and 100,000 rows written per day.
+- Workers AI: 10,000 neurons per day included (reset 00:00 UTC), then $0.011 per 1,000. Llama 3.3
+  costs 26,668 neurons per M input tokens and 204,805 per M output tokens, so a tool-using turn is
+  about 250 to 300 neurons. `Quota` stops model calls at an estimated 50,000 neurons per UTC day
+  (roughly 170 to 200 turns, at most about $0.44 per day over the included amount), and per-sandbox
+  caps limit any one visitor (D-7).
+- Seed size: a seeded sandbox writes about 1,250 rows (3 customers x 92 days x 4 meters = 1,104
+  daily usage rows, plus about 150 rows of plans, tiers, subscriptions, invoices, lines, ledger
+  entries, the historical credit request and audit records), about 2,500 counting index writes.
+  The global cap of 500 new sandboxes per UTC day therefore bounds seeding at about 1.25M rows per
+  day, inside the 50M rows written per month that Workers Paid includes. The engine lane measures
+  the real count; a test keeps it under 2,500.
+- Workflows: 500,000 steps per month included, 30-day retention of completed instances, waiting
+  instances do not count toward concurrency. A credit request uses about 6 steps and each sandbox
+  may start 5 per day.
+- Durable Objects: SQLite backend; 1M requests and 50M rows written per month included.
 
 ## Testing
 
