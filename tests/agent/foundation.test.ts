@@ -1,6 +1,7 @@
 // Foundation smoke test: the Worker boots in workerd with every binding from wrangler.jsonc.
 // The agent lane keeps this file passing and adds its own tests beside it.
 import { env, exports } from "cloudflare:workers";
+import { introspectWorkflowInstance } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { MODEL_ID } from "../../src/contracts";
 
@@ -27,6 +28,16 @@ describe("foundation bindings", () => {
   ])("refuses to route %s to a Durable Object", async (path) => {
     const res = await exports.default.fetch(`https://example.com${path}`);
     expect(res.status).toBe(404);
+  });
+
+  it("exposes the cloudflare:test Workflow helpers to the agent lane", () => {
+    expect(typeof introspectWorkflowInstance).toBe("function");
+  });
+
+  it("fails any global fetch instead of reaching the network", async () => {
+    await expect(fetch("https://example.com")).rejects.toThrow(
+      /Network access is disabled/
+    );
   });
 
   it("binds the Ledger and Quota Durable Objects", async () => {
