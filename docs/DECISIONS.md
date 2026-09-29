@@ -298,7 +298,8 @@ Decided by: Architect under standing orders.
 - Binding names: `BillingAgent` (equal to the class, because the Agents SDK routes
   `/agents/billing-agent/...` by binding name), `LEDGER`, `QUOTA`, `CREDIT_WORKFLOW`, `RATE_LIMITER`,
   `AI`. Caps and timeouts are wrangler `vars`, parsed by `EnvConfigSchema`.
-- Because `routeAgentRequest` routes by binding name, the agent lane must refuse `/agents/*` paths
-  for any namespace other than `BillingAgent` before routing.
+- `routeAgentRequest` maps every Durable Object binding by name (checked in the installed `agents`
+  source), so `/agents/ledger/...` would reach the Ledger. The foundation router passes only
+  `/agents/billing-agent/` to it, with a test; the agent lane keeps that guard.
 
 Decided by: Architect under standing orders.
