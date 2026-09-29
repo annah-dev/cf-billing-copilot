@@ -10,7 +10,9 @@ file asks for. A claim without its evidence is not done.
     npm test
 
 `npm test` must pass offline and without Cloudflare credentials. CI runs the same three commands
-on every PR (.github/workflows/ci.yml). To prove the offline property locally:
+on every PR (.github/workflows/ci.yml). Offline is enforced, not assumed: `remoteBindings: false`
+keeps bindings local, and tests/setup/no-network.ts makes every global fetch fail in both vitest
+projects (tests in each project prove it). To also prove no credentials are needed:
 
     env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test
 
