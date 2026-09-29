@@ -97,7 +97,7 @@ Core user stories:
 - If a Cloudflare API or template differs from this prompt, follow the current docs and note the change in `docs/DECISIONS.md`.
 - Ask me before creating paid resources, changing account settings, or doing anything outside this repo and my Cloudflare account.
 - Don't write claims about my career or employers into the repo beyond my name as author.
-
+````
 
 ## 2. Architect kickoff (Stop 1 and Stop 2)
 
