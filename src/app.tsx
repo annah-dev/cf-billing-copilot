@@ -40,7 +40,7 @@ import {
   ImageIcon
 } from "@phosphor-icons/react";
 
-// ── Attachment helpers ────────────────────────────────────────────────
+// -- Attachment helpers --
 
 interface Attachment {
   id: string;
@@ -67,7 +67,7 @@ function fileToDataUri(file: File): Promise<string> {
   });
 }
 
-// ── Small components ──────────────────────────────────────────────────
+// -- Small components --
 
 function ThemeToggle() {
   const [dark, setDark] = useState(
@@ -94,7 +94,7 @@ function ThemeToggle() {
   );
 }
 
-// ── Tool rendering ────────────────────────────────────────────────────
+// -- Tool rendering --
 
 function ToolIO({ label, value }: { label: string; value: unknown }) {
   if (value === undefined || value === null) return null;
@@ -257,7 +257,7 @@ function ToolPartView({
   return null;
 }
 
-// ── Main chat ─────────────────────────────────────────────────────────
+// -- Main chat --
 
 function Chat() {
   const [connected, setConnected] = useState(false);
