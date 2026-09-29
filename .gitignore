@@ -1,0 +1,18 @@
+# local-only material
+*.local
+*.local.*
+.env
+.env.*
+
+# dependencies
+node_modules/
+.venv/
+
+# editor/OS noise
+.DS_Store
+Thumbs.db
+*.swp
+
+# python bytecode
+__pycache__/
+*.pyc
