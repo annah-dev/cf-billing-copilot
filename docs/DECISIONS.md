@@ -839,3 +839,13 @@ responses, then regrade the archived full run offline. Reason: the first capture
 "2026-09 invoice" was incorrectly recognized as "09 invoices"; correcting that checker defect
 changes the first-run grade from 4/15 to 6/15 without a new model call or a weakened count check.
 Decided by: QA engineer under standing orders.
+
+## evals: rejected calls can recover but cannot ground answers
+
+Validate successful tool inputs and outputs strictly. Validate rejected-call envelopes, require
+null output, and exclude rejected inputs and outputs from all grounding evidence; allow a later
+successful call to recover. Require a successful startCreditRequest receipt for confirmed credit
+turns. Reason: real plan-memory captures recover from an invalid plan id and answer correctly,
+so failing solely on the rejected call misgraded valid behavior. The credit capture also recovers
+its tools but fails because its answers are empty. Preserve all prior grades and responses when
+regrading offline. Decided by: QA engineer under standing orders.

@@ -8,8 +8,8 @@ pass rate must come from that deployed run.
 
 | Run (UTC, 2026-09-30)       | Coverage                  | Passed     | Model calls | Estimated neurons |
 | --------------------------- | ------------------------- | ---------- | ----------- | ----------------- |
-| 20:42:51 full set           | 15 cases, 17 turns        | 6/15 (40%) | 46          | 3,687             |
-| 20:47:12 failing-only rerun | 9 failing cases, 11 turns | 1/9        | 33          | 2,999             |
+| 20:42:51 full set           | 15 cases, 17 turns        | 9/15 (60%) | 46          | 3,687             |
+| 20:47:12 failing-only rerun | 9 failing cases, 11 turns | 2/9        | 33          | 2,999             |
 
 Total: 79 model calls, 225,252 input tokens, 3,246 output tokens, estimated 6,686 neurons.
 Estimates use the pinned `estimateNeurons` function on each turn's reported token totals;
@@ -17,26 +17,30 @@ they are not a Cloudflare meter reading. Per-call rounding can differ from per-t
 No further model calls were made. Four sandboxes were used, with existing sandbox ids reused
 for the failing-only rerun. Caps were unchanged.
 
-The first run's original grading was 4/15 because the count matcher incorrectly read the
-month suffix in `2026-09 invoice` as an invoice count. An offline regrade corrected that
-false positive to 6/15. `initialGrading` and `regradedAt` preserve the original report and the
-correction; raw responses and usage were unchanged.
+The first run originally graded 4/15. An offline correction stopped reading the month
+suffix in `2026-09 invoice` as an invoice count, bringing it to 6/15. A second correction
+allows the agent to recover after a rejected tool call: rejected calls must have null output
+and provide no grounding evidence, while successful calls still validate inputs and outputs.
+This changes the full-run grade to 9/15 and the rerun to 2/9. `initialGrading`,
+`gradingHistory` and `regradedAt` preserve the earlier grades. Raw responses and usage did
+not change. Rerun selection used the failing grades available at capture time.
 
-Current replay snapshot: 7/15 pass. This combines six first-run passes and one passing rerun;
-it is not a second full run. Every active fixture is live. The complete first captures and
-failing-only rerun captures are archived under `evals/recordings/runs/`.
+Current replay snapshot: 8/15 pass. This combines the latest recording for every case; it is
+not a second full run. The tier and tax cases passed initially but regressed on the rerun.
+Every active fixture is live. Both response sets are archived under `evals/recordings/runs/`.
 
-Eight cases still fail:
+Seven cases still fail:
 
 - `september-invoice`: says "7 lines" for an engine invoice with six; both attempts caught.
-- `request-tiers` and `tax-line`: fabricated invoice ids in explainLineItem calls.
+- `request-tiers` and `tax-line`: fabricated invoice ids prevent explanation; expected amounts
+  are absent in the latest answers.
 - `august-september-change`: comparison answer omits the spike/date/multiplier. The agent's
   deterministic anomaly trigger covers invoice fetch/explanation, not comparison alone.
-- `pro-simulation`, `scale-simulation` and `remember-plan`: unprefixed plan ids rejected by
-  the frozen tool schema.
-- `remember-credit`: fabricated invoice id in startCreditRequest; the expected new request
-  and memory follow-up cannot be established. The separate duplicate-credit case passed
-  on its rerun.
+- `pro-simulation`: rejected plan ids prevent the expected simulation answer.
+- `scale-simulation`: after rejected plan ids, answers about the current invoice without
+  identifying Scale. Some amounts coincide with the expected simulation, but meaning fails.
+- `remember-credit`: the first turn recovers and creates a request, but both final answer texts
+  are empty. The separate duplicate-credit and plan-memory cases pass in the latest captures.
 
 `npm test` must expose these failures. Recordings are not rewritten, assertions are not
 weakened, and failing questions are not skipped to make the suite green. The owning agent

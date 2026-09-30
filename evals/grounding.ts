@@ -277,6 +277,16 @@ export function checkReplay(testCase: EvalCase, value: unknown): string[] {
       countEvidence(call.output, counts);
     });
     const dated = normalizeDates(recorded.response.text, numeric);
+    if (
+      planned.request.confirm &&
+      !recorded.response.toolCalls.some(
+        (call) =>
+          call.name === "startCreditRequest" &&
+          call.error === null &&
+          call.output !== null
+      )
+    )
+      issues.push(`Turn ${index}: missing successful credit request`);
     const normalized = normalizeNumberWords(dated.text);
     for (const expected of planned.expected) {
       const amount = expected.includes("$");

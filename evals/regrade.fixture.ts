@@ -4,17 +4,23 @@ import { buildCases } from "./cases";
 import { checkReplay } from "./grounding";
 import type { RunResult } from "./live-runner";
 
-test("regrade immutable captures after the demonstrated count-parser correction", () => {
+test("regrade immutable captures after a demonstrated checker correction", () => {
   const path = process.env.EVAL_REGRADE_RESULTS;
   if (!path)
     throw new Error("Set EVAL_REGRADE_RESULTS to the captured run JSON");
-  const result: RunResult & { initialGrading?: unknown; regradedAt?: string } =
-    JSON.parse(readFileSync(path, "utf8"));
-  result.initialGrading = {
+  const result: RunResult & {
+    initialGrading?: unknown;
+    regradedAt?: string;
+    gradingHistory?: unknown[];
+  } = JSON.parse(readFileSync(path, "utf8"));
+  const previous = {
     cases: result.cases,
     passRate: result.passRate,
-    passedCases: result.passedCases
+    passedCases: result.passedCases,
+    gradedAt: result.regradedAt ?? result.runDate
   };
+  result.initialGrading ??= previous;
+  result.gradingHistory = [...(result.gradingHistory ?? []), previous];
   result.regradedAt = new Date().toISOString();
   const cases = buildCases();
   const dir = `evals/recordings/runs/${result.runDate.replaceAll(":", "-")}`;

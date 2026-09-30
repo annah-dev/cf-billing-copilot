@@ -28,8 +28,8 @@
   "totalCases": 9,
   "attemptedCases": 9,
   "completedCases": 9,
-  "passedCases": 1,
-  "passRate": "1/9",
+  "passedCases": 2,
+  "passRate": "2/9",
   "usage": {
     "inputTokens": 102294,
     "outputTokens": 1298,
@@ -50,14 +50,25 @@
       "id": "request-tiers",
       "passed": false,
       "issues": [
-        "Invalid recording: Error: Failed tool explainLineItem: No invoice inv_1234567890 for this customer"
+        "Turn 0: missing expected $101.60",
+        "Turn 0: missing expected $1.00",
+        "Turn 0: missing expected $100.00",
+        "Turn 0: missing expected $0.80",
+        "Turn 0: missing expected $1.60",
+        "Turn 0: missing expected 102000",
+        "Turn 0: missing meaning /tier/i",
+        "Turn 0: ungrounded number 2026-09",
+        "Turn 0: ungrounded number 2026-09"
       ]
     },
     {
       "id": "tax-line",
       "passed": false,
       "issues": [
-        "Invalid recording: Error: Failed tool explainLineItem: No invoice inv_1234567890 for this customer"
+        "Turn 0: missing expected $31.47",
+        "Turn 0: missing expected $381.40",
+        "Turn 0: ungrounded number 2026-09",
+        "Turn 0: ungrounded number 2026-09"
       ]
     },
     {
@@ -73,14 +84,17 @@
       "id": "pro-simulation",
       "passed": false,
       "issues": [
-        "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
+        "Turn 0: missing expected $412.87",
+        "Turn 0: missing expected $359.17",
+        "Turn 0: missing expected -$53.70",
+        "Turn 0: ungrounded number 2026-09"
       ]
     },
     {
       "id": "scale-simulation",
       "passed": false,
       "issues": [
-        "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
+        "Turn 0: missing meaning /Scale/i"
       ]
     },
     {
@@ -90,17 +104,165 @@
     },
     {
       "id": "remember-plan",
-      "passed": false,
-      "issues": [
-        "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
-      ]
+      "passed": true,
+      "issues": []
     },
     {
       "id": "remember-credit",
       "passed": false,
       "issues": [
-        "Invalid recording: Error: Failed tool startCreditRequest: No invoice inv_202609 for this customer"
+        "Turn 0: missing expected $412.87",
+        "Turn 0: missing meaning /pending|requested|await/i",
+        "Turn 0: missing meaning /approv/i",
+        "Turn 1: missing expected $412.87",
+        "Turn 1: missing meaning /pending|requested|await/i",
+        "Turn 1: missing meaning /approv/i"
       ]
     }
-  ]
+  ],
+  "initialGrading": {
+    "cases": [
+      {
+        "id": "september-invoice",
+        "passed": false,
+        "issues": [
+          "Turn 0: ungrounded count 7 lines",
+          "Turn 0: ungrounded number 7"
+        ]
+      },
+      {
+        "id": "request-tiers",
+        "passed": false,
+        "issues": [
+          "Invalid recording: Error: Failed tool explainLineItem: No invoice inv_1234567890 for this customer"
+        ]
+      },
+      {
+        "id": "tax-line",
+        "passed": false,
+        "issues": [
+          "Invalid recording: Error: Failed tool explainLineItem: No invoice inv_1234567890 for this customer"
+        ]
+      },
+      {
+        "id": "august-september-change",
+        "passed": false,
+        "issues": [
+          "Turn 0: missing expected 2026-09-18",
+          "Turn 0: missing expected 5x",
+          "Turn 0: missing meaning /spike|unusual/i"
+        ]
+      },
+      {
+        "id": "pro-simulation",
+        "passed": false,
+        "issues": [
+          "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
+        ]
+      },
+      {
+        "id": "scale-simulation",
+        "passed": false,
+        "issues": [
+          "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
+        ]
+      },
+      {
+        "id": "duplicate-credit",
+        "passed": true,
+        "issues": []
+      },
+      {
+        "id": "remember-plan",
+        "passed": false,
+        "issues": [
+          "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
+        ]
+      },
+      {
+        "id": "remember-credit",
+        "passed": false,
+        "issues": [
+          "Invalid recording: Error: Failed tool startCreditRequest: No invoice inv_202609 for this customer"
+        ]
+      }
+    ],
+    "passRate": "1/9",
+    "passedCases": 1,
+    "gradedAt": "2026-09-30T20:47:12.096Z"
+  },
+  "gradingHistory": [
+    {
+      "cases": [
+        {
+          "id": "september-invoice",
+          "passed": false,
+          "issues": [
+            "Turn 0: ungrounded count 7 lines",
+            "Turn 0: ungrounded number 7"
+          ]
+        },
+        {
+          "id": "request-tiers",
+          "passed": false,
+          "issues": [
+            "Invalid recording: Error: Failed tool explainLineItem: No invoice inv_1234567890 for this customer"
+          ]
+        },
+        {
+          "id": "tax-line",
+          "passed": false,
+          "issues": [
+            "Invalid recording: Error: Failed tool explainLineItem: No invoice inv_1234567890 for this customer"
+          ]
+        },
+        {
+          "id": "august-september-change",
+          "passed": false,
+          "issues": [
+            "Turn 0: missing expected 2026-09-18",
+            "Turn 0: missing expected 5x",
+            "Turn 0: missing meaning /spike|unusual/i"
+          ]
+        },
+        {
+          "id": "pro-simulation",
+          "passed": false,
+          "issues": [
+            "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
+          ]
+        },
+        {
+          "id": "scale-simulation",
+          "passed": false,
+          "issues": [
+            "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
+          ]
+        },
+        {
+          "id": "duplicate-credit",
+          "passed": true,
+          "issues": []
+        },
+        {
+          "id": "remember-plan",
+          "passed": false,
+          "issues": [
+            "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
+          ]
+        },
+        {
+          "id": "remember-credit",
+          "passed": false,
+          "issues": [
+            "Invalid recording: Error: Failed tool startCreditRequest: No invoice inv_202609 for this customer"
+          ]
+        }
+      ],
+      "passRate": "1/9",
+      "passedCases": 1,
+      "gradedAt": "2026-09-30T20:47:12.096Z"
+    }
+  ],
+  "regradedAt": "2026-09-30T21:20:11.745Z"
 }

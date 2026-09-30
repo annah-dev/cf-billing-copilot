@@ -15,18 +15,20 @@ The root unit project already collects `evals/**/*.test.ts`. Live capture ends i
 and explicit fixture/regrade tools end in `.fixture.ts`, so none execute as part of `npm test`.
 Both root test projects prohibit global fetch. Harness unit tests use an injected transport.
 
-Replay validates the recording envelope and each tool input/output, the question/customer/
+Replay validates the recording envelope and successful tool inputs/outputs, the question/customer/
 confirmation flag, engine display strings and required meanings. Every numeric claim is
 checked: currency, scalar numbers, percentages, multipliers, written integer words, natural
 calendar dates and counts. Array lengths ground counts and ordered entries ground list
 positions. An invoice count must match its actual line array; an unrelated scalar seven does
 not excuse "seven lines". Only current and earlier tool outputs in that case can ground an
-answer. The report explicitly counts live versus synthetic recordings.
+answer. Rejected calls must have null output and provide no evidence; a later valid call can
+recover. Confirmed credit turns require a successful request receipt. The report explicitly
+counts live versus synthetic recordings.
 
 Recordings are immutable model evidence. The active snapshot contains the latest captured
 response for each case; archives under `recordings/runs/` preserve both attempts. Genuine
 model failures make replay red. See `results/README.md` for first-run results, total usage,
-the one offline grading correction and the outstanding agent failures.
+the offline grading corrections and the outstanding agent failures.
 
 The separate defect-guard tests build engine fixtures in memory, so a bad model response
 cannot contaminate a validator regression's starting point. To generate synthetic recordings

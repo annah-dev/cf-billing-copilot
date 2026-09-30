@@ -106,6 +106,35 @@ describe("eval defect guards", () => {
     );
   });
 
+  test("allows recovery after a rejected tool call without trusting its failed output or input", () => {
+    const recording = fixture();
+    recording.turns[0].response.toolCalls.unshift({
+      name: "getInvoice",
+      input: {},
+      output: null,
+      error: "Invalid input"
+    });
+    expect(checkReplay(cases[0], recording)).toEqual([]);
+    recording.turns[0].response.toolCalls[0].input = { count: 42 };
+    recording.turns[0].response.text += " There were 42 entries.";
+    expect(checkReplay(cases[0], recording)).toContain(
+      "Turn 0: ungrounded number 42"
+    );
+  });
+
+  test("a confirmed credit answer requires a successful request receipt", () => {
+    const creditCase = cases.find((item) => item.id === "duplicate-credit")!;
+    const recording = fixture(creditCase.id);
+    const call = recording.turns[0].response.toolCalls.find(
+      (item) => item.name === "startCreditRequest"
+    )!;
+    call.output = null;
+    call.error = "Rejected request";
+    expect(checkReplay(creditCase, recording)).toContain(
+      "Turn 0: missing successful credit request"
+    );
+  });
+
   test("requires proactive anomaly meaning and engine date/multiplier", () => {
     const recording = fixture();
     recording.turns[0].response.text = recording.turns[0].response.text.replace(

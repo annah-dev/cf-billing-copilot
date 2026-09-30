@@ -39,12 +39,17 @@ export function parseRecording(value: unknown): Recording {
   const recording = RecordingSchema.parse(value);
   for (const turn of recording.turns) {
     for (const call of turn.response.toolCalls) {
-      ToolSchemas[call.name].input.parse(call.input);
-      if (call.error !== null || call.output === null) {
-        throw new Error(
-          `Failed tool ${call.name}: ${call.error ?? "missing output"}`
-        );
+      const input = ToolSchemas[call.name].input.safeParse(call.input);
+      if (call.error !== null) {
+        if (call.output !== null)
+          throw new Error(`Failed tool ${call.name} must have null output`);
+        // Rejected calls are valid HTTP records, including schema-invalid inputs.
+        // They provide no numeric evidence; a later successful call may recover.
+        continue;
       }
+      if (!input.success) throw input.error;
+      if (call.output === null)
+        throw new Error(`Missing output for ${call.name}`);
       ToolSchemas[call.name].output.parse(call.output);
     }
   }
