@@ -2442,3 +2442,11 @@ Run the new-scope source cross-review, then the usual tests/docs/push/PR/CI step
 
 Source: prompt-history/prompts/05h-evals-verdict-tests.md
 Outcome: Implemented exact verdict/issue comparisons for all 39 active/archived recordings, raw/corrected reports and digests, independent known-good engine tests for all 15 questions and existing known-bad numeric/count/date/schema guards. Explicit offline regrade applied one shared grader to every recording; all raw response bytes and earlier grades preserved. Listed every correction and analyzed each of seven current failures with category, evidence and proposed owner. npm ci and typecheck pass; normal and credential-free npm test each pass 309 tests across 19 files, zero skips; main/head collection 190/309 with no losses. Planted a grader-only issue, observed replay red despite unchanged negative boolean, restored byte-for-byte. No new model calls: total remains 79 and estimated 6686 neurons. Green harness now permits the owner-authorized local gate ref update and delivery retry.
+
+## 2026-09-30T15:18:56-07:00 - Evals gate rebase fix
+
+Role: automated rebase fix
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Source: prompt-history/prompts/05j-evals-gate-rebase-fix.md (copied verbatim with a tool; rebase-fix context, not a generated review prompt)
+Outcome: Rebased all eight evals commits onto origin/main 21a8069. In every rewritten commit PROMPTS.md and docs/DECISIONS.md are origin/main's bytes as an exact prefix plus that commit's lane entries appended once; no conflict markers remain (the first commit's historically committed markers were dropped, keeping both sides). evals/ at the new head is byte-identical to 9fa01a89d7a1412ac83adec1c12e3cb73abac981, so all 39 recordings, grader results and raw/corrected verdicts are unchanged. Zero Workers AI calls. Tests were not rerun in this phase; main/head test collection counts for the new base are left to the test phase.
