@@ -589,7 +589,7 @@ what is wrong, and the fix you suggest. End with:
 - Role: Architect
 - Harness: Claude Code
 - Source: prompt-history/prompts/01i-pr2-billing-semantics.md
-- Outcome: (pending)
+- Outcome: billing semantics, release README requirement and gate-doc wording changed in PR #2 (commits 95cdb6c..99fd77c); Codex delta review approved.
 
 ````text
 Before I merge PR #2, one small round, then a delta-only Codex review:
@@ -615,7 +615,7 @@ Tell me when it is ready and I will merge.
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/01j-review-pr2-delta.md
-- Outcome: (pending)
+- Outcome: APPROVE; all three items pass, no findings.
 
 ````text
 You are the cross-reviewer for PR #2 on annah-dev/cf-billing-copilot: a delta-only review of an
