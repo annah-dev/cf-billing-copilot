@@ -2091,3 +2091,27 @@ Log these exact documentation instructions with a tool-copy in prompt-history/pr
 ````text
 Complete Anna's shared-engine preview follow-up for PR #5, still held until agent PR #4 merges. The implementation already passed two full Claude review rounds and full no-mistakes run 01M3R4YFDC2775KN88HGKXBJDV with CI green at 16aada8db61817187a80fdef0aae4b4a66403757. Per AGENTS.md convergence, this third review is DELTA ONLY: review git diff 16aada8db61817187a80fdef0aae4b4a66403757...HEAD, consisting only of prompt logging and fresh evidence. Do not reopen the full previously reviewed code diff. The delta records the exact documentation instructions that the gate omitted, and copies the screenshots/browser results the gate captured from its own checkout after the routing fix (port 5391); it updates the evidence README to identify that rerun and refreshes the amount grep. Application code is unchanged; engine, contracts and all frozen files remain untouched. Validate this delta and run all required gate commands, retain all prior gate-fix commits, update existing PR #5, never merge or deploy. The prior code gate passes 146 tests (113 main and 33 UI), including credential-free, and browser engine parity at desktop/390px. No live model calls. All prompts written by this lane are recorded, including this intent in 04m-ui-seed-delta-review.md and PROMPTS.md. The generated prompt text is not exposed by the pinned gate's logs; do not claim it is captured. Ordinary implementation/doc choices and reversible fixes within UI ownership are authorized under standing orders. Delivery verification is reported in the PR body and final message.
 ````
+
+Round-3 provenance (no-mistakes v1.41.2 (Claude), run 01M3R5XQG8RXG4F1HVZZSJ3CHV): the delta-only review completed. The generated review prompt is unavailable in the step log; only the lines below were observed, verbatim (blank lines shown as ""):
+
+```text
+reviewing changes...
+""
+claude started pid=145129
+""
+claude exited pid=145129 status=success
+```
+
+## 26. UI shared-seed gate test setup instruction
+
+- Timestamp: 2026-09-30T03:36:59+00:00
+- Role: automated cross-review instruction
+- Harness: no-mistakes v1.41.2 (Claude), run 01M3R5XQG8RXG4F1HVZZSJ3CHV
+- Source: prompt-history/prompts/04n-ui-seed-gate-test-setup-final.md
+- Outcome: test-1 (exit 127, vitest not found) was an environment setup failure. `npm ci` installed the unchanged package-lock.json; `npm run typecheck` passed; `npm test` passed 146 tests in 12 files; `env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test` passed 146 tests in 12 files. No dependency, lockfile, config, engine, contract or application code changes. No live model calls, deployment or merge.
+
+````text
+The isolated checkout has no installed vitest; test-1 is an environment setup failure (exit 127), not a failing test. Install exactly the unchanged package-lock.json with npm ci in this gate checkout. Run npm run typecheck and npm test, plus env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test. Do not change dependencies, lockfile, frozen config, engine, contracts or application code. Do not skip or weaken tests. Keep all prior gate-fix commits. The expected suite has 146 tests in 12 files.
+
+Before finishing, copy this exact file from /tmp/ui-seed-gate-test-setup-final.md with a tool to prompt-history/prompts/04n-ui-seed-gate-test-setup-final.md and append its verbatim text in PROMPTS.md as automated cross-review instruction, no-mistakes v1.41.2 (Claude), run 01M3R5XQG8RXG4F1HVZZSJ3CHV. Record the actual install/typecheck/full and credential-free test result. This mandatory instruction log is part of the fix; no other repository edits are needed. Also append the available round-3 provenance to the existing 04m-ui-seed-delta-review.md entry in PROMPTS.md (without changing its prompt text): the generated review prompt is unavailable in the step log, delta review completed, observed lines are reviewing changes..., blank line, claude started pid=145129, blank line, claude exited pid=145129 status=success. Keep the original supplied intent intact. This was the third, delta-only review; do not launch a fourth full code review. Resume the existing gate's test/document/push/CI steps and keep PR #5 open, held until agent PR #4 merges. Never merge or deploy.
+````
