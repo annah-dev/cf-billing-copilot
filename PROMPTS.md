@@ -1591,7 +1591,7 @@ act on it; log it in PROMPTS.md as a misdirected paste.
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/03g-agent-contract-pr6-review.md
-- Outcome: (pending)
+- Outcome: CHANGES REQUESTED, one finding (missing done-contract evidence in the PR #6 body); evidence added (npm ci, collection comparison, two planted defects red); no code change.
 
 ````text
 You are the cross-reviewer for PR #6 on annah-dev/cf-billing-copilot: a small contract change after
