@@ -1,8 +1,8 @@
 # no-mistakes gate
 
 Codex-authored lanes (engine, ui, evals) push through a local gate that runs Claude as the
-reviewer before the branch reaches GitHub, opens the PR and watches CI. Set up the same way as
-~/projects/job-search-automation (docs/agent/no-mistakes.md there has the installation provenance).
+reviewer before the branch reaches GitHub, opens the PR and watches CI. Set up the same way as in
+another repo of mine that already runs the gate, whose docs hold the installation provenance.
 
 ## Version
 
