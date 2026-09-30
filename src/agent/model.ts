@@ -79,10 +79,8 @@ export function budgetMiddleware(
   return {
     specificationVersion: "v3",
     wrapGenerate: async ({ doGenerate, params }) => {
-      const estimate = estimateNeurons(
-        estimateInputTokens(params),
-        limits.maxOutputTokens
-      );
+      const inputBound = estimateInputTokens(params);
+      const estimate = estimateNeurons(inputBound, limits.maxOutputTokens);
       const reservation = await quota.reserveNeurons({
         estimate,
         stop: limits.neuronStop
@@ -105,7 +103,12 @@ export function budgetMiddleware(
         const output = result.usage.outputTokens.total ?? 0;
         stats.inputTokens += input;
         stats.outputTokens += output;
-        actual = estimateNeurons(input, output);
+        // workers-ai-provider reports absent usage as 0, and Llama's usage field is optional: a
+        // missing or zero count is settled at its bound, so an unreported call is never free.
+        actual = estimateNeurons(
+          input > 0 ? input : inputBound,
+          output > 0 ? output : limits.maxOutputTokens
+        );
         if (actual > estimate) {
           // Recorded as spent (never clamped); the estimate is meant to be an upper bound.
           console.error("neuron estimate exceeded", { estimate, actual });

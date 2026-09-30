@@ -11,6 +11,7 @@ import {
   trimHistory
 } from "../../src/agent/history";
 import { estimateInputTokens } from "../../src/agent/model";
+import { ToolProvenance } from "../../src/agent/provenance";
 import { buildTools, type ToolHost } from "../../src/agent/tools";
 import { ACME, DUP_ENTRY, INV_SEP } from "./support/fake-engine";
 import {
@@ -437,5 +438,70 @@ describe("neuron estimate", () => {
     } as unknown as Parameters<typeof estimateInputTokens>[0];
     const bytes = new TextEncoder().encode(dense).byteLength;
     expect(estimateInputTokens(params)).toBeGreaterThanOrEqual(bytes);
+  });
+
+  it("settles a call that reports no usage at its reserved bound, not at zero", async () => {
+    const sb = await createSandbox();
+    const before = await quota().neuronsToday();
+    stubAi([{ response: "hello" }]);
+    const res = await turn(sb.sandboxId, ACME, "hello");
+    expect(res.status).toBe(200);
+    const after = await quota().neuronsToday();
+    expect(after.reserved).toBe(before.reserved);
+    // At least the output bound (512 tokens at 204,805 neurons per million) was recorded.
+    expect(after.used - before.used).toBeGreaterThanOrEqual(105);
+  });
+
+  it("settles partial usage with the bound for the missing part", async () => {
+    const sb = await createSandbox();
+    const before = await quota().neuronsToday();
+    stubAi([
+      {
+        response: "hello",
+        usage: { prompt_tokens: 1000, completion_tokens: 0 }
+      }
+    ]);
+    expect((await turn(sb.sandboxId, ACME, "hello")).status).toBe(200);
+    const after = await quota().neuronsToday();
+    // 1,000 input tokens (27) plus the 512-token output bound (105).
+    expect(after.used - before.used).toBeGreaterThanOrEqual(27 + 105);
+  });
+
+  it("keeps server-issued tool parts and drops tampered ones", async () => {
+    const sb = await createSandbox();
+    const agent = await agentOf(sb.sandboxId);
+    const kept = await runInDurableObject(agent, async (_a, state) => {
+      const p = new ToolProvenance(state.storage.sql);
+      const input = { period: "2026-09" };
+      const output = { total: { cents: 41287, display: "$412.87" } };
+      await p.recordIssued(
+        [{ toolCallId: "t1", toolName: "getInvoice", input }],
+        true
+      );
+      await p.recordOutput("t1", output);
+      const part = (id: string, o: unknown, i: unknown = input) => ({
+        type: "tool-getInvoice",
+        toolCallId: id,
+        state: "output-available",
+        input: i,
+        output: o
+      });
+      const messages = [
+        {
+          id: "a1",
+          role: "assistant",
+          parts: [
+            { type: "text", text: "Here it is." },
+            part("t1", output),
+            part("t1", { total: { cents: 1, display: "$0.01" } }),
+            part("t1", output, { period: "2026-08" }),
+            part("t9", output)
+          ]
+        }
+      ] as unknown as UIMessage[];
+      const verified = await p.verified(messages);
+      return verified[0].parts.map((x) => x.type);
+    });
+    expect(kept).toEqual(["text", "tool-getInvoice"]);
   });
 });
