@@ -37,7 +37,9 @@ Build, all in integer cents with `Money` / `Percent` / `Multiple` from src/contr
   amount), `balance`;
 - `seed()`: the deterministic synthetic dataset. 3 fictional customers (no real company names),
   July to September 2026 daily usage on 4 meters, 3 tiered plans, one invoice per customer per
-  month, one duplicate charge in September (two ledger charges sharing a reference), one 5x
+  month, one duplicated debit in September (the September invoice charge posted twice by a billing
+  run retried without an idempotency key: two `charge` entries with the same billing-run posting id
+  in `reference`; a duplicated card payment would be a refund and is out of scope), one 5x
   one-day spike on one meter in September, one historical expired credit request with its memo
   and audit records, and one mid-period plan change so proration is exercised. Seed target for the
   demo script: customer 1's September invoice totals 41287 cents and its total change against

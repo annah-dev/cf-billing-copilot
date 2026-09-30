@@ -50,7 +50,7 @@ entries in timestamp order, and renumbering only the new entries.
   `validateCreditClaim` (its `creditableAmount` is the memo amount; there is no separate
   memo function), and the deterministic seed: 3 fictional customers,
   July to September 2026 daily usage on 4 meters, 3 tiered plans, one invoice per month, one
-  duplicate charge in September, one 5x one-day spike on one meter in September, one historical
+  duplicated debit in September (the invoice charge posted twice by a retried billing run), one 5x one-day spike on one meter in September, one historical
   expired credit request. Seed target for the demo script: customer 1's September invoice totals
   41287 cents and is 38% above August (rounded to a whole percent).
 - Done: every function implements the engine interface in `src/contracts/` and its outputs parse

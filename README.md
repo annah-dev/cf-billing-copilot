@@ -4,6 +4,10 @@ AI-powered billing copilot that runs entirely on Cloudflare. The full README (pi
 demo script, setup, evals, limitations) arrives with the release lane; the design is in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the decisions in [docs/DECISIONS.md](docs/DECISIONS.md).
 
+The credit story is a duplicated debit: the September invoice charge posted twice by a billing run
+retried without an idempotency key, remedied by a credit memo. A duplicated card payment would be a
+refund instead, which is out of scope.
+
 ## Cost and abuse controls
 
 The public demo runs on the Workers Paid plan with these controls (docs/DECISIONS.md D-7, D-8, D-13):

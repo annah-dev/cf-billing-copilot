@@ -81,7 +81,11 @@ Tables, all amounts `INTEGER` cents, all timestamps ISO-8601 UTC:
 - `customers`, `plans`, `plan_tiers`, `subscriptions` (plan history, for proration)
 - `usage_daily` (customer, meter, date, quantity)
 - `invoices`, `invoice_lines` (materialised from the engine at seed time; immutable once issued)
-- `ledger_entries` (charges, payments, credits; append-only; the seeded duplicate charge lives here)
+- `ledger_entries` (charges, payments, credits; append-only). The seeded duplicate lives here: the
+  September invoice debit posted twice, with the same billing-run posting id in `reference`, by a
+  billing run that was retried without an idempotency key. A credit memo is the remedy for a
+  duplicated debit; a duplicated card payment would be a refund or a credit balance instead, which
+  is out of scope.
 - `credit_requests` (id, idempotency_key UNIQUE, customer, invoice, disputed ledger entry, claimed
   amount, validated amount, status, workflow instance id, deadline, recorded decision)
 - `credit_memos` (request id UNIQUE, disputed ledger entry, amount, status `pending | applied | void`)
