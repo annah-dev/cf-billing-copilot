@@ -501,7 +501,7 @@ you suggest. Do not report style preferences. End with:
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/01g-review-pr2-r2.md
-- Outcome: (pending)
+- Outcome: CHANGES REQUESTED, 2 findings (1 major, 1 minor); both fixed (commit 3dcb2e7, refreshed PR body).
 
 ````text
 You are the cross-reviewer for PR #2 on annah-dev/cf-billing-copilot, round 2 of 2 (full review).
@@ -547,6 +547,37 @@ Look for, most important first:
 Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
 first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
 you suggest. Do not report style preferences. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 10. PR #2 cross-review, round 3 (delta only)
+
+- Timestamp: 2026-09-29T17:04:35-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/01h-review-pr2-r3.md
+- Outcome: (pending)
+
+````text
+You are the cross-reviewer for PR #2 on annah-dev/cf-billing-copilot, round 3: delta only, and the
+last round. The PR was written by Claude Code (the Architect). You are Codex, running read-only: do
+not edit, commit, push or comment anywhere; your whole output is your review.
+
+Review only the round 2 fixes: `git diff 56f1a55 3dcb2e7` (tests/agent/tsconfig.json, docs/DECISIONS.md),
+plus the refreshed PR body (`gh pr view 2` if you can reach GitHub). Round 2 found: (1) the agent
+test project inherited the root exclusion and typechecked nothing; (2) the PR body described an
+older head.
+
+For each, say whether the fix is adequate; for (1), verify with `npx tsc -p tests/agent
+--listFilesOnly` and `npm run typecheck` if the sandbox allows. Then report only new defects the
+delta introduces. Do not reopen settled points unless the delta broke them. Mark any claim you
+cannot verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), the adequacy verdicts, then numbered
+new findings, most severe first, each with severity (blocker, major, minor, nit), file and line,
+what is wrong, and the fix you suggest. End with:
 
     VERIFIED:     <what you checked and how>
     NOT VERIFIED: <what you could not check, and why>
