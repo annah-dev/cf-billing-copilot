@@ -667,3 +667,95 @@ contract changes. Reason: the check must not depend on the model's choice (PR #4
 found the last-step and failure gaps in the first version).
 
 Decided by: Anna (the requirement); Agent engineer under standing orders (the mechanism).
+
+## ui: Fixture transport and live handoff
+
+The UI defaults to a clearly labelled fixture preview until the agent HTTP surface merges; set
+`VITE_BILLING_API_MODE=live` for the real fetch client and `useAgentChat`. Both transports pass
+through the frozen response schemas. Fixture and live sessions use separate storage keys so a
+preview sandbox can never be sent to the live API. Fixtures illustrate the interface rather than
+claim to be the engine's seed; they never calculate amounts. Reason: the UI lane can be exercised
+without server changes or model calls while the agent lane is still being built.
+
+Decided by: Frontend engineer under standing orders.
+
+## ui: Approval links and refresh boundaries
+
+Approval links carry both sandbox id and token in the fragment, which the admin page removes on
+entry. Requests send the token only in the Authorization header. A saved session restores access
+on reload; an invalid fragment fails explicitly. Both admin decisions require a reason, matching
+the frozen DecisionRequest schema. Customer changes and resets remount the workspace; generation
+counters discard stale responses. Panels refresh on chat completion, window focus, or an explicit
+Refresh action instead of polling against the 200-request daily cap. Reason: keep customer state
+isolated, keep credentials out of request URLs, and conserve the sandbox's request budget.
+
+Decided by: Frontend engineer under standing orders.
+
+## ui: Local fixture evidence without remote bindings
+
+Run the existing dev command with `CLOUDFLARE_VITE_FORCE_LOCAL=true` to disable remote bindings
+using the installed Cloudflare Vite plugin's supported environment override. In a restricted
+workspace, also set `XDG_CONFIG_HOME` to a temporary writable directory for Wrangler's local
+registry. No frozen configuration changes or credentials are required. The browser evidence
+script uses the already installed external Playwright runtime and is excluded from the offline
+vitest patterns. Reason: capture the actual app through npm run dev without contacting the model.
+
+Decided by: Frontend engineer under standing orders.
+
+## ui: Evidence kept out of deployed static assets
+
+Done-contract evidence (screenshots, command logs, browser checks) lives in `tests/ui/evidence/`,
+written there by `tests/ui/browser-evidence.mjs`. It was first placed in `public/ui-evidence/`,
+which is both Wrangler's assets directory and Vite's publicDir, so it would have been served on
+the deployed site. Absolute home paths and temporary config-directory paths are scrubbed from the
+logs. Reason: gate review round 1 found the evidence would be published with local paths.
+
+Decided by: Frontend engineer under standing orders.
+
+## ui: Shared engine seed is the preview source
+
+The preview creates its mutable dataset with engine.seed() and derives customer names, plans,
+invoices, balances, comparisons, simulations, anomalies and validated credits through the shared
+engine. Approval copies the validated memo into the credit ledger; engine.balance computes the
+result and the issued invoice stays unchanged. Historical request and audit records come from the
+seed, scoped to the selected customer. A new fixture storage namespace discards older hand-made
+sessions; live storage remains compatible. This supersedes the earlier rule that fixtures only
+illustrate the interface and are not the engine's seed. Reason: Anna requested preview values and
+evidence that match the live demo with one source for every number. No engine, contract, dependency
+or configuration changes.
+
+Decided by: Frontend engineer under standing orders.
+
+## ui: Synchronize the gate's published rebase
+
+The pinned gate refused synchronization because the clean local and published heads had diverged
+after its rebase onto the engine merge. A range-diff confirmed the UI patches were preserved.
+With Anna's explicit approval, refs/no-mistakes/manual-sync/ui-before-seed-followup preserves the
+old head and the worktree moved to published head 056a7a4 before follow-up commits. Reason: retain
+the gate fixes and merged engine while preserving the original head for inspection.
+
+Decided by: Anna.
+
+## ui: Preview chat simulates a plan only when a seeded plan is named
+
+Reason: gate review round 1 found substring matching sent words such as "problem" to plan simulation or an error, so the preview now matches seeded plan names as whole words and otherwise answers with the invoice. Decided by: Frontend engineer under standing orders.
+
+## ui: Rebase onto the agent merge keeps both sides of the logs
+
+Rebasing PR #5 onto main after PR #4 merged conflicted only in the append-only PROMPTS.md and
+docs/DECISIONS.md. Each conflict was resolved mechanically by keeping the main-side agent records
+first and the UI-side records after them, closing the open prompt fence between them, with no text
+removed or rewritten on either side. Reason: both logs are append-only and Anna asked for both
+sides to be kept.
+
+Decided by: Frontend engineer under standing orders.
+
+## ui: Refresh command evidence after the agent merge
+
+The command logs and test collection under tests/ui/evidence were regenerated from real runs on
+the rebased head instead of being hand-edited: 223 tests pass, and the collection grows from 190 on
+main 2af8f1d to 223, adding the 33 UI tests and removing none. The screenshots and defect proofs
+are kept because the rebase left src/ui, tests/ui and index.html unchanged. Reason: the evidence
+must describe the checkout under review, and command output must come from the commands.
+
+Decided by: Frontend engineer under standing orders.

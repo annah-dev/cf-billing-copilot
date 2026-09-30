@@ -1736,3 +1736,464 @@ line, what is wrong, and the fix you suggest. End with:
     VERIFIED:     <what you checked and how>
     NOT VERIFIED: <what you could not check, and why>
 ````
+
+## 13. UI restart after duplicate launches
+
+- Timestamp: 2026-09-29T18:17:11-07:00
+- Role: Frontend engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/04a-ui-restart.md
+- Outcome: Earlier duplicate launches were stopped and their work discarded. Restart checks: no remote feat/ui, open UI PR, or UI gate run; engine run left alone.
+
+````text
+Restart note first, then follow prompt-history/prompts/04-ui.md as your lane prompt, including logging it in PROMPTS.md.
+
+Restart note: this lane was launched more than once by accident, so two Codex sessions ran in this worktree at the same time and conflicted. I stopped both, saved their work in the branch backup/ui-duplicates and a git stash, and reset this worktree to origin/main. You are now the only session here. Start the lane from scratch and do not reuse the backup. Before building, check for leftovers from the stopped sessions: a remote feat/ui branch, an open PR, or a no-mistakes run for this branch (docs/agent/no-mistakes.md says how). Report what you find and ask me before deleting a remote branch or closing a PR. In PROMPTS.md, record this note and one line saying the earlier duplicate launches were stopped and their work discarded, so the record matches the raw transcripts.
+````
+
+## 14. UI lane kickoff
+
+- Timestamp: 2026-09-29T18:17:11-07:00
+- Role: Frontend engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/04-ui.md
+- Outcome: fixture-backed UI implemented (chat, invoice/credits/audit panel, credit confirmation and /admin approvals); typecheck, lint, tests (68 passing), build and desktop/390 px browser evidence passed; evidence moved from public/ui-evidence to tests/ui/evidence after gate review round 1, and the Claude review passed after that relocation. No live model calls. Not deployed or merged.
+
+````text
+# 04 - UI lane kickoff
+
+Role: Frontend engineer. Harness: Codex CLI. You work alone in this worktree
+(~/projects/wt/cf-billing-copilot-ui, branch feat/ui, cut from main after the Stop 2 foundation
+merged). You see this prompt, the assignment and the repo; nothing else.
+
+## Read first, in this order
+
+1. prompt-history/prompts/00-assignment.md: product scope, user stories and the UI it asks for.
+2. AGENTS.md: the rules, including Decision rights. They bind you.
+3. docs/agent/plan.md, section "ui": what you own, what you build, your definition of done.
+4. docs/agent/verification.md: the evidence your PR must carry (screenshots included).
+5. src/contracts/http.ts, tools.ts, credit.ts, audit.ts, money.ts: the frozen shapes you render.
+   docs/ARCHITECTURE.md ("Tenancy", "HTTP surface") and docs/DECISIONS.md (D-3, D-4, D-5, D-7,
+   D-15) for the why.
+
+At session start, append this prompt to PROMPTS.md by copying this file with a tool (not by
+retyping), with an ISO-8601 timestamp with offset, role, harness "Codex CLI", source path and
+outcome "(pending)". Fill in the outcome at the end.
+
+## Scope
+
+You own `src/app.tsx`, `src/client.tsx`, `src/ui/`, `src/admin/`, `src/styles.css`, `index.html`,
+any admin HTML entry, `public/` and `tests/ui/`, plus the append-only files. You keep the
+starter's stack (React, Tailwind, `@cloudflare/kumo`, `agents/react` and
+`@cloudflare/ai-chat/react`); adding a dependency means stopping and asking, because package.json
+is frozen.
+
+Build what docs/agent/plan.md "ui / Builds" lists:
+
+- sandbox bootstrap: on first visit `POST /api/sandboxes`, keep `sandboxId` and `approverToken` in
+  localStorage (wrapped in try/catch), a customer picker for the seeded customers, and
+  "Reset demo", which creates a new sandbox and switches to it;
+- the chat page on `useAgentChat` with agent `BillingAgent` and instance name
+  `agentInstanceName(sandboxId, customerId)`, showing which tools each answer used, and the
+  confirmation UI for `startCreditRequest` (the tool uses the AI SDK approval flow, as the starter's
+  approval example does);
+- a side panel from `GET .../panel`: current invoice with lines, credit requests with status, the
+  audit trail newest first;
+- `/admin`: the approver's view, reached from a link in the panel that carries the token in the URL
+  fragment (`/admin#token=...`, never the query string), listing credit requests with approve and
+  reject (reason required) through the decision endpoint with `Authorization: Bearer <token>`;
+- clear states for every `ErrorResponse` code, especially `cap_reached`, `budget_exhausted` and
+  `rate_limited` (show the cap and when it resets), and a visible "demo sandbox" label.
+
+Show `Money.display`, `Percent.display` and `Multiple.display` as given. The UI never computes,
+converts, sums or formats money.
+
+Until the agent lane merges, the API does not exist: build against fixtures that parse with the
+contract schemas, behind a small API client module, so the switch to the real API is one line.
+
+## Definition of done
+
+As in docs/agent/plan.md "ui / Done". `tests/ui/` runs in the Node `unit` project with no DOM:
+test pure helpers (API client against fixtures, state reducers, error mapping). Screenshots at
+desktop width and 390 px of chat, side panel, credit confirmation, /admin and a cap message, taken
+from `npm run dev` with fixtures (no model calls needed). `npm run typecheck` and `npm test` pass.
+
+## Rules that are easy to miss
+
+- When web docs and the installed type definitions disagree, the installed types win; record the
+  disagreement in docs/DECISIONS.md.
+- Contracts are frozen. If one is wrong, stop, explain, and wait: the fix is its own PR to main.
+- Decide implementation details yourself; record each non-obvious one at the end of
+  docs/DECISIONS.md headed `## ui: <decision>`, with a one-line reason and "Decided by: Frontend
+  engineer under standing orders". Owner questions go in one batched message with a recommendation
+  each; keep working on anything they do not block.
+- `npm run dev` with a real chat spends Workers AI neurons. Build and screenshot with fixtures; make
+  no model calls unless the agent lane has merged, and then only a handful, reported in the PR.
+- Plain ASCII in docs and comments. Small conventional commits, no co-author footers.
+
+## Review loop and finishing
+
+1. Rebase on origin/main, run the done-contract commands, commit.
+2. Push through the gate: `git push no-mistakes feat/ui`. Claude reviews there
+   (docs/agent/no-mistakes.md). Capture each gate review prompt: `no-mistakes axi logs --step review
+   --full` shows what the gate sent to Claude. Save that prompt text verbatim with a tool to
+   `prompt-history/prompts/04g-ui-gate-review-r<round>.md` and append it to PROMPTS.md with
+   role "automated cross-review", harness "no-mistakes v1.41.2 (Claude)" and the run id. If the log
+   does not contain the prompt text, save the log lines that identify the run, step and version,
+   say in that file and in PROMPTS.md that the prompt text was not available, and list it under NOT
+   VERIFIED in the PR.
+3. Read parked findings yourself (`no-mistakes axi status`, `no-mistakes axi logs --step review
+   --full`), fix them on your branch (after `no-mistakes axi sync` if offered), push through the
+   gate again. Two full rounds, a third on the delta only, then stop. Anything still disputed goes
+   to the owner as a FOR ANNA list with both positions.
+4. The gate opens the PR. Make sure its body carries the evidence from docs/agent/verification.md,
+   ending with VERIFIED and NOT VERIFIED lines. Never merge; the owner merges.
+````
+
+## 15. UI gate review, round 1
+
+- Timestamp: 2026-09-29T18:37:07-07:00 (head commit time; the gate start time was not captured)
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run id 01M3QZB8FZYYY4NW9MSAM1FZ6Y
+- Source: prompt-history/prompts/04g-ui-gate-review-r1.md
+- Outcome: prompt text was not available; only the log lines below were captured. Findings: evidence under public/ would be deployed (fixed, entry 16); rate-limit copy duplicates config (informational, ignored).
+
+````text
+The review prompt text was not available: `no-mistakes axi logs --step review --full` for run
+01M3QZB8FZYYY4NW9MSAM1FZ6Y showed only the log lines below. The CLI reported version v1.41.2.
+Observed log, verbatim:
+
+step: review
+run: "01M3QZB8FZYYY4NW9MSAM1FZ6Y"
+lines: 6 total
+log[6]{line}:
+reviewing changes...
+""
+claude started pid=88156
+""
+"Reviewing the UI diff now; checking whether the evidence files under `public/` would be deployed, then finishing up."
+claude exited pid=88156 status=success
+````
+
+## 16. UI gate fix instruction, round 1
+
+- Timestamp: 2026-09-29T18:40:39-07:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run id 01M3QZB8FZYYY4NW9MSAM1FZ6Y
+- Source: prompt-history/prompts/04b-ui-gate-fix-r1.md
+- Outcome: evidence moved to tests/ui/evidence, local paths scrubbed, browser script output folder updated, decision recorded in docs/DECISIONS.md.
+
+````text
+Fix ui-evidence-in-public under the owner's AGENTS.md standing orders, which authorize implementation choices, layout inside this lane's directories, and fixes for review findings. Evidence publication was not a deliberate owner requirement. Preserve all screenshots and validation evidence but move public/ui-evidence to tests/ui/evidence (within UI lane ownership, not docs/). Update tests/ui/browser-evidence.mjs's output folder and evidence references in the moved README. Scrub all absolute home paths and temporary credentials-directory paths in the evidence logs. Do not edit frozen files, dependencies, lock files, server, engine or other lane files. Rate-limit copy is currently accurate and its finding is informational, so no config change is needed.
+
+Record this evidence-placement correction in a new append-only docs/DECISIONS.md entry ending 'Decided by: Frontend engineer under standing orders'. Update only this lane's kickoff outcome in PROMPTS.md to record the implemented fixture UI, checks and evidence relocation, with gate/PR completion still pending. Add this exact fix instruction text as prompt-history/prompts/04b-ui-gate-fix-r1.md and log it in PROMPTS.md as an automated cross-review instruction, harness no-mistakes v1.41.2 (Claude), run id 01M3QZB8FZYYY4NW9MSAM1FZ6Y.
+
+The gate's full review log exposed no review prompt text. Save the observed log verbatim in prompt-history/prompts/04g-ui-gate-review-r1.md, preceded by a statement that the prompt text was not available and version v1.41.2 was reported by the CLI. The observed log was:
+step: review
+run: "01M3QZB8FZYYY4NW9MSAM1FZ6Y"
+lines: 6 total
+log[6]{line}:
+reviewing changes...
+""
+claude started pid=88156
+""
+"Reviewing the UI diff now; checking whether the evidence files under `public/` would be deployed, then finishing up."
+claude exited pid=88156 status=success
+Log the unavailable prompt in PROMPTS.md with role automated cross-review, harness no-mistakes v1.41.2 (Claude), run id and source file. Do not claim the original gate prompt was captured. Do not deploy or merge. Keep the automatic review-fix commit so the local branch can be synchronized safely afterward.
+````
+
+## 17. UI gate review, round 2
+
+- Timestamp: 2026-09-29T18:43:41-07:00 (log capture time; the gate start time was not captured)
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run id 01M3QZB8FZYYY4NW9MSAM1FZ6Y
+- Source: prompt-history/prompts/04g-ui-gate-review-r2.md
+- Outcome: passed after evidence relocation. The full review prompt text is unavailable in the gate log; only the log lines below were captured.
+
+````text
+The review prompt text for round 2 is unavailable: the gate log for run
+01M3QZB8FZYYY4NW9MSAM1FZ6Y exposed only the log lines below, not the prompt the harness sent
+to Claude. The CLI reported version v1.41.2. Available round-2 log lines, verbatim:
+
+step: review
+run: "01M3QZB8FZYYY4NW9MSAM1FZ6Y"
+"committed agent fixes: no-mistakes(review): Move UI evidence out of public and scrub paths"
+""
+reviewing changes...
+""
+claude started pid=89981
+""
+claude exited pid=89981 status=success
+````
+
+## 18. UI gate test setup instruction
+
+- Timestamp: 2026-09-29T18:43:41-07:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run id 01M3QZB8FZYYY4NW9MSAM1FZ6Y
+- Source: prompt-history/prompts/04c-ui-gate-test-setup.md
+- Outcome: npm ci from the unchanged lockfile; npm run typecheck passed; npm test passed (68 tests) both normally and under a clean env -i CI=1 environment. No dependency, lockfile or config changes.
+
+````text
+The test gate failed before tests ran because its isolated checkout has no installed vitest (exit 127). Install only the unchanged lockfile with npm ci in the gate's checkout, then run npm run typecheck and npm test, plus env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test. Never edit dependencies, package-lock.json, config, frozen files or other lanes. Preserve prior gate-fix commits.
+
+Before finishing, capture the second review round's available log provenance in prompt-history/prompts/04g-ui-gate-review-r2.md and append it to PROMPTS.md with timestamp, role automated cross-review, harness no-mistakes v1.41.2 (Claude), run id 01M3QZB8FZYYY4NW9MSAM1FZ6Y, outcome passed after evidence relocation. Its full prompt text is unavailable in the gate log, so say that explicitly in the source file and PROMPTS.md. Available round-2 log lines are:
+step: review
+run: "01M3QZB8FZYYY4NW9MSAM1FZ6Y"
+"committed agent fixes: no-mistakes(review): Move UI evidence out of public and scrub paths"
+""
+reviewing changes...
+""
+claude started pid=89981
+""
+claude exited pid=89981 status=success
+
+Log these test-gate instructions too under prompt-history/prompts/04c-ui-gate-test-setup.md and PROMPTS.md. Replace the UI kickoff pending outcome with its actual completed implementation/validation result (fixture UI implemented, 68 tests and browser evidence passed, Claude review passed after evidence relocation; no live calls), without claiming deployment or merge. Gate/PR status will be reported in the PR and final response. Do not leave '(pending)' for work already performed. No need to change README.md outside UI ownership. Evidence stays under tests/ui/evidence, not public or docs. Do not deploy or merge.
+````
+
+## 19. UI shared-seed follow-up
+
+- Timestamp: 2026-09-30T03:10:48.154283+00:00
+- Role: Frontend engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/04d-ui-seed-followup.md
+- Outcome: Implemented shared-seed preview; npm ci, typecheck, 145 tests normally and credential-free, build, lint and both-width browser evidence passed. Claude gate review round 1 (run 01M3R4YFDC2775KN88HGKXBJDV) found one chat routing regression, fixed with a regression test; 146 tests now pass normally and credential-free. No model calls; not merged or deployed.
+
+````text
+PR #5 looks good; hold it until the agent PR merges. While you wait: the engine is now on main,
+and your fixtures use hand-made values (Nimbus Studio, Workers requests, Database reads) while the
+real seed has Velvet Comet Workshop and different meters. Build the fixture state from the
+engine's seed() and engine functions instead of literal values, so the preview and the evidence
+match the live demo and every number has one source. Regenerate the evidence screenshots, run the
+gate, and tell me when it is ready again. Do not change src/engine or src/contracts.
+````
+
+## 20. UI shared-seed gate intent
+
+- Timestamp: 2026-09-30T03:14:53.022771+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude)
+- Source: prompt-history/prompts/04h-ui-seed-gate-intent.md
+- Outcome: supplied intent for the follow-up gate; generated review prompt is separate and not yet available.
+
+````text
+Update PR #5 so its preview and evidence match the engine now merged on main. Replace hand-made fixture data with engine.seed() and shared engine functions; every billing number must have one source. Regenerate desktop and 390px evidence and run the complete gate. Do not change src/engine or src/contracts or any frozen configuration/dependency files. Hold PR #5 until the agent PR merges; never merge or deploy. The preview is still a local no-model transport while the agent lane is pending. It uses a mutable engine seed dataset, engine validation for duplicate credit claims, copied validated credit amounts and engine.balance after human decisions; issued invoices stay unchanged. Seed historical requests/audit are retained per customer. Old hand-made fixture sessions are invalidated by a fixture-only namespace migration. The live namespace remains compatible. All 145 tests pass (113 main plus 32 UI), including credential-free; browser assertions compare seeded names, invoice lines/total and balances directly to engine outputs. No main tests disappeared. All ten screenshots were regenerated and inspected. Check the full UI diff against the done-contract and this follow-up. Keep prior gate fixes and scope. Review under Claude as configured; no self-review. Log the observed review provenance; do not claim the full generated prompt was captured if unavailable. Every changed decision or review instruction must be logged in PROMPTS.md and prompt-history/prompts/ and decisions end with Decided by. No live model calls. Author implementation choices and fixes inside this scope are authorized under AGENTS.md standing orders.
+````
+
+## 21. UI shared-seed gate review, round 1
+
+- Timestamp: 2026-09-30T03:20:57+00:00 (log capture time; the gate start time was not captured)
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run id 01M3R4YFDC2775KN88HGKXBJDV
+- Source: prompt-history/prompts/04j-ui-seed-review-r1.md
+- Outcome: one finding (plan-regex-throws): loose plan routing sent ordinary invoice questions to plan simulation or an error. The complete generated review prompt is unavailable in the step logs; only the log lines below were captured. The supplied intent is entry 20.
+
+````text
+The complete generated review prompt for round 1 of run 01M3R4YFDC2775KN88HGKXBJDV is unavailable:
+the step log exposed only the lines below, not the prompt the harness sent to Claude. The intent
+supplied to the gate is logged separately in prompt-history/prompts/04h-ui-seed-gate-intent.md.
+The CLI reported version v1.41.2. Observed round-1 log lines, verbatim:
+
+step: review
+run: "01M3R4YFDC2775KN88HGKXBJDV"
+lines: 6 total
+log[6]{line}:
+reviewing changes...
+""
+claude started pid=134378
+""
+Reviewing the fixture backend against the engine; now checking the storage namespace migration and messages.Found one chat regression; checking decisions log and evidence tests next.
+claude exited pid=134378 status=success
+````
+
+## 22. UI shared-seed gate fix instruction, round 1
+
+- Timestamp: 2026-09-30T03:20:57+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run id 01M3R4YFDC2775KN88HGKXBJDV
+- Source: prompt-history/prompts/04i-ui-seed-review-fix-r1.md
+- Outcome: chat routes to plan simulation only when a seeded plan name appears as a whole word; other questions get the invoice and anomaly answer. Regression test failed before and passed after the fix. npm ci, npm run typecheck, npm test (146 passed) and the credential-free env -i CI=1 npm test (146 passed) pass; oxlint and oxfmt pass on UI files. Evidence logs and counts updated. Not merged or deployed.
+
+````text
+Fix plan-regex-throws inside UI-owned files. Ordinary invoice questions containing problem, approve, provide, process, prorated or explanation must not throw or trigger plan simulation without an actual catalog plan request. Preserve the seeded-plan simulation for 'What would I pay on Pro?'. Add a regression test, watch it fail before the fix, then pass after the fix. Keep all existing tests and schemas. No engine, contracts, frozen dependencies/config, deployment or merge changes. Log the regression test output and updated suite/collection counts in tests/ui/evidence and its README as appropriate. Ensure only truthful count claims.
+
+Record these exact fix instructions by tool-copy into prompt-history/prompts/04i-ui-seed-review-fix-r1.md and append verbatim in PROMPTS.md as automated cross-review, no-mistakes v1.41.2 (Claude), run 01M3R4YFDC2775KN88HGKXBJDV. Append a one-line reason in docs/DECISIONS.md ending 'Decided by: Frontend engineer under standing orders'. Preserve earlier gate-fix commits.
+
+Log round 1 review provenance in prompt-history/prompts/04j-ui-seed-review-r1.md and PROMPTS.md. Say the complete generated review prompt is unavailable in step logs, while the supplied intent is logged separately in 04h-ui-seed-gate-intent.md. Capture these observed lines verbatim:
+step: review
+run: "01M3R4YFDC2775KN88HGKXBJDV"
+lines: 6 total
+log[6]{line}:
+reviewing changes...
+""
+claude started pid=134378
+""
+Reviewing the fixture backend against the engine; now checking the storage namespace migration and messages.Found one chat regression; checking decisions log and evidence tests next.
+claude exited pid=134378 status=success
+
+Ensure the isolated checkout has the unchanged pinned dependencies installed with npm ci before tests (the prior UI gate initially lacked vitest). Run npm run typecheck and npm test, plus env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test. No lockfile hand edits. Update evidence command logs after the routing fix, scrub all home/temp paths, trim trailing whitespace, and keep evidence outside public assets. The completed kickoff/follow-up outcomes must state actual work and checks, without claiming merge/deployment. Re-review the full updated diff for round 2.
+````
+
+## 23. UI shared-seed gate review, round 2
+
+- Timestamp: 2026-09-30T03:21:35+00:00 (review step log modification time; the round start time was not captured)
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run id 01M3R4YFDC2775KN88HGKXBJDV
+- Source: prompt-history/prompts/04k-ui-seed-review-r2.md
+- Outcome: passed with no findings. The complete generated review prompt is unavailable in the step logs; only the log lines below were captured. The supplied intent is entry 20.
+
+````text
+The complete generated review prompt for round 2 of run 01M3R4YFDC2775KN88HGKXBJDV is unavailable:
+the step log exposed only the lines below, not the prompt the harness sent to Claude. The intent
+supplied to the gate is logged separately in prompt-history/prompts/04h-ui-seed-gate-intent.md.
+Round 2 reviewed the full diff after the round-1 fix commit and returned no findings. The CLI
+reported version v1.41.2. Observed round-2 lines from the run's review step log, verbatim (blank
+lines shown as ""):
+
+reviewing changes...
+""
+claude started pid=137713
+""
+claude exited pid=137713 status=success
+````
+
+## 24. UI shared-seed documentation instruction record
+
+- Timestamp: 2026-09-30T03:31:59.737848+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run 01M3R4YFDC2775KN88HGKXBJDV
+- Source: prompt-history/prompts/04l-ui-seed-document-log.md
+- Outcome: round-2 provenance was added by the gate; these exact instructions were omitted and are now recorded. Both full reviews completed, routing regression fixed, 146 tests passed normally and credential-free, browser checks and CI passed. No live model calls, deployment or merge.
+
+````text
+Keep the original supplied gate intent verbatim: its count was accurate before review added the regression test. The present evidence accurately reports 146 tests, 113 baseline and 33 UI. Do not rewrite historical prompts or relax any checks.
+
+Complete the mandatory round-2 review provenance record, without changing application code. Add prompt-history/prompts/04k-ui-seed-review-r2.md and append it verbatim in PROMPTS.md with role automated cross-review, no-mistakes v1.41.2 (Claude), run 01M3R4YFDC2775KN88HGKXBJDV, outcome full round 2 passed with no findings. Say the generated prompt text is unavailable in the full step log; the intent is logged separately in 04h-ui-seed-gate-intent.md. Capture the observed round-2 log lines exactly:
+"committed agent fixes: no-mistakes(review): Route preview plan simulation only on whole-word seeded plans"
+""
+reviewing changes...
+""
+claude started pid=137713
+""
+claude exited pid=137713 status=success
+
+Log these exact documentation instructions with a tool-copy in prompt-history/prompts/04l-ui-seed-document-log.md and PROMPTS.md as automated cross-review, the same harness/run. Update only the follow-up intent's outcome to state both full Claude review rounds completed, the routing regression fixed and 146 tests passed; generated prompt text unavailable, no model calls, no deployment or merge. Keep prior prompt text and gate-fix commits intact. No engine, contracts, frozen dependencies or configuration changes. Trim trailing whitespace and scrub home/temp paths. This is a documentation-only delta; do not launch another full code review. After checking these records, resume the remaining gate steps. Leave PR #5 open and held until agent PR #4 merges.
+````
+
+## 25. UI shared-seed third review, delta only
+
+- Timestamp: 2026-09-30T03:31:59.755658+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude)
+- Source: prompt-history/prompts/04m-ui-seed-delta-review.md
+- Outcome: exact supplied delta-review intent recorded; third review limited to prompt/evidence changes after the two passing full reviews. Final delivery verification is reported in PR #5 and the final response. Generated prompt text is unavailable in step logs.
+
+````text
+Complete Anna's shared-engine preview follow-up for PR #5, still held until agent PR #4 merges. The implementation already passed two full Claude review rounds and full no-mistakes run 01M3R4YFDC2775KN88HGKXBJDV with CI green at 16aada8db61817187a80fdef0aae4b4a66403757. Per AGENTS.md convergence, this third review is DELTA ONLY: review git diff 16aada8db61817187a80fdef0aae4b4a66403757...HEAD, consisting only of prompt logging and fresh evidence. Do not reopen the full previously reviewed code diff. The delta records the exact documentation instructions that the gate omitted, and copies the screenshots/browser results the gate captured from its own checkout after the routing fix (port 5391); it updates the evidence README to identify that rerun and refreshes the amount grep. Application code is unchanged; engine, contracts and all frozen files remain untouched. Validate this delta and run all required gate commands, retain all prior gate-fix commits, update existing PR #5, never merge or deploy. The prior code gate passes 146 tests (113 main and 33 UI), including credential-free, and browser engine parity at desktop/390px. No live model calls. All prompts written by this lane are recorded, including this intent in 04m-ui-seed-delta-review.md and PROMPTS.md. The generated prompt text is not exposed by the pinned gate's logs; do not claim it is captured. Ordinary implementation/doc choices and reversible fixes within UI ownership are authorized under standing orders. Delivery verification is reported in the PR body and final message.
+````
+
+Round-3 provenance (no-mistakes v1.41.2 (Claude), run 01M3R5XQG8RXG4F1HVZZSJ3CHV): the delta-only review completed. The generated review prompt is unavailable in the step log; only the lines below were observed, verbatim (blank lines shown as ""):
+
+```text
+reviewing changes...
+""
+claude started pid=145129
+""
+claude exited pid=145129 status=success
+```
+
+## 26. UI shared-seed gate test setup instruction
+
+- Timestamp: 2026-09-30T03:36:59+00:00
+- Role: automated cross-review instruction
+- Harness: no-mistakes v1.41.2 (Claude), run 01M3R5XQG8RXG4F1HVZZSJ3CHV
+- Source: prompt-history/prompts/04n-ui-seed-gate-test-setup-final.md
+- Outcome: test-1 (exit 127, vitest not found) was an environment setup failure. `npm ci` installed the unchanged package-lock.json; `npm run typecheck` passed; `npm test` passed 146 tests in 12 files; `env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test` passed 146 tests in 12 files. No dependency, lockfile, config, engine, contract or application code changes. No live model calls, deployment or merge.
+
+````text
+The isolated checkout has no installed vitest; test-1 is an environment setup failure (exit 127), not a failing test. Install exactly the unchanged package-lock.json with npm ci in this gate checkout. Run npm run typecheck and npm test, plus env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test. Do not change dependencies, lockfile, frozen config, engine, contracts or application code. Do not skip or weaken tests. Keep all prior gate-fix commits. The expected suite has 146 tests in 12 files.
+
+Before finishing, copy this exact file from /tmp/ui-seed-gate-test-setup-final.md with a tool to prompt-history/prompts/04n-ui-seed-gate-test-setup-final.md and append its verbatim text in PROMPTS.md as automated cross-review instruction, no-mistakes v1.41.2 (Claude), run 01M3R5XQG8RXG4F1HVZZSJ3CHV. Record the actual install/typecheck/full and credential-free test result. This mandatory instruction log is part of the fix; no other repository edits are needed. Also append the available round-3 provenance to the existing 04m-ui-seed-delta-review.md entry in PROMPTS.md (without changing its prompt text): the generated review prompt is unavailable in the step log, delta review completed, observed lines are reviewing changes..., blank line, claude started pid=145129, blank line, claude exited pid=145129 status=success. Keep the original supplied intent intact. This was the third, delta-only review; do not launch a fourth full code review. Resume the existing gate's test/document/push/CI steps and keep PR #5 open, held until agent PR #4 merges. Never merge or deploy.
+````
+
+## 27. UI rebase after agent merge
+
+- Timestamp: 2026-09-30T20:28:30.411156+00:00
+- Role: Frontend engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/04o-ui-agent-merge-rebase.md
+- Outcome: request recorded; rebase and final validation will be reported in PR #5. No merge or deployment authorized.
+- Rebase outcome (gate run 01M3T02ME2Y028MRVA849KW9KN): all 14 UI commits replayed onto main 2af8f1d; conflicts only in PROMPTS.md (first commit) and docs/DECISIONS.md (chat-views commit), resolved by keeping the main-side agent records first and the UI-side records after them, with no line removed from either side. Range-diff: 12 commits identical, 2 differ only in conflict context. src/ui, tests/ui and index.html equal the pre-rebase head 1041474; every other difference is the merged main change. Typecheck, tests and CI had not yet run at this point.
+- Validation result (same gate run, on the rebased head): `npm ci` installed the unchanged package-lock.json; `npm run typecheck` passed; `npm test` passed 223 tests in 19 files; `env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test` passed 223 tests in 19 files. `npx vitest list` collects 190 tests on main 2af8f1d and 223 on the head: 33 UI tests added, none removed. CI, merge and deployment had not occurred at this point.
+
+````text
+PR #4 has merged. Rebase PR #5 onto main; the conflicts are only in PROMPTS.md and
+docs/DECISIONS.md, resolve them by keeping both sides. Rerun the checks and tell me when it is ready.
+````
+
+## 28. UI agent-merge gate intent
+
+- Timestamp: 2026-09-30T20:28:30.411748+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude)
+- Source: prompt-history/prompts/04p-ui-agent-merge-gate-intent.md
+- Outcome: exact supplied intent recorded; final gate delivery is reported in PR #5. Generated review prompt text is separate and unavailable in step logs.
+
+````text
+Anna requests: PR #4 has merged. Rebase PR #5 onto main; the conflicts are only in PROMPTS.md and docs/DECISIONS.md, resolve them by keeping both sides. Rerun the checks and tell her when ready. Preserve every main-side agent record and every UI-side prompt and decision record, including this kickoff and all prior gate-fix commits. Resolve append-only logs by concatenating both sides in sensible order, without rewriting raw prompt text. No UI feature change is requested; src/engine, src/contracts and frozen configuration/dependencies must remain identical to current main. Never merge or deploy. The previous monitor used its single automatic conflict fix for D-20, so this new task starts a fresh gate on the logged request. Rebase deterministically, review only the rebase/logging delta relative to previously reviewed UI 44b4dac83345fdd8dc4407e86679e95edff18b73 and merged main, then validate npm ci, npm run typecheck, npm test, and env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test. Compare npx vitest list on current main and final head and account for all retained or removed tests. Preserve the shared-engine seeded preview and existing ten screenshots; repeat browser evidence if the rebase changes UI behavior, without any live model call. Scope is rebase and validation only. Keep all evidence under tests/ui/evidence and paths scrubbed; no skipped tests, schema weakening, global formatting or dependency changes. The exact kickoff and this supplied review intent are logged in PROMPTS.md and prompt-history/prompts/04o-ui-agent-merge-rebase.md and 04p-ui-agent-merge-gate-intent.md. Record truthful outcomes and available review provenance, clearly distinguish generated prompt text unavailable in step logs. Required commands may need npm ci in the isolated checkout before vitest exists. Implementation/logging choices and reversible fixes within this scope are authorized under standing orders; the owner explicitly authorizes this rebase. Report the final head and CI result in PR #5.
+````
+
+## 29. UI agent-merge rebase conflict fix instruction
+
+- Timestamp: 2026-09-30T20:31:20+00:00
+- Role: automated cross-review instruction
+- Harness: no-mistakes v1.41.2 (Claude), run 01M3T02ME2Y028MRVA849KW9KN
+- Source: prompt-history/prompts/04q-ui-agent-merge-rebase-fix.md
+- Outcome: rebase completed as recorded in the 04o entry; both sides of every conflict retained; `npm ci` installed the unchanged package-lock.json for the later gate steps. Typecheck, tests, review and CI are left to the outer gate.
+
+````text
+Resolve rebase-1 as Anna explicitly requested: continue the rebase of PR #5 onto current origin/main (agent PR #4 merged), resolving PROMPTS.md and docs/DECISIONS.md by retaining BOTH sides of every conflict. Preserve all raw prompt text, all main agent records, all UI records and every prior gate-fix commit. Do not use ours/theirs to discard a side. Keep the owner D-20/D-21 decisions and all ui: entries. No application, engine, contracts, configuration, dependency or test changes are authorized. Complete every replayed commit; only the two append-only log files may need conflict resolution. Verify there are no conflict markers, current main is an ancestor, and the final UI source/browser script/tests equal the submitted head apart from the imported main changes. Record the range-diff and conflict preservation result for the driver.
+
+After completing the rebase, copy this exact file from /tmp/ui-agent-merge-rebase-fix.md with a tool to prompt-history/prompts/04q-ui-agent-merge-rebase-fix.md and append its verbatim text in PROMPTS.md as automated cross-review instruction, no-mistakes v1.41.2 (Claude), run 01M3T02ME2Y028MRVA849KW9KN. Update the kickoff outcome for 04o-ui-agent-merge-rebase.md with the actual rebase result, without claiming checks or CI that have not yet run. Append the mechanical conflict-resolution reason in docs/DECISIONS.md, ending 'Decided by: Frontend engineer under standing orders'. Keep append-only log records and raw historical prompts intact. These instruction and decision records are part of the rebase fix.
+
+Prepare the isolated checkout's pinned dependencies with npm ci from the unchanged lockfile so later validation steps can run. No lockfile hand edits or global formatting. Return control to the outer executor to perform review/test/document/push/CI. No new UI behavior, live model calls, merge or deploy. The subsequent review should check the rebase/logging delta only; the full UI was already reviewed twice plus a delta round in the previous completed work.
+````
+
+## 30. UI agent-merge evidence refresh instruction
+
+- Timestamp: 2026-09-30T20:46:08+00:00
+- Role: automated cross-review instruction
+- Harness: no-mistakes v1.41.2 (Claude), run 01M3T02ME2Y028MRVA849KW9KN
+- Source: prompt-history/prompts/04r-ui-agent-merge-evidence-fix.md
+- Outcome: reran the commands on the rebased checkout and replaced the tests/ui/evidence command logs with their path-scrubbed output: `npm ci` passed, `npm run typecheck` passed, and both `npm test` and the credential-free run passed 223 tests in 19 files. Regenerated test-collection.txt from `npx vitest list`: 190 on main 2af8f1d, 223 on the head, 33 UI tests added, 0 removed. No test, code, schema, dependency or configuration changes; screenshots and defect proofs unchanged. No live model calls, CI claim, merge or deployment.
+
+````text
+Regenerate stale-test-collection-evidence as part of Anna's already-authorized 'rerun the checks' request and the done-contract. No product or scope decision is needed: only captured validation evidence is being refreshed. Run the actual commands on the current rebased checkout (npm ci, npm run typecheck, npm test, and env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test), and copy their real, path-scrubbed outputs to the existing tests/ui/evidence command logs. Do not manufacture counts or hand-edit command results. Compare actual npx vitest list on current origin/main and this head, regenerate tests/ui/evidence/test-collection.txt with baseline SHA, 190 main / 223 head if confirmed, all 33 UI test names and removed tests accounted for. There should be no test/code/schema change. Align the evidence README with the observed results and say agent PR #4 is merged, while live UI-agent integration remains unexercised by this offline rebase task. Preserve the ten screenshots and existing defect proofs: UI behavior is unchanged. Preserve every original main/UI raw prompt and decision entry.
+
+Copy this exact file from /tmp/ui-agent-merge-evidence-fix.md with a tool to prompt-history/prompts/04r-ui-agent-merge-evidence-fix.md; append it verbatim to PROMPTS.md as automated cross-review instruction, no-mistakes v1.41.2 (Claude), run 01M3T02ME2Y028MRVA849KW9KN. Record the actual command results and completed rebase outcome for the 04o kickoff, without claiming CI or merge before they occur. Append a decision reason ending 'Decided by: Frontend engineer under standing orders'. Log the available review provenance with source file 04s-ui-agent-merge-review.md and PROMPTS.md: generated prompt text is unavailable in full step logs, supplied intent is 04p, observed delta-review log is reviewing changes..., blank line, claude started pid=291742, blank line, Checking the merged logs for fence balance, section numbering, and the referenced pre-rebase head., claude exited pid=291742 status=success. Retain the historical prompt text unchanged; current result and provenance may be appended.
+
+Keep all prior gate-fix commits. No application, engine, contracts, frozen config, dependency, global format or test changes; no live model calls, merges or deploys. Return control for the remaining gate steps. Final delivery/CI evidence will be reported in PR #5 by the driver.
+````
+
+## 31. UI agent-merge delta review provenance
+
+- Timestamp: 2026-09-30T20:46:08+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run 01M3T02ME2Y028MRVA849KW9KN
+- Source: prompt-history/prompts/04s-ui-agent-merge-review.md
+- Outcome: delta review of the rebase and logging changes completed. The complete generated review prompt is unavailable in the full step logs; only the lines below were observed. The supplied intent is entry 28 (04p-ui-agent-merge-gate-intent.md).
+
+````text
+The complete generated review prompt for the delta review of run 01M3T02ME2Y028MRVA849KW9KN is
+unavailable: the full step log exposed only the lines below, not the prompt the harness sent to
+Claude. The intent supplied to the gate is logged separately in
+prompt-history/prompts/04p-ui-agent-merge-gate-intent.md. The CLI reported version v1.41.2.
+Observed review lines, verbatim (blank lines shown as ""):
+
+reviewing changes...
+""
+claude started pid=291742
+""
+Checking the merged logs for fence balance, section numbering, and the referenced pre-rebase head.
+claude exited pid=291742 status=success
+````

@@ -1,0 +1,273 @@
+Command: rg -n 'cents|\.display|Math\.|parseFloat|toFixed|Intl\.|formatUsd|[+*/]' src/ui src/admin src/app.tsx
+
+src/app.tsx:2:import { Badge, Button } from "@cloudflare/kumo";
+src/app.tsx:6:} from "./contracts/http";
+src/app.tsx:7:import { Admin } from "./admin/admin";
+src/app.tsx:8:import { browserStorage, createApi, readSession, saveSession } from "./ui/api";
+src/app.tsx:9:import { createFixtureBackend } from "./ui/fixtures";
+src/app.tsx:10:import { FixtureChat, LiveChat } from "./ui/chat";
+src/app.tsx:11:import { ErrorNotice, InvoicePanel } from "./ui/components";
+src/app.tsx:13:// Set VITE_BILLING_API_MODE=live when the agent HTTP surface is available.
+src/app.tsx:20:// A single bootstrap promise prevents duplicate sandboxes during remounts.
+src/app.tsx:43:    const current = ++generation.current;
+src/app.tsx:62:      requests.current++;
+src/app.tsx:70:          <ErrorNotice error={error} retry={() => void refresh()} />
+src/app.tsx:71:        </div>
+src/app.tsx:78:        </output>
+src/app.tsx:86:            />
+src/app.tsx:88:            <LiveChat panel={panel} changed={() => void refresh()} />
+src/app.tsx:95:          />
+src/app.tsx:96:        </main>
+src/app.tsx:98:    </>
+src/app.tsx:149:          <label htmlFor="customer">Customer</label>
+src/app.tsx:159:              </option>
+src/app.tsx:161:          </select>
+src/app.tsx:162:        </div>
+src/app.tsx:169:        </Button>
+src/app.tsx:170:      </div>
+src/app.tsx:177:        </output>
+src/app.tsx:181:          <ErrorNotice error={error} retry={() => void reset()} />
+src/app.tsx:182:        </div>
+src/app.tsx:199:          />
+src/app.tsx:200:        </div>
+src/app.tsx:207:        />
+src/app.tsx:213:        </output>
+src/app.tsx:215:    </>
+src/app.tsx:219:  const admin = window.location.pathname.replace(/\/$/, "") === "/admin";
+src/app.tsx:223:        <a href="/" className="brand">
+src/app.tsx:224:          <span className="brand-mark">B</span>
+src/app.tsx:226:            Billing <strong>copilot</strong>
+src/app.tsx:227:          </span>
+src/app.tsx:228:        </a>
+src/app.tsx:230:          <Badge variant="secondary">Demo sandbox</Badge>
+src/app.tsx:231:          <span className="synthetic-label">Synthetic data only</span>
+src/app.tsx:232:        </div>
+src/app.tsx:233:      </header>
+src/app.tsx:236:          <span className="fixture-dot" />
+src/app.tsx:237:          <strong>Seed preview</strong>
+src/app.tsx:240:          </span>
+src/app.tsx:241:        </div>
+src/app.tsx:243:      {admin ? <Admin api={api} sessionMode={sessionMode} /> : <Demo />}
+src/app.tsx:245:        <span>Deterministic billing. Human decisions. An audit trail.</span>
+src/app.tsx:246:        <span>Built on Cloudflare</span>
+src/app.tsx:247:      </footer>
+src/app.tsx:248:    </div>
+src/admin/admin.tsx:2:import { Button } from "@cloudflare/kumo";
+src/admin/admin.tsx:6:} from "../contracts/http";
+src/admin/admin.tsx:13:} from "../ui/api";
+src/admin/admin.tsx:14:import { CreditStatus, ErrorNotice } from "../ui/components";
+src/admin/admin.tsx:72:    const current = ++generation.current;
+src/admin/admin.tsx:97:      requests.current++;
+src/admin/admin.tsx:151:          <span className="eyebrow">HUMAN APPROVAL</span>
+src/admin/admin.tsx:152:          <h1>Credit review</h1>
+src/admin/admin.tsx:153:          <p>Validate the claim. Record a decision and a reason.</p>
+src/admin/admin.tsx:154:        </div>
+src/admin/admin.tsx:161:        </Button>
+src/admin/admin.tsx:162:      </div>
+src/admin/admin.tsx:164:        <strong>Demo approval access</strong>
+src/admin/admin.tsx:168:        </p>
+src/admin/admin.tsx:169:      </div>
+src/admin/admin.tsx:170:      {Boolean(error) && <ErrorNotice error={error} />}
+src/admin/admin.tsx:171:      {notice && <output className="success-notice">{notice}</output>}
+src/admin/admin.tsx:172:      {busy && <output className="muted">Updating credit requests...</output>}
+src/admin/admin.tsx:175:          <h2>No credit requests</h2>
+src/admin/admin.tsx:176:          <p>Start a request in the billing chat, then refresh this list.</p>
+src/admin/admin.tsx:177:        </div>
+src/admin/admin.tsx:184:                <span className="eyebrow">{request.customerName}</span>
+src/admin/admin.tsx:186:                  {request.validatedAmount?.display ?? "Awaiting validation"}
+src/admin/admin.tsx:187:                </h2>
+src/admin/admin.tsx:188:              </div>
+src/admin/admin.tsx:189:              <CreditStatus status={request.status} />
+src/admin/admin.tsx:190:            </div>
+src/admin/admin.tsx:192:              {request.id} / {request.invoiceId}
+src/admin/admin.tsx:193:            </p>
+src/admin/admin.tsx:194:            <blockquote>{request.customerReason}</blockquote>
+src/admin/admin.tsx:198:              </p>
+src/admin/admin.tsx:207:                  <span className="muted">(required for both actions)</span>
+src/admin/admin.tsx:208:                </label>
+src/admin/admin.tsx:222:                />
+src/admin/admin.tsx:230:                  </Button>
+src/admin/admin.tsx:237:                  </Button>
+src/admin/admin.tsx:238:                </div>
+src/admin/admin.tsx:239:              </>
+src/admin/admin.tsx:245:              </p>
+src/admin/admin.tsx:251:              </p>
+src/admin/admin.tsx:253:          </section>
+src/admin/admin.tsx:255:      </div>
+src/admin/admin.tsx:256:      <a className="text-link back-link" href="/">
+src/admin/admin.tsx:258:      </a>
+src/admin/admin.tsx:259:    </main>
+src/ui/chat.tsx:2:import { Button } from "@cloudflare/kumo";
+src/ui/chat.tsx:3:import { useAgent } from "agents/react";
+src/ui/chat.tsx:4:import { useAgentChat } from "@cloudflare/ai-chat/react";
+src/ui/chat.tsx:14:} from "../contracts/http";
+src/ui/chat.tsx:15:import { ToolSchemas } from "../contracts/tools";
+src/ui/chat.tsx:16:import { browserStorage } from "./api";
+src/ui/chat.tsx:17:import { type FixtureBackend } from "./fixtures";
+src/ui/chat.tsx:18:import { Messages, ErrorNotice } from "./components";
+src/ui/chat.tsx:19:import { suggestions, validatedTool } from "./messages";
+src/ui/chat.tsx:61:          <span className="eyebrow">BILLING ASSISTANT</span>
+src/ui/chat.tsx:62:          <h1>Understand every charge.</h1>
+src/ui/chat.tsx:63:          <p>Ask a question. Follow the evidence.</p>
+src/ui/chat.tsx:64:        </div>
+src/ui/chat.tsx:65:        <span className="grounded-label">Tools do the math</span>
+src/ui/chat.tsx:66:      </div>
+src/ui/chat.tsx:69:          <div className="welcome-mark">B</div>
+src/ui/chat.tsx:70:          <h2>Your bill, explained.</h2>
+src/ui/chat.tsx:74:          </p>
+src/ui/chat.tsx:75:        </div>
+src/ui/chat.tsx:81:      />
+src/ui/chat.tsx:82:      {busy && <output className="working">Checking billing records...</output>}
+src/ui/chat.tsx:84:        <output className="working">Connecting to your billing agent...</output>
+src/ui/chat.tsx:87:        <ErrorNotice error={error || submitError} />
+src/ui/chat.tsx:98:            </button>
+src/ui/chat.tsx:100:        </div>
+src/ui/chat.tsx:104:          </p>
+src/ui/chat.tsx:115:          </label>
+src/ui/chat.tsx:134:          />
+src/ui/chat.tsx:138:            </Button>
+src/ui/chat.tsx:146:            </Button>
+src/ui/chat.tsx:148:        </form>
+src/ui/chat.tsx:151:        </p>
+src/ui/chat.tsx:152:      </div>
+src/ui/chat.tsx:153:    </section>
+src/ui/chat.tsx:188:    />
+src/ui/chat.tsx:207:      // Accept only the fixture message shapes and validated tool parts we produce.
+src/ui/chat.tsx:230:      /* Chat is still usable without persistence. */
+src/ui/chat.tsx:302:    />
+src/ui/fixtures.ts:10:} from "../contracts/http";
+src/ui/fixtures.ts:11:import { BillingDatasetSchema, type BillingDataset } from "../contracts/engine";
+src/ui/fixtures.ts:17:} from "../contracts/credit";
+src/ui/fixtures.ts:18:import { LedgerEntrySchema } from "../contracts/billing";
+src/ui/fixtures.ts:19:import { type ToolInput, ToolSchemas } from "../contracts/tools";
+src/ui/fixtures.ts:20:import { engine } from "../engine";
+src/ui/fixtures.ts:21:import { fixtureAnswer } from "./messages";
+src/ui/fixtures.ts:22:import { type StoragePort, type Transport } from "./api";
+src/ui/fixtures.ts:24:// Data and monetary outputs come exclusively from the shared deterministic engine.
+src/ui/fixtures.ts:38:    .replaceAll("+", "-")
+src/ui/fixtures.ts:39:    .replaceAll("/", "_")
+src/ui/fixtures.ts:125:      /* In-memory demo remains available. */
+src/ui/fixtures.ts:142:      /* Fall back to this tab's validated data. */
+src/ui/fixtures.ts:156:      seq: world.data.audit.length + 1,
+src/ui/fixtures.ts:170:    if (path === "/api/sandboxes" && init?.method === "POST") {
+src/ui/fixtures.ts:174:        seq: data.audit.length + 1,
+src/ui/fixtures.ts:186:    const parts = path.split("/");
+src/ui/fixtures.ts:429:        deadline.setUTCDate(deadline.getUTCDate() + 1);
+src/ui/messages.ts:7:} from "../contracts/tools";
+src/ui/messages.ts:8:import { TurnRequestSchema, type PanelResponse } from "../contracts/http";
+src/ui/messages.ts:9:import { type BillingDataset } from "../contracts/engine";
+src/ui/messages.ts:10:import { engine } from "../engine";
+src/ui/messages.ts:29:  if ("display" in value && typeof value.display === "string")
+src/ui/messages.ts:30:    return [value.display];
+src/ui/messages.ts:49:      `(?<![\\w-])${item.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`,
+src/ui/messages.ts:64:  if (/credit|double|duplicate/i.test(message)) {
+src/ui/messages.ts:99:  } else if (/changed|august|compare/i.test(message)) {
+src/ui/messages.ts:135:    text = `${plan.name} would cost ${simulation.simulatedTotal.display} for the same usage, compared with ${simulation.actualTotal.display}. Difference (simulated minus actual): ${simulation.difference.display}. ${simulation.assumptions.join(" ")}`;
+src/ui/messages.ts:139:    text = /spike|anomal/i.test(message)
+src/ui/messages.ts:141:      : `Your ${billed.period} invoice is ${billed.total.display}. ${billed.lines.map((line) => `${line.description}: ${line.amount.display}.`).join(" ")} `;
+src/ui/messages.ts:146:    text += anomalies.anomalies.length
+src/ui/messages.ts:150:              `${anomaly.meterName} on ${anomaly.date}: ${anomaly.multiple.display} the engine baseline; estimated excess cost ${anomaly.estimatedExcessCost.display}.`
+src/ui/api.ts:12:} from "../contracts/http";
+src/ui/api.ts:17:} from "../contracts/ids";
+src/ui/api.ts:82:            "Content-Type": "application/json"
+src/ui/api.ts:137:  return `/admin#${new URLSearchParams({ sandbox: session.sandboxId, token: session.approverToken })}`;
+src/ui/errors.ts:5:} from "../contracts/http";
+src/ui/errors.ts:6:import { ApiError } from "./api";
+src/ui/components.tsx:2:import { Badge, Button } from "@cloudflare/kumo";
+src/ui/components.tsx:7:} from "../contracts/http";
+src/ui/components.tsx:8:import { ToolSchemas } from "../contracts/tools";
+src/ui/components.tsx:9:import { adminLink } from "./api";
+src/ui/components.tsx:10:import { describeError } from "./errors";
+src/ui/components.tsx:11:import { validatedTool, displayValues } from "./messages";
+src/ui/components.tsx:23:      <strong>{view.title}</strong>
+src/ui/components.tsx:24:      <p>{view.message}</p>
+src/ui/components.tsx:25:      {view.detail && <p>{view.detail}</p>}
+src/ui/components.tsx:29:        </Button>
+src/ui/components.tsx:31:    </div>
+src/ui/components.tsx:38:    </span>
+src/ui/components.tsx:66:          </div>
+src/ui/components.tsx:72:                </p>
+src/ui/components.tsx:89:                  />
+src/ui/components.tsx:97:                  <span className="eyebrow">YOUR CONFIRMATION</span>
+src/ui/components.tsx:98:                  <h3>Request a credit?</h3>
+src/ui/components.tsx:101:                    <span className="identifier">{claim.data.invoiceId}</span>
+src/ui/components.tsx:102:                  </p>
+src/ui/components.tsx:103:                  <blockquote>{claim.data.reason}</blockquote>
+src/ui/components.tsx:107:                  </p>
+src/ui/components.tsx:115:                    </Button>
+src/ui/components.tsx:122:                    </Button>
+src/ui/components.tsx:123:                  </div>
+src/ui/components.tsx:124:                </section>
+src/ui/components.tsx:131:                <Badge variant="secondary">{name}</Badge>
+src/ui/components.tsx:142:                </span>
+src/ui/components.tsx:145:                    <summary>View source values</summary>
+src/ui/components.tsx:149:                    </p>
+src/ui/components.tsx:150:                  </details>
+src/ui/components.tsx:153:                  <p>{tool.part.errorText}</p>
+src/ui/components.tsx:155:              </div>
+src/ui/components.tsx:158:        </article>
+src/ui/components.tsx:160:    </div>
+src/ui/components.tsx:178:        <h2>Account snapshot</h2>
+src/ui/components.tsx:181:        </Button>
+src/ui/components.tsx:182:      </div>
+src/ui/components.tsx:185:          <span className="eyebrow">CURRENT INVOICE</span>
+src/ui/components.tsx:186:          <span className="period">{invoice.period}</span>
+src/ui/components.tsx:187:        </div>
+src/ui/components.tsx:188:        <div className="invoice-total">{invoice.total.display}</div>
+src/ui/components.tsx:190:          {panel.plan.name} plan <span className="separator">/</span>{" "}
+src/ui/components.tsx:192:        </p>
+src/ui/components.tsx:196:              <dt>{line.description}</dt>
+src/ui/components.tsx:197:              <dd>{line.amount.display}</dd>
+src/ui/components.tsx:198:            </div>
+src/ui/components.tsx:200:        </dl>
+src/ui/components.tsx:203:            <dt>Subtotal</dt>
+src/ui/components.tsx:204:            <dd>{invoice.subtotal.display}</dd>
+src/ui/components.tsx:205:          </div>
+src/ui/components.tsx:207:            <dt>Credits</dt>
+src/ui/components.tsx:208:            <dd>{invoice.credits.display}</dd>
+src/ui/components.tsx:209:          </div>
+src/ui/components.tsx:211:            <dt>Tax</dt>
+src/ui/components.tsx:212:            <dd>{invoice.tax.display}</dd>
+src/ui/components.tsx:213:          </div>
+src/ui/components.tsx:215:            <dt>Invoice total</dt>
+src/ui/components.tsx:216:            <dd>{invoice.total.display}</dd>
+src/ui/components.tsx:217:          </div>
+src/ui/components.tsx:218:        </dl>
+src/ui/components.tsx:220:          <span>Ledger balance</span>
+src/ui/components.tsx:221:          <strong>{panel.balance.display}</strong>
+src/ui/components.tsx:222:        </div>
+src/ui/components.tsx:226:        </p>
+src/ui/components.tsx:227:      </section>
+src/ui/components.tsx:230:          <h2>Credit requests</h2>
+src/ui/components.tsx:238:          </a>
+src/ui/components.tsx:239:        </div>
+src/ui/components.tsx:241:          <p className="muted">No credit requests yet.</p>
+src/ui/components.tsx:247:                  {request.validatedAmount?.display ?? "Awaiting validation"}
+src/ui/components.tsx:248:                </strong>
+src/ui/components.tsx:249:                <CreditStatus status={request.status} />
+src/ui/components.tsx:250:              </div>
+src/ui/components.tsx:251:              <p>{request.customerReason}</p>
+src/ui/components.tsx:255:                </p>
+src/ui/components.tsx:258:                <p className="small muted">{request.outcomeReason}</p>
+src/ui/components.tsx:260:            </div>
+src/ui/components.tsx:263:      </section>
+src/ui/components.tsx:265:        <h2>Audit trail</h2>
+src/ui/components.tsx:268:        </p>
+src/ui/components.tsx:270:          <p className="muted">No audit records yet.</p>
+src/ui/components.tsx:277:                  <span className="audit-dot" />
+src/ui/components.tsx:278:                  <strong>{record.action.replaceAll("_", " ")}</strong>
+src/ui/components.tsx:279:                  <p>{record.reason}</p>
+src/ui/components.tsx:283:                    </time>
+src/ui/components.tsx:284:                    <br />
+src/ui/components.tsx:285:                    <span className="identifier">{record.actor}</span>
+src/ui/components.tsx:286:                  </p>
+src/ui/components.tsx:288:                    <summary>Record #{record.seq}</summary>
+src/ui/components.tsx:291:                    </p>
+src/ui/components.tsx:298:                    </pre>
+src/ui/components.tsx:299:                  </details>
+src/ui/components.tsx:300:                </li>
+src/ui/components.tsx:302:          </ol>
+src/ui/components.tsx:304:      </section>
+src/ui/components.tsx:305:    </aside>
+
+Review: no monetary arithmetic or local formatting. All billing values come from engine functions; approved credits copy the validated memo amount. Other arithmetic concerns audit sequences, response generations, deadline dates, sorting, identifiers and escaping seeded plan names in the chat routing pattern.

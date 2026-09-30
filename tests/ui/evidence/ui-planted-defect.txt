@@ -1,0 +1,47 @@
+
+ RUN  v4.1.11 <repo>
+
+ ❯ |unit| tests/ui/fixtures.test.ts (8 tests | 1 failed | 7 skipped) 85ms
+     × derives every customer's plan, invoice, balance, history and customers from the shared seed 83ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 skipped (8)
+   Start at  20:02:27
+   Duration  1.18s (transform 427ms, setup 88ms, import 677ms, tests 85ms, environment 0ms)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| tests/ui/fixtures.test.ts > interactive fixture backend > derives every customer's plan, invoice, balance, history and customers from the shared seed
+AssertionError: expected [ { customerId: 'cus_1', …(1) }, …(2) ] to deeply equal [ { customerId: 'cus_1', …(1) }, …(2) ]
+
+- Expected
++ Received
+
+  [
+    {
+      "customerId": "cus_1",
+-     "name": "Velvet Comet Workshop",
++     "name": "Nimbus Studio",
+    },
+    {
+      "customerId": "cus_2",
+-     "name": "Paper Nebula Foundry",
++     "name": "Nimbus Studio",
+    },
+    {
+      "customerId": "cus_3",
+-     "name": "Amber Kite Observatory",
++     "name": "Nimbus Studio",
+    },
+  ]
+
+ ❯ tests/ui/fixtures.test.ts:13:31
+     11|     const api = createApi(createFixtureBackend(memoryStorage()).transp…
+     12|     const session = await api.createSandbox();
+     13|     expect(session.customers).toEqual(data.customers.map(({ id, name }…
+       |                               ^
+     14|     for (const customer of data.customers) {
+     15|       const panel = await api.panel(session.sandboxId, customer.id);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯

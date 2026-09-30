@@ -1,0 +1,37 @@
+
+ RUN  v4.1.11 <repo>
+
+ ❯ |unit| tests/ui/messages.test.ts (7 tests | 1 failed | 6 skipped) 64ms
+     × answers ordinary invoice questions without simulating an unnamed plan 61ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| tests/ui/messages.test.ts > tool evidence and confirmation > answers ordinary invoice questions without simulating an unnamed plan
+AssertionError: expected [ 'simulatePlan', undefined ] to deeply equal [ 'getInvoice', …(2) ]
+
+- Expected
++ Received
+
+  [
+-   "getInvoice",
+-   "detectAnomalies",
++   "simulatePlan",
+    undefined,
+  ]
+
+ ❯ tests/ui/messages.test.ts:128:69
+    126|     ]) {
+    127|       const answer = fixtureAnswer(message, panel, data);
+    128|       expect(answer.parts.map((part) => validatedTool(part)?.name)).to…
+       |                                                                     ^
+    129|         "getInvoice",
+    130|         "detectAnomalies",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Start at  20:19:21
+   Duration  793ms (transform 245ms, setup 38ms, import 477ms, tests 64ms, environment 0ms)
+

@@ -1,0 +1,45 @@
+Baseline: origin/main 2af8f1d (agent PR #4 merged).
+Head: feat/ui 37b4883 rebased on 2af8f1d.
+Command: npx vitest list on each checkout.
+Main: 190 tests.
+Head: 223 tests.
+Removed: 0.
+Added: 33.
+
+Added test names:
+[unit] tests/ui/api.test.ts > HTTP boundary > rejects a malformed success payload instead of rendering it
+[unit] tests/ui/api.test.ts > HTTP boundary > rejects a valid panel for a different sandbox or customer
+[unit] tests/ui/api.test.ts > HTTP boundary > sends token only in the bearer header and trims the decision reason
+[unit] tests/ui/api.test.ts > HTTP boundary > validates ids before transport and rejects empty decision reasons
+[unit] tests/ui/api.test.ts > error presentation > gives budget_exhausted a distinct state with the server message
+[unit] tests/ui/api.test.ts > error presentation > gives cap_reached a distinct state with the server message
+[unit] tests/ui/api.test.ts > error presentation > gives conflict a distinct state with the server message
+[unit] tests/ui/api.test.ts > error presentation > gives internal a distinct state with the server message
+[unit] tests/ui/api.test.ts > error presentation > gives invalid_request a distinct state with the server message
+[unit] tests/ui/api.test.ts > error presentation > gives not_found a distinct state with the server message
+[unit] tests/ui/api.test.ts > error presentation > gives rate_limited a distinct state with the server message
+[unit] tests/ui/api.test.ts > error presentation > gives unauthorized a distinct state with the server message
+[unit] tests/ui/api.test.ts > error presentation > handles SDK JSON errors, a rate window and unstructured network failures
+[unit] tests/ui/api.test.ts > sandbox persistence and approval links > handles blocked storage, corrupt JSON and invalid stored tokens
+[unit] tests/ui/api.test.ts > sandbox persistence and approval links > ignores sessions from the old hand-made preview
+[unit] tests/ui/api.test.ts > sandbox persistence and approval links > keeps fixture and live sessions separate
+[unit] tests/ui/api.test.ts > sandbox persistence and approval links > places sandbox and token in the fragment, never the query
+[unit] tests/ui/api.test.ts > sandbox persistence and approval links > round-trips a validated session and replaces it on reset
+[unit] tests/ui/fixtures.test.ts > interactive fixture backend > boots three customers and keeps resets and customers isolated
+[unit] tests/ui/fixtures.test.ts > interactive fixture backend > confirmation creates one pending request, retry reuses it and records source values
+[unit] tests/ui/fixtures.test.ts > interactive fixture backend > derives every customer's plan, invoice, balance, history and customers from the shared seed
+[unit] tests/ui/fixtures.test.ts > interactive fixture backend > persists approve across tabs and refuses a conflicting decision
+[unit] tests/ui/fixtures.test.ts > interactive fixture backend > persists reject across tabs and refuses a conflicting decision
+[unit] tests/ui/fixtures.test.ts > interactive fixture backend > refuses wrong tokens, unknown sandboxes and expired requests
+[unit] tests/ui/fixtures.test.ts > interactive fixture backend > rejects a credit on a customer with no duplicated debit using the engine explanation
+[unit] tests/ui/fixtures.test.ts > interactive fixture backend > uses engine credit validation and balance before and after a credit without changing the invoice
+[unit] tests/ui/messages.test.ts > tool evidence and confirmation > answers ordinary invoice questions without simulating an unnamed plan
+[unit] tests/ui/messages.test.ts > tool evidence and confirmation > copies Money, Percent and Multiple display strings without formatting numeric fields
+[unit] tests/ui/messages.test.ts > tool evidence and confirmation > copies comparison, simulation and anomaly outputs from the shared engine
+[unit] tests/ui/messages.test.ts > tool evidence and confirmation > grounds the fixture invoice answer in a validated tool output
+[unit] tests/ui/messages.test.ts > tool evidence and confirmation > uses the seeded duplicate id and refuses unsupported duplicate claims
+[unit] tests/ui/messages.test.ts > tool evidence and confirmation > validates both tool boundaries and rejects unknown tool names
+[unit] tests/ui/messages.test.ts > tool evidence and confirmation > waits for customer approval before starting a credit and validates the claim
+
+Removed test names:
+None.

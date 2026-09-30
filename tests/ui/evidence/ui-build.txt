@@ -1,0 +1,28 @@
+vite v8.1.5 building cf_billing_copilot environment for production...
+
+transforming...✓ 407 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/cf_billing_copilot/.vite/manifest.json                      0.72 kB │ gzip:   0.25 kB
+dist/cf_billing_copilot/wrangler.json                            2.16 kB │ gzip:   1.07 kB
+dist/cf_billing_copilot/assets/rolldown-runtime-FZ4Itg2g.js      1.75 kB │ gzip:   0.79 kB
+dist/cf_billing_copilot/assets/mimetext.node.es-XDAeDDTm.js    230.81 kB │ gzip:  32.78 kB
+dist/cf_billing_copilot/index.js                             1,451.72 kB │ gzip: 343.44 kB
+
+✓ built in 429ms
+vite v8.1.5 building client environment for production...
+
+transforming...✓ 4808 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/client/.assetsignore                0.02 kB
+dist/client/index.html                   0.69 kB │ gzip:   0.40 kB
+dist/client/assets/index-ChYBDiKC.css  152.54 kB │ gzip:  25.06 kB
+dist/client/assets/index-bm6ch21Q.js   588.07 kB │ gzip: 176.67 kB
+
+✓ built in 1.70s
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
