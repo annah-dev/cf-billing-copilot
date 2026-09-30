@@ -36,15 +36,21 @@ export function newTurnStats(): TurnStats {
   };
 }
 
+/** Chat-template special tokens per message (header, role, end-of-turn), rounded up. */
+const TEMPLATE_TOKENS_PER_MESSAGE = 8;
+
 /**
- * Upper-bound estimate of prompt tokens: one token per 3 characters of the serialised prompt and
- * tool definitions (Llama 3's tokenizer averages about 4 characters per token on English and JSON).
+ * Upper bound on prompt tokens: the UTF-8 byte length of the serialised prompt and tool
+ * definitions, plus the chat template's special tokens per message. Llama 3's tokenizer is
+ * byte-level BPE, so every text token covers at least one byte; serialising adds characters but
+ * never removes any. Typical text is about 4 bytes per token, so this over-reserves about 3 to 4
+ * times; the reservation is settled with the real usage right after the call.
  */
 export function estimateInputTokens(params: CallOptions): number {
-  const chars =
-    JSON.stringify(params.prompt).length +
-    JSON.stringify(params.tools ?? []).length;
-  return Math.ceil(chars / 3);
+  const bytes = new TextEncoder().encode(
+    JSON.stringify(params.prompt) + JSON.stringify(params.tools ?? [])
+  ).byteLength;
+  return bytes + TEMPLATE_TOKENS_PER_MESSAGE * (params.prompt.length + 1);
 }
 
 function fixedResult(text: string): GenerateResult {
@@ -100,6 +106,10 @@ export function budgetMiddleware(
         stats.inputTokens += input;
         stats.outputTokens += output;
         actual = estimateNeurons(input, output);
+        if (actual > estimate) {
+          // Recorded as spent (never clamped); the estimate is meant to be an upper bound.
+          console.error("neuron estimate exceeded", { estimate, actual });
+        }
         return result;
       } finally {
         // A failed call is settled at its estimate: the budget errs on the safe side.
