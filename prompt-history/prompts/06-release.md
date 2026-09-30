@@ -32,7 +32,11 @@ Do, in order:
    demo script (5 clicks or questions covering every user story); local setup; deploy commands for
    the owner; eval results with the live run's pass rate and date; known limitations and what a
    production billing platform needs next; an honest note that it was built with AI-assisted
-   coding under the owner's direction. Keep the existing "Cost and abuse controls" section (D-13).
+   coding under the owner's direction; the Llama 3.3 streaming finding (docs/DECISIONS.md DEV-16
+   and D-14): with native streaming the tool arguments arrived garbled (quote the evidence
+   recorded in DEV-16), on both the pinned and the newest provider versions, and the fix is the AI
+   SDK's simulated streaming. Keep the existing "Cost and abuse controls" section (D-13) and the
+   scope line about duplicated debits versus refunds.
    Put the demo URL at the top once the owner gives it to you.
 3. **Release checklist** in the README: deploy steps the owner runs, the smoke test of the credit
    flow end to end, and the off switch: disable the workers.dev route in the Cloudflare dashboard,
