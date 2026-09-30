@@ -34,9 +34,6 @@ const MAX_REMEMBERED_QUESTIONS = 8;
 const QUESTION_CHARS = 160;
 const MAX_TRACKED_TURNS = 16;
 
-/** The /turn endpoint marks its user messages so the turn runs headless (no confirmation UI). */
-export const HEADLESS_CHANNEL = "turn";
-
 /** Broadcast to connected chat clients when a credit request changes state. */
 export type CreditUpdateMessage = {
   type: "credit-request-update";
@@ -91,9 +88,18 @@ export class BillingAgent extends AIChatAgent<Env> {
   /** Turn accounting keyed by the user message id that started the turn (read by /turn). */
   private turns = new Map<string, TurnRecord>();
 
+  /**
+   * User message ids submitted by headlessTurn (POST .../turn). Server-side only: a chat client
+   * cannot mark its own message headless (message metadata is client-controlled).
+   */
+  private headlessMessageIds = new Set<string>();
+
   async onStart(): Promise<void> {
     this
       .sql`CREATE TABLE IF NOT EXISTS billing_memory (key TEXT PRIMARY KEY, value TEXT NOT NULL)`;
+    // Every agent the SDK creates, even one whose first message is refused or whose client only
+    // connects, gets an idle deletion schedule (D-5).
+    await this.ensureIdleSchedule();
   }
 
   private identity(): { sandboxId: string; customerId: string } {
@@ -166,29 +172,63 @@ export class BillingAgent extends AIChatAgent<Env> {
 
   // ---- Idle deletion (D-5): the SDK scheduler multiplexes onto this object's alarm -------------
 
-  private async touchActivity(): Promise<void> {
-    const now = Date.now();
-    this.writeKey("last_activity_at", now);
-    if (!this.readKey<string | null>("idle_schedule", null)) {
-      const idleMs = getConfig(this.env).SANDBOX_IDLE_DAYS * DAY_MS;
-      const schedule = await this.schedule(new Date(now + idleMs), "idleSweep");
-      this.writeKey("idle_schedule", schedule.id);
+  private idleMs(): number {
+    return getConfig(this.env).SANDBOX_IDLE_DAYS * DAY_MS;
+  }
+
+  /** Keep exactly one pending idleSweep, due SANDBOX_IDLE_DAYS after the last activity. */
+  private async ensureIdleSchedule(): Promise<void> {
+    let last = this.readKey<number | null>("last_activity_at", null);
+    if (last === null) {
+      last = Date.now();
+      this.writeKey("last_activity_at", last);
     }
+    const id = this.readKey<string | null>("idle_schedule", null);
+    if (id && this.getSchedule(id)) return;
+    await this.armIdleSweep(last + this.idleMs());
+  }
+
+  private async armIdleSweep(at: number): Promise<void> {
+    const now = Date.now();
+    for (const pending of this.getSchedules()) {
+      if (pending.callback === "idleSweep" && pending.time * 1000 > now) {
+        await this.cancelSchedule(pending.id);
+      }
+    }
+    const schedule = await this.schedule(new Date(at), "idleSweep");
+    this.writeKey("idle_schedule", schedule.id);
+  }
+
+  private async touchActivity(): Promise<void> {
+    this.writeKey("last_activity_at", Date.now());
+    await this.ensureIdleSchedule();
   }
 
   /** Scheduled callback: delete this agent's storage after SANDBOX_IDLE_DAYS without activity. */
   async idleSweep(): Promise<void> {
-    const idleMs = getConfig(this.env).SANDBOX_IDLE_DAYS * DAY_MS;
     const last = this.readKey<number>("last_activity_at", 0);
-    if (last + idleMs > Date.now()) {
-      const schedule = await this.schedule(
-        new Date(last + idleMs),
-        "idleSweep"
-      );
-      this.writeKey("idle_schedule", schedule.id);
+    if (last + this.idleMs() > Date.now()) {
+      await this.armIdleSweep(last + this.idleMs());
       return;
     }
     await this.destroy();
+  }
+
+  /**
+   * True when this continuation resumes a credit confirmation the customer just answered: the
+   * newest assistant message has a tool part in `approval-responded`. Any other continuation (for
+   * example an approval frame for an unknown or already-answered tool call, which the SDK still
+   * continues) is charged against the message cap like a new message.
+   */
+  private answeredConfirmationPending(): boolean {
+    const assistant = [...this.messages]
+      .reverse()
+      .find((m) => m.role === "assistant");
+    return (
+      assistant?.parts.some(
+        (p) => "state" in p && p.state === "approval-responded"
+      ) ?? false
+    );
   }
 
   // ---- Credit requests ------------------------------------------------------------------------
@@ -280,19 +320,22 @@ export class BillingAgent extends AIChatAgent<Env> {
       if (this.turns.size <= MAX_TRACKED_TURNS) break;
       this.turns.delete(key);
     }
-    const headless =
-      (lastUser?.metadata as { channel?: string } | undefined)?.channel ===
-      HEADLESS_CHANNEL;
+    const headless = lastUser
+      ? this.headlessMessageIds.has(lastUser.id)
+      : false;
+    const continuation = options?.continuation ?? false;
 
-    if (!options?.continuation) {
-      const text = textOf(lastUser);
-      if (text.length > config.MESSAGE_MAX_CHARS) {
-        record.capRefusal = refusal(
-          400,
-          "invalid_request",
-          `Messages are limited to ${config.MESSAGE_MAX_CHARS} characters. Please shorten your message.`
-        );
-        return fixedTextResponse(record.capRefusal.message);
+    if (!continuation || !this.answeredConfirmationPending()) {
+      if (!continuation) {
+        const text = textOf(lastUser);
+        if (text.length > config.MESSAGE_MAX_CHARS) {
+          record.capRefusal = refusal(
+            400,
+            "invalid_request",
+            `Messages are limited to ${config.MESSAGE_MAX_CHARS} characters. Please shorten your message.`
+          );
+          return fixedTextResponse(record.capRefusal.message);
+        }
       }
       const cap = await this.ledger().consumeMessage();
       if (!cap.ok) {
@@ -309,7 +352,7 @@ export class BillingAgent extends AIChatAgent<Env> {
             : cap.message
         );
       }
-      this.rememberQuestion(text);
+      if (!continuation) this.rememberQuestion(textOf(lastUser));
       await this.touchActivity();
     }
 
@@ -332,7 +375,7 @@ export class BillingAgent extends AIChatAgent<Env> {
       }),
       system: systemPrompt(this.memory(), utcDay(Date.now())),
       messages: await historyForModel(this.messages, {
-        continuation: options?.continuation ?? false
+        continuation
       }),
       tools,
       stopWhen: stepCountIs(MAX_STEPS),
@@ -352,10 +395,14 @@ export class BillingAgent extends AIChatAgent<Env> {
     const userMessage: UIMessage = {
       id: crypto.randomUUID(),
       role: "user",
-      parts: [{ type: "text", text: message }],
-      metadata: { channel: HEADLESS_CHANNEL }
+      parts: [{ type: "text", text: message }]
     };
-    await this.saveMessages((messages) => [...messages, userMessage]);
+    this.headlessMessageIds.add(userMessage.id);
+    try {
+      await this.saveMessages((messages) => [...messages, userMessage]);
+    } finally {
+      this.headlessMessageIds.delete(userMessage.id);
+    }
     const record = this.turns.get(userMessage.id);
     this.turns.delete(userMessage.id);
     if (!record) return refusal(500, "internal", "The turn did not run");

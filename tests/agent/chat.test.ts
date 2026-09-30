@@ -11,6 +11,7 @@ import {
   call,
   countRows,
   createSandbox,
+  ledgerOf,
   requestIdFor,
   stubAi,
   text,
@@ -60,11 +61,12 @@ async function connect(sandboxId: string) {
   return { ws, frames, until };
 }
 
-function chatRequest(id: string, message: string) {
+function chatRequest(id: string, message: string, metadata?: unknown) {
   const user: UIMessage = {
     id: `u_${id}`,
     role: "user",
-    parts: [{ type: "text", text: message }]
+    parts: [{ type: "text", text: message }],
+    ...(metadata === undefined ? {} : { metadata })
   };
   return JSON.stringify({
     type: "cf_agent_use_chat_request",
@@ -171,6 +173,116 @@ describe("chat channel (WebSocket)", () => {
     );
     expect((await creditPart(sb.sandboxId)).state).toBe("output-denied");
     expect(await countRows(sb.sandboxId, "credit_requests")).toBe(1);
+    ws.close();
+  });
+
+  it("ignores client metadata that claims the headless channel", async () => {
+    const sb = await createSandbox();
+    const { ws, until } = await connect(sb.sandboxId);
+    stubAi([
+      toolCall("startCreditRequest", {
+        invoiceId: INV_SEP,
+        disputedLedgerEntryId: DUP_ENTRY,
+        reason: "charged twice"
+      })
+    ]);
+    ws.send(chatRequest("r1", "I was double-charged", { channel: "turn" }));
+    await until(responseDone, "first response");
+    expect((await creditPart(sb.sandboxId)).state).toBe("approval-requested");
+    expect(await countRows(sb.sandboxId, "credit_requests")).toBe(1);
+    ws.close();
+  });
+
+  it("counts approval frames with no pending confirmation against the message cap", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    const messagesUsed = () =>
+      countRows(sb.sandboxId, "counters", "name = 'messages'").then(async (n) =>
+        n === 0
+          ? 0
+          : runInDurableObject(
+              ledgerOf(sb.sandboxId),
+              (_i, s) =>
+                s.storage.sql
+                  .exec<{ count: number }>(
+                    "SELECT count FROM counters WHERE name = 'messages'"
+                  )
+                  .one().count
+            )
+      );
+    const bogus = (toolCallId: string) =>
+      JSON.stringify({
+        type: "cf_agent_tool_approval",
+        toolCallId,
+        approved: true,
+        autoContinue: true
+      });
+
+    // Below the cap: each fabricated continuation is charged as a message.
+    stubAi([text("one"), text("two")]);
+    for (const [i, id] of ["nope_1", "nope_2"].entries()) {
+      const before = frames.length;
+      ws.send(bogus(id));
+      await until(
+        (f) => responseDone(f) && frames.indexOf(f) >= before,
+        `fabricated continuation ${i}`
+      );
+    }
+    expect(await messagesUsed()).toBe(2);
+
+    // At the cap: a fabricated continuation gets the fixed message and no model call.
+    const limit = Number(env.MESSAGES_PER_SANDBOX_DAY);
+    await runInDurableObject(ledgerOf(sb.sandboxId), (_i, s) => {
+      s.storage.sql.exec(
+        "UPDATE counters SET count = ? WHERE name = 'messages'",
+        limit
+      );
+    });
+    const ai = stubAi([text("should not be used")]);
+    const before = frames.length;
+    ws.send(bogus("nope_3"));
+    await until(
+      (f) => responseDone(f) && frames.indexOf(f) >= before,
+      "capped continuation"
+    );
+    expect(ai).not.toHaveBeenCalled();
+    ws.close();
+  });
+
+  it("charges one message for a confirmed credit request, not two", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    stubAi([
+      toolCall("startCreditRequest", {
+        invoiceId: INV_SEP,
+        disputedLedgerEntryId: DUP_ENTRY,
+        reason: "charged twice"
+      })
+    ]);
+    ws.send(chatRequest("r1", "I was double-charged"));
+    await until(responseDone, "first response");
+    const proposed = await creditPart(sb.sandboxId);
+    stubAi([text("Recorded.")]);
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({
+        type: "cf_agent_tool_approval",
+        toolCallId: proposed.toolCallId,
+        approved: true,
+        autoContinue: true
+      })
+    );
+    await until(
+      (f) => responseDone(f) && frames.indexOf(f) >= before,
+      "continuation response"
+    );
+    expect(
+      await countRows(
+        sb.sandboxId,
+        "counters",
+        "name = 'messages' AND count = 1"
+      )
+    ).toBe(1);
     ws.close();
   });
 });

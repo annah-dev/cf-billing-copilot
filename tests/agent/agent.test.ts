@@ -10,9 +10,11 @@ import {
   settleUnansweredApprovals,
   trimHistory
 } from "../../src/agent/history";
+import { estimateInputTokens } from "../../src/agent/model";
 import { buildTools, type ToolHost } from "../../src/agent/tools";
 import { ACME, DUP_ENTRY, INV_SEP } from "./support/fake-engine";
 import {
+  call,
   countRows,
   createSandbox,
   ledgerOf,
@@ -388,5 +390,52 @@ describe("memory and history", () => {
         .filter((n) => n === "billing_memory" || n.startsWith("cf_ai_chat"));
     });
     expect(tables).toEqual([]);
+  });
+
+  it("schedules idle deletion even when no message is ever accepted", async () => {
+    // Connect and abandon: the SDK creates storage for the agent on connect.
+    const abandoned = await createSandbox();
+    const res = await call(
+      `/agents/billing-agent/${abandoned.sandboxId}.${ACME}`,
+      { headers: { Upgrade: "websocket" } }
+    );
+    expect(res.status).toBe(101);
+    res.webSocket?.accept();
+    res.webSocket?.close();
+    const a = await agentOf(abandoned.sandboxId);
+    expect(
+      await runInDurableObject(a, (x) =>
+        x.getSchedules().map((s) => s.callback)
+      )
+    ).toContain("idleSweep");
+
+    // First message refused by the cap: no model call, but deletion is still scheduled.
+    const refused = await createSandbox();
+    await runInDurableObject(ledgerOf(refused.sandboxId), (_i, s) => {
+      s.storage.sql.exec(
+        "INSERT INTO counters (name, day, count) VALUES ('messages', ?, ?)",
+        new Date().toISOString().slice(0, 10),
+        Number(env.MESSAGES_PER_SANDBOX_DAY)
+      );
+    });
+    stubAi([]);
+    expect((await turn(refused.sandboxId, ACME, "hi")).status).toBe(429);
+    const r = await agentOf(refused.sandboxId);
+    const schedules = await runInDurableObject(r, (x) =>
+      x.getSchedules().map((s) => s.callback)
+    );
+    expect(schedules.filter((c) => c === "idleSweep")).toHaveLength(1);
+  });
+});
+
+describe("neuron estimate", () => {
+  it("bounds prompt tokens by UTF-8 bytes, so dense Unicode cannot be underestimated", () => {
+    const dense = "\u{1F4B8}\u8BA1\u8D39".repeat(500); // emoji and CJK: several bytes per character
+    const params = {
+      prompt: [{ role: "user", content: [{ type: "text", text: dense }] }],
+      tools: []
+    } as unknown as Parameters<typeof estimateInputTokens>[0];
+    const bytes = new TextEncoder().encode(dense).byteLength;
+    expect(estimateInputTokens(params)).toBeGreaterThanOrEqual(bytes);
   });
 });
