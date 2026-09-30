@@ -711,3 +711,26 @@ the deployed site. Absolute home paths and temporary config-directory paths are 
 logs. Reason: gate review round 1 found the evidence would be published with local paths.
 
 Decided by: Frontend engineer under standing orders.
+
+## ui: Shared engine seed is the preview source
+
+The preview creates its mutable dataset with engine.seed() and derives customer names, plans,
+invoices, balances, comparisons, simulations, anomalies and validated credits through the shared
+engine. Approval copies the validated memo into the credit ledger; engine.balance computes the
+result and the issued invoice stays unchanged. Historical request and audit records come from
+the seed, scoped to the selected customer. A new fixture storage namespace discards older
+hand-made sessions; live storage remains compatible. Reason: Anna requested preview values and
+evidence that match the live demo with one source for every number. No engine, contract,
+dependency or configuration changes.
+
+Decided by: Frontend engineer under standing orders.
+
+## ui: Synchronize the gate's published rebase
+
+The pinned gate refused synchronization because the clean local and published heads had diverged
+after its rebase onto the engine merge. A range-diff confirmed the UI patches were preserved.
+With Anna's explicit approval, refs/no-mistakes/manual-sync/ui-before-seed-followup preserves the
+old head and the worktree moved to published head 056a7a4 before follow-up commits. Reason: retain
+the gate fixes and merged engine while preserving the original head for inspection.
+
+Decided by: Anna.

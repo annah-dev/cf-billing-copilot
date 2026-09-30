@@ -1,4 +1,3 @@
 
 > cf-billing-copilot@1.0.0 typecheck
 > tsc --noEmit && tsc --noEmit -p tests/agent
-

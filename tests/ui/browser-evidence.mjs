@@ -52,7 +52,46 @@ try {
         exact: true
       })
       .click();
-    await page.getByText("Source verified", { exact: true }).waitFor();
+    await page.getByText("Source verified", { exact: true }).first().waitFor();
+    const seeded = await page.evaluate(async () => {
+      const { engine } = await import("/src/engine/index.ts");
+      const data = engine.seed();
+      const session = JSON.parse(
+        localStorage.getItem("billing-copilot.session.v2.fixture")
+      );
+      const customer = data.customers.find(
+        (item) => item.id === session.customers[0].customerId
+      );
+      const latest = data.invoices
+        .filter((item) => item.customerId === customer.id)
+        .sort((a, b) => b.period.localeCompare(a.period))[0];
+      const invoice = engine.buildInvoice(data, customer.id, latest.period);
+      return {
+        customers: session.customers,
+        invoice,
+        balance: engine.balance(data.ledger, customer.id)
+      };
+    });
+    assert.deepEqual(
+      await page
+        .getByLabel("Customer", { exact: true })
+        .locator("option")
+        .allTextContents(),
+      seeded.customers.map((item) => item.name)
+    );
+    assert.equal(
+      await page.locator(".invoice-total").innerText(),
+      seeded.invoice.total.display
+    );
+    assert.equal(
+      await page.locator(".balance strong").innerText(),
+      seeded.balance.display
+    );
+    assert.deepEqual(
+      await page.locator(".invoice-lines dd").allTextContents(),
+      seeded.invoice.lines.map((item) => item.amount.display)
+    );
+
     await capture("chat");
     await capture(
       "panel",
@@ -86,14 +125,14 @@ try {
     await page.locator(".status-pending_approval").waitFor();
     assert.equal(
       await page.getByText("Source verified", { exact: true }).count(),
-      2
+      3
     );
     await page
       .getByLabel("Customer", { exact: true })
-      .selectOption("cus_orbit");
+      .selectOption(seeded.customers[1].customerId);
     await page
       .locator(".invoice-card")
-      .getByText(/Orbit Workshop/)
+      .getByText(seeded.customers[1].name)
       .waitFor();
     await page.waitForFunction(
       () => !document.querySelector(".status-pending_approval")
@@ -101,7 +140,7 @@ try {
     assert.equal(await page.locator(".message").count(), 0);
     await page
       .getByLabel("Customer", { exact: true })
-      .selectOption("cus_nimbus");
+      .selectOption(seeded.customers[0].customerId);
     await page.locator(".status-pending_approval").waitFor();
     const [admin] = await Promise.all([
       context.waitForEvent("page"),
@@ -143,7 +182,7 @@ try {
     );
     const beforeReset = await page.evaluate(
       () =>
-        JSON.parse(localStorage.getItem("billing-copilot.session.v1.fixture"))
+        JSON.parse(localStorage.getItem("billing-copilot.session.v2.fixture"))
           .sandboxId
     );
     await page.getByRole("button", { name: "Reset demo", exact: true }).click();
@@ -153,7 +192,7 @@ try {
     assert.notEqual(
       await page.evaluate(
         () =>
-          JSON.parse(localStorage.getItem("billing-copilot.session.v1.fixture"))
+          JSON.parse(localStorage.getItem("billing-copilot.session.v2.fixture"))
             .sandboxId
       ),
       beforeReset
@@ -187,7 +226,7 @@ try {
     await page.getByText("Demo limit reached", { exact: true }).waitFor();
     await capture("cap");
     checks.push(
-      `${width}px: invoice evidence, cancellation, confirmation, persistence, customer isolation, fragment cleanup, reason required, approve, reject, audit refresh, sandbox reset, cap state, no overflow.`
+      `${width}px: direct engine parity for customers, invoice lines/total and balance, invoice evidence, cancellation, confirmation, persistence, customer isolation, fragment cleanup, reason required, approve, reject, audit refresh, sandbox reset, cap state, no overflow.`
     );
     await context.close();
   }

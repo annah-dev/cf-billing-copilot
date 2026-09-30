@@ -1,4 +1,4 @@
-1440px: invoice evidence, cancellation, confirmation, persistence, customer isolation, fragment cleanup, reason required, approve, reject, audit refresh, sandbox reset, cap state, no overflow.
-390px: invoice evidence, cancellation, confirmation, persistence, customer isolation, fragment cleanup, reason required, approve, reject, audit refresh, sandbox reset, cap state, no overflow.
+1440px: direct engine parity for customers, invoice lines/total and balance, invoice evidence, cancellation, confirmation, persistence, customer isolation, fragment cleanup, reason required, approve, reject, audit refresh, sandbox reset, cap state, no overflow.
+390px: direct engine parity for customers, invoice lines/total and balance, invoice evidence, cancellation, confirmation, persistence, customer isolation, fragment cleanup, reason required, approve, reject, audit refresh, sandbox reset, cap state, no overflow.
 Blocked localStorage: boots successfully and explains persistence limits.
 No browser exceptions; zero /api or /agents requests in fixture mode. No model calls.

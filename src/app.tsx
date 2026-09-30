@@ -234,9 +234,9 @@ export default function App() {
       {fixtures && (
         <div className="fixture-banner">
           <span className="fixture-dot" />
-          <strong>Fixture preview</strong>
+          <strong>Seed preview</strong>
           <span>
-            Interactive UI sample. No AI calls. Values illustrate the interface.
+            Shared engine seed. No AI calls. Billing values match the live demo.
           </span>
         </div>
       )}

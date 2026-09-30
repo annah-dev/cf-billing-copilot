@@ -1,12 +1,33 @@
+
+> cf-billing-copilot@1.0.0 test
+> vitest run
+
+
+ RUN  v4.1.11 <repo>
+
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/types.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/client.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/validation/cfworker-provider.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/client/sse.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/transport.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/client/auth.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/auth.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/auth-utils.js" points to missing source files
+Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/server/auth/errors.js" points to missing source files
 Sourcemap for "<repo>/node_modules/@modelcontextprotocol/sdk/dist/esm/client/streamableHttp.js" points to missing source files
 Sourcemap for "<repo>/node_modules/cron-schedule/dist/index.js" points to missing source files
 Sourcemap for "<repo>/node_modules/cron-schedule/dist/cron.js" points to missing source files
 Sourcemap for "<repo>/node_modules/cron-schedule/dist/utils.js" points to missing source files
 Sourcemap for "<repo>/node_modules/cron-schedule/dist/cron-parser.js" points to missing source files
 
- Test Files  7 passed (7)
-      Tests  68 passed (68)
-   Start at  18:33:10
-   Duration  6.39s (transform 3.29s, setup 725ms, import 6.55s, tests 422ms, environment 1ms)
-
-🪵  Logs were written to "<config-dir>/.wrangler/logs/wrangler-2026-09-30_01-33-09_617.log"
+ Test Files  12 passed (12)
+      Tests  145 passed (145)
+   Start at  20:13:20
+   Duration  8.42s (transform 8.64s, setup 681ms, import 15.29s, tests 4.59s, environment 3ms)

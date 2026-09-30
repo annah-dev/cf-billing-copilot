@@ -95,9 +95,10 @@ export interface StoragePort {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
-export const SESSION_KEY = "billing-copilot.session.v1.fixture";
+export const SESSION_KEY = "billing-copilot.session.v2.fixture";
 export type SessionMode = "fixture" | "live";
-const sessionKey = (mode: SessionMode) => `billing-copilot.session.v1.${mode}`;
+const sessionKey = (mode: SessionMode) =>
+  mode === "fixture" ? SESSION_KEY : "billing-copilot.session.v1.live";
 export function readSession(
   storage: StoragePort | null,
   mode: SessionMode = "fixture"

@@ -1950,3 +1950,32 @@ claude exited pid=89981 status=success
 
 Log these test-gate instructions too under prompt-history/prompts/04c-ui-gate-test-setup.md and PROMPTS.md. Replace the UI kickoff pending outcome with its actual completed implementation/validation result (fixture UI implemented, 68 tests and browser evidence passed, Claude review passed after evidence relocation; no live calls), without claiming deployment or merge. Gate/PR status will be reported in the PR and final response. Do not leave '(pending)' for work already performed. No need to change README.md outside UI ownership. Evidence stays under tests/ui/evidence, not public or docs. Do not deploy or merge.
 ````
+
+## 19. UI shared-seed follow-up
+
+- Timestamp: 2026-09-30T03:10:48.154283+00:00
+- Role: Frontend engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/04d-ui-seed-followup.md
+- Outcome: Implemented shared-seed preview; npm ci, typecheck, 145 tests normally and credential-free, build, lint and both-width browser evidence pass. Claude gate submission pending; no model calls.
+
+````text
+PR #5 looks good; hold it until the agent PR merges. While you wait: the engine is now on main,
+and your fixtures use hand-made values (Nimbus Studio, Workers requests, Database reads) while the
+real seed has Velvet Comet Workshop and different meters. Build the fixture state from the
+engine's seed() and engine functions instead of literal values, so the preview and the evidence
+match the live demo and every number has one source. Regenerate the evidence screenshots, run the
+gate, and tell me when it is ready again. Do not change src/engine or src/contracts.
+````
+
+## 20. UI shared-seed gate intent
+
+- Timestamp: 2026-09-30T03:14:53.022771+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude)
+- Source: prompt-history/prompts/04h-ui-seed-gate-intent.md
+- Outcome: supplied intent for the follow-up gate; generated review prompt is separate and not yet available.
+
+````text
+Update PR #5 so its preview and evidence match the engine now merged on main. Replace hand-made fixture data with engine.seed() and shared engine functions; every billing number must have one source. Regenerate desktop and 390px evidence and run the complete gate. Do not change src/engine or src/contracts or any frozen configuration/dependency files. Hold PR #5 until the agent PR merges; never merge or deploy. The preview is still a local no-model transport while the agent lane is pending. It uses a mutable engine seed dataset, engine validation for duplicate credit claims, copied validated credit amounts and engine.balance after human decisions; issued invoices stay unchanged. Seed historical requests/audit are retained per customer. Old hand-made fixture sessions are invalidated by a fixture-only namespace migration. The live namespace remains compatible. All 145 tests pass (113 main plus 32 UI), including credential-free; browser assertions compare seeded names, invoice lines/total and balances directly to engine outputs. No main tests disappeared. All ten screenshots were regenerated and inspected. Check the full UI diff against the done-contract and this follow-up. Keep prior gate fixes and scope. Review under Claude as configured; no self-review. Log the observed review provenance; do not claim the full generated prompt was captured if unavailable. Every changed decision or review instruction must be logged in PROMPTS.md and prompt-history/prompts/ and decisions end with Decided by. No live model calls. Author implementation choices and fixes inside this scope are authorized under AGENTS.md standing orders.
+````

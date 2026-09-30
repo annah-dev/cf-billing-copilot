@@ -101,6 +101,14 @@ describe("sandbox persistence and approval links", () => {
     expect(readSession(storage, "live")).toEqual(live);
     expect(readSession(storage, "fixture")).toEqual(fixture);
   });
+  it("ignores sessions from the old hand-made preview", () => {
+    const storage = memoryStorage();
+    storage.setItem(
+      "billing-copilot.session.v1.fixture",
+      JSON.stringify(fixtureSession())
+    );
+    expect(readSession(storage, "fixture")).toBeNull();
+  });
   it("handles blocked storage, corrupt JSON and invalid stored tokens", () => {
     const blocked = {
       getItem: () => {

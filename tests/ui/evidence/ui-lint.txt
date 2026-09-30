@@ -1,1 +1,4 @@
-
+npx oxfmt --check src/app.tsx src/ui tests/ui/*.ts tests/ui/browser-evidence.mjs tests/ui/evidence/README.md
+Passed after formatting evidence README.
+npx oxlint src/app.tsx src/ui src/admin tests/ui
+Exit 0, no diagnostics.

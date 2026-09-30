@@ -1,8 +1,10 @@
 # UI lane evidence
 
-Fixture preview captured from the actual `npm run dev` app at 1440 x 1000 and 390 x 1000.
+Shared-engine preview captured from the actual `npm run dev` app at 1440 x 1000 and 390 x 1000.
 Full-page screenshots retain content beyond the initial viewport; the panel images crop the panel
-within each layout. The fixture banner distinguishes illustrative UI values from the engine seed.
+within each layout. Customers, meters, issued invoice values, balance, comparison, simulation,
+anomalies, historical credits and audit records come from `engine.seed()` and engine functions.
+The banner identifies the preview. No model or live HTTP call is made.
 
 | State                              | Desktop layout                        | 390 px layout                        |
 | ---------------------------------- | ------------------------------------- | ------------------------------------ |
@@ -25,40 +27,42 @@ config changes). `UI_PLAYWRIGHT_MODULE` is its module path; if it is already res
 UI_PLAYWRIGHT_MODULE=/path/to/@playwright/test/index.mjs node tests/ui/browser-evidence.mjs
 ```
 
-[browser-checks.txt](browser-checks.txt) records the exercised interactions. They include both
-widths, confirm and cancel, required decision reason, approve and reject across tabs, refreshed
-audit and status, chat reload, customer isolation, sandbox reset, fragment removal, storage refusal,
-and horizontal overflow. No browser exception or `/api/` or `/agents/` request occurred in fixtures.
+[browser-checks.txt](browser-checks.txt) records the exercised interactions. At both widths the
+script imports the shared engine in the browser and compares customer options, every invoice line,
+invoice total and balance directly with engine outputs. It also exercises confirm and cancel,
+required decision reason, approve and reject across tabs, refreshed audit and status, chat reload,
+customer isolation, sandbox reset, fragment removal, storage refusal and horizontal overflow.
+No browser exception or `/api/` or `/agents/` request occurred. Screenshots were visually inspected
+for readable seeded names, meters, confirmation actions, historical audit and mobile layout.
 
-The review inspected the rendered desktop confirmation and the mobile chat, panel and admin
-layouts. It found a clipped confirmation in the desktop chat scroller; the implementation now
-scrolls new message content into view, and the browser run and screenshots were repeated after the
-fix. The captured layouts have no horizontal overflow at either width.
+The automated suite has 145 passing tests: 113 on main after the engine merge plus 32 UI tests.
+Collection comparison in [test-collection.txt](test-collection.txt) reports no removed tests.
+New tests compare every customer's fixture invoice, plan, balance, credits and historical audit
+with the seed; comparison, simulation and anomaly tool outputs with engine results; and credit
+validation and the approved balance with engine results while preserving the issued invoice.
+They also prove unsupported duplicate claims use the engine refusal and old preview sessions are
+ignored. Existing tests retain schema validation, identity checks, bearer headers, decision
+validation, error states, reset and customer isolation, storage failure, and display copying.
 
-The automated suite has 68 passing tests: the original 42 plus 26 UI tests. Collection comparison
-in [test-collection.txt](test-collection.txt) reports no removed tests. Unit tests cover API schema
-validation, identity checks, bearer header transport, decision validation, fragment parsing,
-storage failure and mode isolation, every ErrorResponse code, fixture credit lifecycle and reset
-isolation, tool schemas, and Money/Percent/Multiple display copying.
+Replacing seeded customer names with `Nimbus Studio` deliberately made `derives every customer's
+plan, invoice, balance, history and customers from the shared seed` fail. Restoring the engine
+mapping made it pass. [ui-planted-defect.txt](ui-planted-defect.txt) and
+[ui-defect-restored.txt](ui-defect-restored.txt) record the failure and restoration.
 
-A deliberate bypass of response schema validation made `rejects a malformed success payload
-instead of rendering it` fail on the invalid Money display fixture. Restoring validation made it
-pass. The failure and restoration output tails are attached alongside command validation output.
-
-[amount-grep.txt](amount-grep.txt) contains the review grep over the UI lane. Amounts appear as
-literal fixture pairs or contract `.display` references; no UI amount arithmetic, conversion,
-rounding or formatting is present. Remaining arithmetic increments response generations or audit
-sequence numbers, sorts statuses, or serializes randomly generated identifiers.
+[amount-grep.txt](amount-grep.txt) contains the review grep over the UI lane. Monetary outputs are
+engine results, validated credit memo copies, or contract `.display` references. There is no UI
+amount arithmetic, conversion, rounding or formatting. Nonmonetary arithmetic increments response
+generations or audit sequences, advances an approval deadline, orders statuses or serializes IDs.
 
 Live model calls: none (0). The real HTTP endpoints, deployed UI, live WebSocket stream and live
-AI SDK approval continuation are not exercised here because the agent lane has not merged. The
-fixture credit decision is immediate and illustrative; it does not prove the real Workflow runs.
-With browser storage blocked, the fixture preview remains usable in one tab; fixture admin in a
-second tab requires storage. Live admin links carry credentials independently of localStorage.
-Production bundle compilation passes, with Vite's existing-size warning for a client chunk over
-500 kB; no deployed bundle or performance measurement is claimed.
+AI SDK approval continuation are not exercised because the agent lane has not merged. The
+preview applies human decisions immediately; it does not prove the real Workflow runs. With
+browser storage blocked, preview remains usable in one tab; a second preview admin tab requires
+storage. Live admin links carry credentials independently of localStorage. Production bundle
+compilation passes with Vite's existing warning for a client chunk over 500 kB; no deployed bundle
+or performance measurement is claimed.
 
-VERIFIED: offline checks, production compilation, schema and state unit tests, fixture browser
-flows, desktop and 390 px screenshots, no amount arithmetic, no model calls.
+VERIFIED: offline checks, credential-free suite, production compilation, engine parity tests,
+preview browser flows, desktop and 390 px screenshots, no amount arithmetic, no model calls.
 NOT VERIFIED: live API, live agent streaming and approval continuation, deployed UI, real Workflow,
 production performance and additional browsers; agent lane is pending and evidence uses Chromium.

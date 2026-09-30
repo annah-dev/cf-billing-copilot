@@ -16,7 +16,7 @@ import { ToolSchemas } from "../contracts/tools";
 import { browserStorage } from "./api";
 import { type FixtureBackend } from "./fixtures";
 import { Messages, ErrorNotice } from "./components";
-import { fixtureAnswer, suggestions, validatedTool } from "./messages";
+import { suggestions, validatedTool } from "./messages";
 
 interface ViewProps {
   messages: UIMessage[];
@@ -197,7 +197,7 @@ export function FixtureChat({
   backend: FixtureBackend;
   changed: () => void;
 }) {
-  const storageKey = `billing-copilot.chat.${agentInstanceName(panel.sandboxId, panel.customerId)}`;
+  const storageKey = `billing-copilot.chat.${backend.version}.${agentInstanceName(panel.sandboxId, panel.customerId)}`;
   const [messages, setMessages] = useState<UIMessage[]>(() => {
     try {
       const raw = browserStorage()?.getItem(storageKey);
@@ -236,7 +236,7 @@ export function FixtureChat({
       busy={false}
       error={error}
       send={async (text) => {
-        const answer = fixtureAnswer(text, panel);
+        const answer = backend.answer(panel.sandboxId, panel.customerId, text);
         setMessages((current) => [
           ...current,
           {
