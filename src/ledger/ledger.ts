@@ -55,6 +55,14 @@ import {
 export const RECOVERY_DELAY_MS = 5 * 60_000;
 /** The sweeper expires a pending request this long after its deadline. */
 export const SWEEP_GRACE_MS = 60 * 60_000;
+/**
+ * A request still `requested`, or decided but not finished, this long after it was created or
+ * decided is driven through the Ledger transitions directly, even if its instance claims to be
+ * alive: a stuck instance (paused, or never consuming the event) must not strand it. Racing a
+ * live instance is safe because every transition is idempotent.
+ */
+export const STUCK_REQUEST_MS = 60 * 60_000;
+export const STUCK_DECISION_MS = 30 * 60_000;
 
 type Statics = Omit<
   BillingDataset,
@@ -1539,6 +1547,15 @@ export class Ledger extends DurableObject<Env> {
         this.setTimer("recover", requestId, createdMs + RECOVERY_DELAY_MS);
         return;
       }
+      if (nowMs - createdMs >= STUCK_REQUEST_MS) {
+        this.validate(requestId, actor);
+        await this.createPendingMemo(requestId, actor);
+        const now = this.requestRow(requestId) as RequestRow;
+        if (now.status === "requested") {
+          this.setTimer("recover", requestId, nowMs + RECOVERY_DELAY_MS);
+        }
+        return;
+      }
       const status = await this.instanceStatus(requestId);
       if (status === "missing") {
         const sandboxId = this.meta("sandbox_id") as string;
@@ -1575,7 +1592,10 @@ export class Ledger extends DurableObject<Env> {
         this.setTimer("recover", requestId, decidedMs + RECOVERY_DELAY_MS);
         return;
       }
-      const status = await this.instanceStatus(requestId);
+      const status =
+        nowMs - decidedMs >= STUCK_DECISION_MS
+          ? "stuck"
+          : await this.instanceStatus(requestId);
       if ((LIVE_INSTANCE_STATES as readonly string[]).includes(status)) {
         // The approval event was lost: resend the wake-up. An instance that is not waiting yet
         // buffers it, so this is harmless. (Local dev reports a waiting instance as "running".)
@@ -1590,7 +1610,7 @@ export class Ledger extends DurableObject<Env> {
         this.setTimer("recover", requestId, nowMs + RECOVERY_DELAY_MS);
         return;
       }
-      // The instance is gone, complete or failed: finish through the Ledger transitions.
+      // The instance is gone, complete, failed or stuck: finish through the Ledger transitions.
       await this.finish(requestId, actor);
       return;
     }

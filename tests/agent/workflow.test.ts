@@ -391,4 +391,30 @@ describe("failure injection and recovery", () => {
       expect(actions.filter((a) => a === "credit_validated")).toHaveLength(1);
     });
   });
+
+  it("finishes a decided request through the Ledger when its instance is stuck", async () => {
+    const sb = await createSandbox();
+    const rid = await requestIdFor(sb.sandboxId, ACME, INV_SEP, DUP_ENTRY);
+    await withInstance(rid, async (wf) => {
+      await requestCredit(sb.sandboxId);
+      await wf.waitForStepResult({ name: STEP.memo });
+      // A live but stuck instance: paused, so it never consumes the approval event.
+      await (await env.CREDIT_WORKFLOW.get(rid)).pause();
+      await ledgerOf(sb.sandboxId).recordDecision(
+        rid,
+        { decision: "approve", reason: "ok" },
+        `approver:${sb.sandboxId}`
+      );
+      const ledger = ledgerOf(sb.sandboxId);
+      await ledger.processTimers(Date.now() + 6 * 60_000);
+      expect((await requestOf(sb.sandboxId, ACME, rid)).request.status).toBe(
+        "pending_approval"
+      );
+      await ledger.processTimers(Date.now() + 31 * 60_000);
+      expect((await requestOf(sb.sandboxId, ACME, rid)).request.status).toBe(
+        "applied"
+      );
+      expect(await creditEntries(sb.sandboxId)).toBe(1);
+    });
+  });
 });
