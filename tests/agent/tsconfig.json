@@ -1,5 +1,7 @@
 {
   "extends": "../../tsconfig.json",
+  // Override the root exclude (which drops tests/agent) so this project actually checks the tests.
+  "exclude": [],
   "include": [
     "./**/*.ts",
     "../../env.d.ts",

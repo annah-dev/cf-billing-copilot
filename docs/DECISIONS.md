@@ -315,5 +315,7 @@ Decided by: Architect under standing orders.
 - The root tsconfig excludes tests/agent, which has its own project with the `cloudflare:test`
   types; the foundation test imports `introspectWorkflowInstance` to keep that proven.
 - There is no `computeCreditMemo`: `validateCreditClaim.creditableAmount` is the memo amount.
+- tests/agent/tsconfig.json sets `exclude: []`: it inherited the root's exclusion of tests/agent and
+  silently checked nothing (round 2). A planted type error in the Workers test now fails typecheck.
 
 Decided by: Architect under standing orders.
