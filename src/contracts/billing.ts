@@ -153,7 +153,10 @@ export const LedgerEntrySchema = z.object({
     message: "ledger amounts are positive"
   }),
   invoiceId: InvoiceIdSchema.nullable(),
-  /** External reference, for example a card-processor charge id. Duplicates share it. */
+  /**
+   * External reference: the billing-run posting id. A charge (a debit) posted twice by a billing
+   * run retried without an idempotency key carries the same posting id as the original.
+   */
   reference: z.string().min(1),
   description: z.string().min(1)
 });

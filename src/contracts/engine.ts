@@ -109,7 +109,7 @@ export interface BillingEngine {
   ): AnomalyReport;
 
   /**
-   * Check a double-charge claim against the ledger. existingMemos are the pending
+   * Check a duplicated-debit claim (the same invoice charge posted twice) against the ledger. existingMemos are the pending
    * and applied memos already reserved, so creditableAmount never lets pending plus
    * applied credits exceed the disputed amount.
    */
