@@ -26,6 +26,7 @@ export interface EvalCase {
   story: Story;
   customerId: string;
   turns: EvalTurn[];
+  sandboxGroup?: string;
 }
 
 // Only engine outputs supply expected numbers. Fixture prose is synthetic, never model evidence.
@@ -67,7 +68,14 @@ export function buildCases(): EvalCase[] {
     story: Story,
     customerId: string,
     ...turns: EvalTurn[]
-  ): EvalCase => ({ id, story, customerId, turns });
+  ): EvalCase => ({
+    id,
+    story,
+    customerId,
+    turns,
+    sandboxGroup:
+      story === "memory" || id === "duplicate-credit" ? id : "read-only"
+  });
   const september = invoice("cus_1", "2026-09");
   const august = invoice("cus_1", "2026-08");
   const report = engine.detectAnomalies(data, "cus_1", september.period);
@@ -281,10 +289,12 @@ export function buildCases(): EvalCase[] {
       "invoice",
       "cus_3",
       turn(
-        "What are my September 2026 invoice total and tax amount?",
+        "How many invoice lines are on my September 2026 invoice, including the tax line? Also give the total and tax amount.",
         [noTax.total, noTax.tax],
         [invoiceCall(noTax)],
-        "Invoice total and tax."
+        `Invoice has ${noTax.lines.length} lines. Invoice total and tax.`,
+        [String(noTax.lines.length)],
+        [/lines?/i]
       )
     ),
     make(

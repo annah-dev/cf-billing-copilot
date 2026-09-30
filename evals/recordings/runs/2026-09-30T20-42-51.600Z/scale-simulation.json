@@ -1,17 +1,93 @@
 {
   "formatVersion": 1,
   "seedVersion": "engine-v2",
-  "caseId": "zero-tax-invoice",
+  "caseId": "scale-simulation",
   "turns": [
     {
       "customerId": "cus_3",
       "request": {
-        "message": "How many invoice lines are on my September 2026 invoice, including the tax line? Also give the total and tax amount.",
+        "message": "What would September 2026 have cost on Scale? Give actual total, simulated total and signed difference.",
         "confirm": false
       },
       "response": {
         "text": "The September 2026 invoice has 6 lines, including the tax line. The total amount is $262.00 and the tax amount is $0.00. There are no unusual single-day usage spikes in September 2026.",
         "toolCalls": [
+          {
+            "name": "simulatePlan",
+            "input": {
+              "period": "2026-09",
+              "planId": "plan_Scale"
+            },
+            "output": null,
+            "error": "Invalid input for tool simulatePlan: Type validation failed: Value: {\"period\":\"2026-09\",\"planId\":\"plan_Scale\"}.\nError message: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
+          },
+          {
+            "name": "getAccount",
+            "input": {},
+            "output": {
+              "customerId": "cus_3",
+              "customerName": "Amber Kite Observatory",
+              "plan": {
+                "planId": "plan_scale",
+                "name": "Scale"
+              },
+              "availablePlans": [
+                {
+                  "planId": "plan_pro",
+                  "name": "Pro"
+                },
+                {
+                  "planId": "plan_scale",
+                  "name": "Scale"
+                },
+                {
+                  "planId": "plan_starter",
+                  "name": "Starter"
+                }
+              ],
+              "balance": {
+                "cents": 26200,
+                "display": "$262.00"
+              },
+              "invoices": [
+                {
+                  "invoiceId": "inv_efb491532ebaf646",
+                  "period": "2026-07",
+                  "total": {
+                    "cents": 25276,
+                    "display": "$252.76"
+                  }
+                },
+                {
+                  "invoiceId": "inv_efb49c532ebb08f7",
+                  "period": "2026-08",
+                  "total": {
+                    "cents": 26640,
+                    "display": "$266.40"
+                  }
+                },
+                {
+                  "invoiceId": "inv_efb49b532ebb0744",
+                  "period": "2026-09",
+                  "total": {
+                    "cents": 26200,
+                    "display": "$262.00"
+                  }
+                }
+              ],
+              "openCreditRequests": []
+            },
+            "error": null
+          },
+          {
+            "name": "simulatePlan",
+            "input": {
+              "period": "2026-09",
+              "planId": "plan_Scale"
+            },
+            "output": null,
+            "error": "Invalid input for tool simulatePlan: Type validation failed: Value: {\"period\":\"2026-09\",\"planId\":\"plan_Scale\"}.\nError message: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
+          },
           {
             "name": "getInvoice",
             "input": {
@@ -238,15 +314,15 @@
           }
         ],
         "usage": {
-          "inputTokens": 4797,
-          "outputTokens": 69,
-          "modelCalls": 2
+          "inputTokens": 12446,
+          "outputTokens": 146,
+          "modelCalls": 5
         }
       }
     }
   ],
   "source": "live",
-  "recordedAt": "2026-09-30T20:43:26.394Z",
+  "recordedAt": "2026-09-30T20:43:43.806Z",
   "baseUrl": "http://127.0.0.1:5173",
   "environment": "local dev"
 }

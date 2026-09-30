@@ -28,7 +28,9 @@ export const RecordingSchema = z.discriminatedUnion("source", [
   }),
   RecordingBase.extend({
     source: z.literal("live"),
-    recordedAt: IsoDateTimeSchema
+    recordedAt: IsoDateTimeSchema,
+    baseUrl: z.url().optional(),
+    environment: z.enum(["local dev", "deployed"]).optional()
   })
 ]);
 export type Recording = z.infer<typeof RecordingSchema>;

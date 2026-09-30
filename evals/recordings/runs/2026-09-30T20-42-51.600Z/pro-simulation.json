@@ -23,7 +23,7 @@
           }
         ],
         "usage": {
-          "inputTokens": 7225,
+          "inputTokens": 5817,
           "outputTokens": 65,
           "modelCalls": 2
         }
@@ -31,7 +31,7 @@
     }
   ],
   "source": "live",
-  "recordedAt": "2026-09-30T20:47:33.668Z",
+  "recordedAt": "2026-09-30T20:43:39.994Z",
   "baseUrl": "http://127.0.0.1:5173",
   "environment": "local dev"
 }

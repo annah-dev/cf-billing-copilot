@@ -2310,3 +2310,64 @@ Source: prompt-history/prompts/05b-evals-review-context.md
 Outcome: (pending; author context for gate, not the generated full review prompt)
 
 Implement the evals lane from prompt-history/prompts/05-evals.md under Anna's explicit EARLY-START OVERRIDE: PR #4 has NOT been confirmed merged. Contract PR #6 (D-20 confirm on /turn) is on main. Build only work that does not need the live agent: 12-15 questions, expected amounts computed by calling the engine on engine.seed() on main, harness, replay format and replay integrated into the existing npm test unit include. Use confirm:true ONLY on credit-start questions; require the September anomaly proactively without requiring the model to choose detectAnomalies. NO live Workers AI calls or recording of live model outputs until Anna says PR #4 merged and main is pulled; owner deploys. Current 15 recordings are explicitly labeled synthetic-engine with null recordedAt and zero usage, proving harness behavior only. Live runner is built and tested offline with an injected transport; it is opt-in via EVAL_LIVE_READY and EVAL_BASE_URL, refuses CI, makes one fresh sandbox per case and new requests to the same customer for memory followups, has no retries, stops immediately on budget/cap/rate limits, discards approver tokens, preserves partial recordings, reports planned-case pass fraction/date/status/token/model-call usage and never invents neuron counts. D-7 allows only five new sandboxes per IP/day, so a complete 15-case live run needs an owner-approved capacity resolution; do not bypass caps, spoof an IP, share case sandboxes or change frozen config. Live performance and deployment compatibility are explicitly NOT VERIFIED and must stay pending. Scope is evals/ and append-only PROMPTS.md, docs/DECISIONS.md and new lane prompt-history files; no application, contracts, dependencies, root config or existing historical prompt/decision rewrites. Local done-contract passed: npm ci, typecheck, 160 offline tests in normal and empty-HOME/credential-free env; test list baseline114/head160 with no loss; 15 replay cases; actual planted wrong recording amount made replay red then restored; live guard failed before fetch. Use the usual gate for Claude cross-review and CI, not deployment or merge. Review convergence: two full rounds then delta-only third, stop disputed findings FOR ANNA; the repo's standing orders authorize lane implementation/test/review-fix decisions. The document step must archive this round's actual review prompt from no-mistakes axi logs --step review --full, if exposed; otherwise save identifying run/step/version log lines verbatim in prompt-history/prompts/05g-evals-gate-review-r1.md and state exact prompt unavailable in PROMPTS.md, evals/verification.md and PR NOT VERIFIED. Do not seek other Claude session data. Append prompt outcome and update evals/verification.md gate/CI truthfully. Keep existing prompt/decision bytes unchanged; do not blanket-format the repo. PR evidence must include commands/tails, test behavior mapping, 15 synthetic replays, planted recording red, coverage comparison, decisions, zero live calls and VERIFIED/NOT VERIFIED lines. This is OFFLINE PREPARATION, not the full lane's final done claim; live recording awaits the owner's notice and deployment. Never merge or deploy. The owner merges.
+
+## 2026-09-30T13:31:37-07:00 - Evals live capture and count grounding
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05c-evals-live-and-counts.md
+Outcome: (pending)
+
+PR #4 has merged. Rebase onto main, then record the live model outputs for the eval set.
+One addition: make the grounding check cover every number in an answer, including counts. In
+the agent's live run the model said "7 lines" for a 6-line invoice; include a question that
+would catch that.
+
+## 2026-09-30T13:31:37-07:00 - Evals historical gate review round 1
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3R7B6ANF0QPEFS9F3Z2G9DX
+Source: prompt-history/prompts/05g-evals-gate-review-r1.md
+Outcome: Exact generated prompt unavailable in gate logs; identifying log copied with a tool. Round 1 found natural-date grounding and provenance reporting issues; round 2 found timestamp-date grounding; round 3 found month grounding from timestamps. The offline-only run was cancelled and its commits recovered before the owner-requested main rebase and live phase; no fixes were discarded.
+
+
+## 2026-09-30T13:31:37-07:00 - Evals historical gate review round 2
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3R7B6ANF0QPEFS9F3Z2G9DX
+Source: prompt-history/prompts/05g-evals-gate-review-r2.md
+Outcome: Exact generated prompt unavailable in gate logs; identifying log copied with a tool. Round 1 found natural-date grounding and provenance reporting issues; round 2 found timestamp-date grounding; round 3 found month grounding from timestamps. The offline-only run was cancelled and its commits recovered before the owner-requested main rebase and live phase; no fixes were discarded.
+
+
+## 2026-09-30T13:31:37-07:00 - Evals historical gate review round 3
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3R7B6ANF0QPEFS9F3Z2G9DX
+Source: prompt-history/prompts/05g-evals-gate-review-r3.md
+Outcome: Exact generated prompt unavailable in gate logs; identifying log copied with a tool. Round 1 found natural-date grounding and provenance reporting issues; round 2 found timestamp-date grounding; round 3 found month grounding from timestamps. The offline-only run was cancelled and its commits recovered before the owner-requested main rebase and live phase; no fixes were discarded.
+
+
+## 2026-09-30T13:33:04-07:00 - Evals local dev target and budget
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05d-evals-local-dev-budget.md
+Outcome: (pending)
+
+It is not deployed yet; the deploy happens in the release lane after the ui PR merges. Yes, use
+local dev with real Workers AI for now: record the replay fixtures and a first pass rate from it.
+Make the base URL a parameter (for example EVAL_BASE_URL, defaulting to local dev), and write the
+base URL, date and model call count into every results file. Label this run "local dev". The
+pass rate in the README will come from a rerun against
+https://cf-billing-copilot.anna-hester.workers.dev after deploy, done by the release lane.
+Budget: one full run, then reruns of failing questions only, no loops; report the total model
+calls and estimated neurons. If the set needs more messages than one sandbox's daily cap, spread
+the questions across sandboxes rather than raising the cap.
+
+## 2026-09-30T14:04:40-07:00 - Evals local capture outcome
+
+Sources: prompt-history/prompts/05c-evals-live-and-counts.md and prompt-history/prompts/05d-evals-local-dev-budget.md
+Outcome: Rebased onto merged PR #4 and retained the old gate fixes. Completed one full local-dev run (6/15, 46 calls) and one failing-only rerun (1/9, 33 calls), with all responses archived. Total 79 Workers AI model calls, 225252 input tokens, 3246 output tokens, estimated 6686 neurons. Current replay snapshot 7/15; eight genuine model failures keep npm test red (259 pass, 8 fail). The actual seven-lines-for-six bug is caught. Root README/deploy untouched; the release lane owns the deployed rerun. New review/PR/CI pending; no further real model calls planned.

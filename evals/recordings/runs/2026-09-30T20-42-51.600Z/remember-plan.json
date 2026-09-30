@@ -10,7 +10,7 @@
         "confirm": false
       },
       "response": {
-        "text": "The actual total for September 2026 was $412.87. The simulated total for September 2026 on Pro is $359.17, and the signed difference is -$53.70.",
+        "text": "September 2026 would have cost $359.17 on Pro. The actual total was $412.87, and the signed difference is -$53.70.",
         "toolCalls": [
           {
             "name": "simulatePlan",
@@ -295,8 +295,8 @@
           }
         ],
         "usage": {
-          "inputTokens": 10195,
-          "outputTokens": 116,
+          "inputTokens": 9287,
+          "outputTokens": 104,
           "modelCalls": 4
         }
       }
@@ -584,7 +584,7 @@
           }
         ],
         "usage": {
-          "inputTokens": 8028,
+          "inputTokens": 7392,
           "outputTokens": 86,
           "modelCalls": 3
         }
@@ -592,7 +592,7 @@
     }
   ],
   "source": "live",
-  "recordedAt": "2026-09-30T20:47:55.248Z",
+  "recordedAt": "2026-09-30T20:44:03.803Z",
   "baseUrl": "http://127.0.0.1:5173",
   "environment": "local dev"
 }

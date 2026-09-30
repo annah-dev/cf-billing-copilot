@@ -1,17 +1,26 @@
 {
   "formatVersion": 1,
   "seedVersion": "engine-v2",
-  "caseId": "september-invoice",
+  "caseId": "request-tiers",
   "turns": [
     {
       "customerId": "cus_1",
       "request": {
-        "message": "Explain my September 2026 invoice line by line, including subtotal, credits and tax. Mention any unusual usage.",
+        "message": "Explain the Edge requests line on my September 2026 invoice: quantity, each tier rate and amount, and line total.",
         "confirm": false
       },
       "response": {
-        "text": "Your September 2026 invoice has 7 lines: \n1. Starter fee: $30.00\n2. Edge requests on Starter: $101.60\n3. Object storage on Starter: $106.00\n4. Data transfer on Starter: $70.00\n5. Compute time on Starter: $73.80\n6. Sales tax: $31.47\nThe subtotal is $381.40, credits are $0.00, and tax is $31.47. The total is $412.87.\nThere is an unusual usage spike on 2026-09-18 for Edge requests, with a quantity of 15,000, which is 5x the baseline quantity of 3,000. The estimated excess cost is $11.60.",
+        "text": "The Edge requests line on your September 2026 invoice is for 102,000 requests. The line has two tiers: \n1. The first tier is for 100,000 requests at $1.00 per 1,000 requests, for a total of $100.00.\n2. The second tier is for 2,000 requests at $0.80 per 1,000 requests, for a total of $1.60.\nThe total for the Edge requests line is $101.60.\nThere is an unusual usage spike on 2026-09-18 for Edge requests, with a quantity of 15,000, which is 5x the baseline quantity of 3,000. The estimated excess cost is $11.60.",
         "toolCalls": [
+          {
+            "name": "explainLineItem",
+            "input": {
+              "invoiceId": "inv_123456789",
+              "lineId": "line_123456789"
+            },
+            "output": null,
+            "error": "No invoice inv_123456789 for this customer"
+          },
           {
             "name": "getInvoice",
             "input": {
@@ -255,15 +264,15 @@
           }
         ],
         "usage": {
-          "inputTokens": 7415,
-          "outputTokens": 189,
-          "modelCalls": 2
+          "inputTokens": 8033,
+          "outputTokens": 217,
+          "modelCalls": 3
         }
       }
     }
   ],
   "source": "live",
-  "recordedAt": "2026-09-30T20:47:12.132Z",
+  "recordedAt": "2026-09-30T20:43:05.469Z",
   "baseUrl": "http://127.0.0.1:5173",
   "environment": "local dev"
 }

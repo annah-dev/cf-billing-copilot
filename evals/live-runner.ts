@@ -4,7 +4,10 @@ import {
   ROUTES,
   TurnResponseSchema,
   type ErrorCode,
-  type TurnResponse
+  type TurnResponse,
+  estimateNeurons,
+  type CreateSandboxResponse,
+  SandboxIdSchema
 } from "../src/contracts";
 import { engine } from "../src/engine";
 import { type EvalCase } from "./cases";
@@ -14,6 +17,11 @@ import { RecordingSchema, type Recording } from "./recording";
 export interface RunResult {
   formatVersion: 1;
   source: "live";
+  baseUrl: string;
+  environment: "local dev" | "deployed";
+  modelCallCount: number;
+  estimatedNeurons: number;
+  sandboxes: Record<string, { sandboxId: string; messages: number }>;
   runDate: string;
   status: "running" | "complete" | "stopped" | "failed";
   totalCases: number;
@@ -34,6 +42,7 @@ export interface RunOptions {
   now?: () => Date;
   saveRecording: (recording: Recording) => void;
   saveResult: (result: RunResult) => void;
+  reuseSandboxes?: RunResult["sandboxes"];
 }
 
 class HttpFailure extends Error {
@@ -43,10 +52,10 @@ class HttpFailure extends Error {
 }
 
 export function deployedUrl(value: string | undefined): string {
-  if (!value) throw new Error("Set EVAL_BASE_URL to the deployed origin");
-  const url = new URL(value);
+  const url = new URL(value ?? "http://127.0.0.1:5173");
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   if (
-    url.protocol !== "https:" ||
+    (url.protocol !== "https:" && !(local && url.protocol === "http:")) ||
     url.username ||
     url.password ||
     url.search ||
@@ -54,7 +63,7 @@ export function deployedUrl(value: string | undefined): string {
     url.pathname !== "/"
   )
     throw new Error(
-      "EVAL_BASE_URL must be an HTTPS origin without credentials, query or path"
+      "EVAL_BASE_URL must be an HTTPS or local-dev origin without credentials, query or path"
     );
   return url.origin;
 }
@@ -66,6 +75,12 @@ export async function runLive(options: RunOptions): Promise<RunResult> {
   const result: RunResult = {
     formatVersion: 1,
     source: "live",
+    baseUrl,
+    environment:
+      new URL(baseUrl).protocol === "http:" ? "local dev" : "deployed",
+    modelCallCount: 0,
+    estimatedNeurons: 0,
+    sandboxes: structuredClone(options.reuseSandboxes ?? {}),
     runDate: now().toISOString(),
     status: "running",
     totalCases: options.cases.length,
@@ -78,6 +93,28 @@ export async function runLive(options: RunOptions): Promise<RunResult> {
     stopCode: null,
     cases: []
   };
+  const sandboxes = new Map<
+    string,
+    {
+      value: Pick<CreateSandboxResponse, "sandboxId" | "customers">;
+      messages: number;
+    }
+  >();
+  for (const [group, entry] of Object.entries(options.reuseSandboxes ?? {})) {
+    const sandboxId = SandboxIdSchema.parse(entry.sandboxId);
+    if (!Number.isSafeInteger(entry.messages) || entry.messages < 0)
+      throw new Error("Invalid prior sandbox usage");
+    sandboxes.set(group, {
+      value: {
+        sandboxId,
+        customers: engine.seed().customers.map((customer) => ({
+          customerId: customer.id,
+          name: customer.name
+        }))
+      },
+      messages: entry.messages
+    });
+  }
   const post = async (path: string, body: unknown) => {
     const response = await fetcher(`${baseUrl}${path}`, {
       method: "POST",
@@ -94,10 +131,25 @@ export async function runLive(options: RunOptions): Promise<RunResult> {
   for (const testCase of options.cases) {
     result.attemptedCases++;
     try {
-      // No readiness request hits /turn. Each case creates exactly one fresh sandbox.
-      const sandbox = CreateSandboxResponseSchema.parse(
-        await post(ROUTES.sandboxes, {})
-      );
+      // Owner-authorized grouping stays within the five-sandbox and 30-message caps.
+      // State-changing and memory cases have their own groups.
+      const group = testCase.sandboxGroup ?? testCase.id;
+      let entry = sandboxes.get(group);
+      if (!entry || entry.messages + testCase.turns.length > 30) {
+        const { sandboxId, customers } = CreateSandboxResponseSchema.parse(
+          await post(ROUTES.sandboxes, {})
+        );
+        entry = {
+          value: { sandboxId, customers },
+          messages: 0
+        };
+        sandboxes.set(group, entry);
+      }
+      const sandbox = entry.value;
+      result.sandboxes[group] = {
+        sandboxId: sandbox.sandboxId,
+        messages: entry.messages
+      };
       if (
         !sandbox.customers.some(
           (customer) => customer.customerId === testCase.customerId
@@ -110,11 +162,15 @@ export async function runLive(options: RunOptions): Promise<RunResult> {
         seedVersion: engine.seed().seedVersion,
         caseId: testCase.id,
         source: "live",
+        baseUrl,
+        environment: result.environment,
         recordedAt: now().toISOString(),
         turns: []
       };
       for (const turn of testCase.turns) {
         result.turnsPosted++;
+        entry.messages++;
+        result.sandboxes[group].messages = entry.messages;
         // A new HTTP request has no client history; the same sandbox/customer exercises DO memory.
         const response = TurnResponseSchema.parse(
           await post(
@@ -125,6 +181,11 @@ export async function runLive(options: RunOptions): Promise<RunResult> {
         result.usage.inputTokens += response.usage.inputTokens;
         result.usage.outputTokens += response.usage.outputTokens;
         result.usage.modelCalls += response.usage.modelCalls;
+        result.modelCallCount = result.usage.modelCalls;
+        result.estimatedNeurons += estimateNeurons(
+          response.usage.inputTokens,
+          response.usage.outputTokens
+        );
         recording.turns.push({
           customerId: testCase.customerId,
           request: turn.request,

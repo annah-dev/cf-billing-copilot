@@ -1,85 +1,84 @@
 # Billing evals
 
-Fifteen cases cover invoice explanations (including tax, tiers and mid-month proration),
-month comparisons, plan simulations, the September usage spike, duplicate-charge credits,
-historical expiry, and memory follow-ups. Expected amounts are computed in `buildCases()`
-by calling `engine` on `engine.seed()`. No expected cents or money displays are handwritten.
-Application code, contracts, scripts and root test configuration are unchanged.
+Fifteen engine-backed cases cover all six user stories, with 17 turns in the full set.
+Expected amounts, ratios, usage quantities and invoice line counts come from `engine` on
+`engine.seed()`. The invoice-count question catches an answer saying seven lines for a
+six-line invoice. Application code and frozen configuration remain unchanged.
 
-## Offline replay
+## Replay
 
 ```sh
 npm test
 ```
 
-The existing unit project includes `evals/**/*.test.ts`. Live tests end in `.live.ts` and
-fixture generation ends in `.fixture.ts`; neither runs in `npm test`. Both test projects
-block global fetch. Live-runner tests inject a synthetic transport and make no network calls.
+The root unit project already collects `evals/**/*.test.ts`. Live capture ends in `.live.ts`
+and explicit fixture/regrade tools end in `.fixture.ts`, so none execute as part of `npm test`.
+Both root test projects prohibit global fetch. Harness unit tests use an injected transport.
 
-Recordings use format version 1: case id, seed version, provenance, timestamp and an ordered
-list of customer ids, `TurnRequest`s and `TurnResponse`s. The HTTP envelope and every tool
-input/output are validated with the frozen contracts. Replay checks the exact question,
-confirmation flag and customer, every expected amount as its engine display, expected
-quantities/ratios, and key meanings such as pending approval or a proactive usage spike.
-Each money-looking string must trace to a validated tool output from the same or an earlier
-turn in the recording. Numeric tokens outside money must also trace to tool output.
-Named calendar dates ("September 2026", "September 18, 2026", "September 18") are normalized
-to ISO before checking, so the whole date must match a tool date, period or the UTC calendar
-date of a tool timestamp such as `2026-10-04T00:00:00Z`; a bare year is
-grounded by any tool date in that year, and a yearless day takes its year only from a single
-grounded period for that month. Future responses cannot ground an earlier answer.
+Replay validates the recording envelope and each tool input/output, the question/customer/
+confirmation flag, engine display strings and required meanings. Every numeric claim is
+checked: currency, scalar numbers, percentages, multipliers, written integer words, natural
+calendar dates and counts. Array lengths ground counts and ordered entries ground list
+positions. An invoice count must match its actual line array; an unrelated scalar seven does
+not excuse "seven lines". Only current and earlier tool outputs in that case can ground an
+answer. The report explicitly counts live versus synthetic recordings.
 
-The current committed recordings have `source: "synthetic-engine"`, `recordedAt: null` and
-zero model usage. They prove harness behavior, not model performance. Their prose is generated
-from the case expectations and engine outputs. They are deliberately marked synthetic until
-PR #4 merges, main is pulled, and one live run replaces them with real responses.
+Recordings are immutable model evidence. The active snapshot contains the latest captured
+response for each case; archives under `recordings/runs/` preserve both attempts. Genuine
+model failures make replay red. See `results/README.md` for first-run results, total usage,
+the one offline grading correction and the outstanding agent failures.
 
-Generate or refresh synthetic fixtures with:
+The separate defect-guard tests build engine fixtures in memory, so a bad model response
+cannot contaminate a validator regression's starting point. To generate synthetic recordings
+before any live capture:
 
 ```sh
-npx vitest run --config evals/vitest.fixture.config.ts
-npx oxfmt --write evals/recordings
+npx vitest run --config evals/vitest.fixture.config.ts evals/fixtures.fixture.ts
 ```
 
-The generator refuses to replace live recordings. Never hand-edit generated recordings or
-expected values to make a failure pass. Fix a defective expectation in the case builder or
-report an agent failure, preserving the recorded response.
+The generator refuses to replace live evidence. Do not hand-edit generated recordings or
+expected values to make a failure pass.
 
-## One live run, after the owner's merge notice and deployment
+## Deliberate live capture
 
-First pull main as instructed by Anna and ensure the deployed build includes PR #4 and D-20.
-No live model outputs may be recorded before that notice. Then run once:
+Main includes PR #4 and D-20; Anna authorized local dev with real Workers AI. Start `npm run dev`
+(the server's health endpoint does not call the model), then run:
 
 ```sh
-EVAL_LIVE_READY=1 EVAL_BASE_URL=https://YOUR-WORKER.workers.dev npm run eval:live
+EVAL_LIVE_READY=1 npm run eval:live
 ```
 
-`EVAL_LIVE_READY` acknowledges those prerequisites; it does not query GitHub or deploy.
-The origin comes from the environment; no account credentials are needed. CI is explicitly
-refused. The run creates one fresh sandbox per case, sends 17 turns in total, validates and
-re-records each response, and writes `evals/results/latest-run.json` after each attempted case.
-Each memory follow-up sends a new HTTP request with no client history to the same sandbox
-and customer. Only the two credit-start turns carry `confirm: true`; other requests carry
-`confirm: false`. No approval decisions are made, and approver tokens are discarded.
-The September invoice and comparison require the proactive anomaly in the answer without
-requiring the model to choose any particular tool.
+`EVAL_BASE_URL` defaults to `http://127.0.0.1:5173`. Loopback HTTP and HTTPS origins are allowed;
+credentials, queries and paths are refused. CI is refused. Each results JSON includes the
+base URL, UTC date, environment (`local dev` or `deployed`), pass fraction, completion/stop
+state, model call count, tokens and estimated neurons from the pinned pricing helper.
 
-There are no retries. The first `budget_exhausted`, `cap_reached` or `rate_limited` stops the
-run immediately. Other HTTP, schema or transport failures also stop it. Failed answers are
-saved unchanged so replay exposes them. Results include UTC run date, attempted/completed/
-passed counts, a pass fraction over all 15 planned cases, stop code, turns posted, and
-reported model calls and input/output tokens. In-progress snapshots say `running`; capped
-runs say `stopped` and do not claim completion. The contract does not expose neurons, and a
-transport failure can leave actual usage unknown; do not infer a neuron count from tokens.
+Read-only cases share one sandbox. Duplicate-credit and each memory case use separate
+sandboxes, preserving credit/memory isolation while staying within five creations per IP.
+The full set uses four sandboxes and at most 12 messages in any one. A group that would exceed
+30 messages uses a new sandbox; app caps remain enforced. Only credit-start turns send
+`confirm: true`. Memory follow-ups send new requests with no client history to the same
+sandbox/customer. Approver tokens are discarded and no approval decisions are sent.
 
-D-7 permits five new sandboxes per IP per UTC day. A 15-case run on the ordinary deployed
-configuration will stop at that cap, possibly earlier if demos consumed capacity. This
-harness respects that policy. A complete live run requires an owner-approved resolution of
-that capacity constraint; this lane does not change caps, reuse case sandboxes, spoof an IP,
-or retry over reset boundaries. Record the stopped run honestly if capacity is unchanged.
+There are no automatic retries. Cap, rate, budget and transport failures stop immediately.
+One full run is allowed per target. A subsequent invocation must explicitly select previously
+failing cases, for example:
 
-Review the generated results/recordings, run `npm test`, and commit them through the usual
-gate. A mixed snapshot after a stopped run can include prior synthetic recordings; report
-live completed counts from the results file, never equate replay passes to live passes.
-The replay test title `reports recording sources: N live, M synthetic-engine of 15 cases`
-shows the current mix in every `npm test` run.
+```sh
+EVAL_LIVE_READY=1 EVAL_CASE_IDS=september-invoice,request-tiers npm run eval:live
+```
+
+Reruns reuse the recorded sandbox ids and accounted message counts; they cannot rerun a passing
+case. `EVAL_PREVIOUS_RESULTS` can select the prior report. Each invocation writes a dated
+`run-*.json` and the `latest-run.json` alias. Capture is deliberate; never put these commands
+in a loop. The owner-authorized full run and one failing-only rerun have already completed.
+No more local model calls are planned for this session.
+
+After deployment, the release lane runs the complete set against the deployed origin:
+
+```sh
+EVAL_LIVE_READY=1 EVAL_BASE_URL=https://cf-billing-copilot.anna-hester.workers.dev npm run eval:live
+```
+
+A new target permits its own full run. The public README's pass rate comes from that deployment,
+not this local run. The release lane must respect the same caps and label target/date/usage.

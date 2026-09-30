@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { engine } from "../src/engine";
 import { buildCases } from "./cases";
 import { checkReplay } from "./grounding";
-import { parseRecording } from "./recording";
+import { parseRecording, RecordingSchema } from "./recording";
 
 const cases = buildCases();
 export const readRecording = (id: string) =>
@@ -12,7 +12,7 @@ export const readRecording = (id: string) =>
   );
 
 const sources = cases.map(
-  (testCase) => parseRecording(readRecording(testCase.id)).source
+  (testCase) => RecordingSchema.parse(readRecording(testCase.id)).source
 );
 const live = sources.filter((source) => source === "live").length;
 const synthetic = sources.filter(

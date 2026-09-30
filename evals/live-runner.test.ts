@@ -117,7 +117,9 @@ describe("live harness with an injected offline transport", () => {
   });
 
   test("creates a fresh sandbox for each case and reports failed numeric answers", async () => {
-    const { options, recordings } = setup(cases.slice(0, 2));
+    const { options, recordings } = setup(
+      cases.slice(0, 2).map((item) => ({ ...item, sandboxGroup: undefined }))
+    );
     let creates = 0;
     let currentCase = -1;
     const fetcher: typeof fetch = async (input) => {
@@ -216,12 +218,59 @@ describe("live harness with an injected offline transport", () => {
   });
 
   test.each([
-    undefined,
     "http://synthetic.invalid",
     "https://user:secret@synthetic.invalid",
     "https://synthetic.invalid?token=secret",
     "https://synthetic.invalid/path"
   ])("rejects unsafe or missing deployed origin %s", (url) => {
     expect(() => deployedUrl(url)).toThrow();
+  });
+
+  test("defaults to local dev and accepts loopback HTTP only", () => {
+    expect(deployedUrl(undefined)).toBe("http://127.0.0.1:5173");
+    expect(deployedUrl("http://localhost:5173")).toBe("http://localhost:5173");
+    expect(() => deployedUrl("http://example.com")).toThrow();
+  });
+
+  test("shares read-only questions but isolates credit and memory within the configured caps", () => {
+    const groups = new Map<string, number>();
+    for (const item of cases)
+      groups.set(
+        item.sandboxGroup!,
+        (groups.get(item.sandboxGroup!) ?? 0) + item.turns.length
+      );
+    expect(groups.size).toBe(4);
+    expect([...groups.values()].every((count) => count <= 30)).toBe(true);
+    expect(
+      cases.find((item) => item.id === "remember-credit")!.sandboxGroup
+    ).not.toBe("read-only");
+    expect(
+      cases.find((item) => item.id === "duplicate-credit")!.sandboxGroup
+    ).not.toBe("remember-credit");
+  });
+
+  test("reuses a known sandbox for a failing-only rerun and reports target, calls and neurons", async () => {
+    const { options } = setup();
+    const paths: string[] = [];
+    const fetcher: typeof fetch = async (input) => {
+      paths.push(String(input));
+      return reply({
+        ...cases[0].turns[0].fixture,
+        usage: { inputTokens: 10, outputTokens: 5, modelCalls: 2 }
+      });
+    };
+    const result = await runLive({
+      ...options,
+      baseUrl: "http://127.0.0.1:5173",
+      reuseSandboxes: { "read-only": { sandboxId, messages: 12 } },
+      fetcher
+    });
+    expect(paths).toHaveLength(1);
+    expect(paths[0]).toContain("/turn");
+    expect(result.environment).toBe("local dev");
+    expect(result.baseUrl).toBe("http://127.0.0.1:5173");
+    expect(result.modelCallCount).toBe(2);
+    expect(result.estimatedNeurons).toBe(2);
+    expect(result.sandboxes["read-only"].messages).toBe(13);
   });
 });

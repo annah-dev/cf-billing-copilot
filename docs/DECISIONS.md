@@ -807,3 +807,35 @@ example `2026-10-04` from `2026-10-04T00:00:00Z`), so credit deadlines and creat
 in prose ground as whole dates. Reason: gate review round 2 (R2-F1) showed the `T` separator
 dropped the day, so a correct "approval deadline October 4, 2026" failed as ungrounded; any
 other day is still rejected. Decided by: QA engineer under standing orders.
+
+## evals: preserve gate fixes when starting the owner-authorized live phase
+
+Recover the cancelled offline gate's two fix commits with `no-mistakes axi sync --recover`
+before rebasing onto merged PR #4. Reason: the owner's new live-capture and count-grounding
+scope supersedes the offline-only gate intent, and the new validation must retain its fixes.
+Decided by: QA engineer under standing orders.
+
+## evals: owner-authorized local capture, sandbox grouping and bounded reruns
+
+Capture one full local-dev set, then one explicit rerun of its failing questions; share only
+read-only cases, isolate credit and memory cases, and reuse known sandboxes for the rerun.
+Default EVAL_BASE_URL to loopback dev and persist target, date, model calls and estimated
+neurons per run. Reason: Anna authorized local dev before release deployment and required
+respecting caps rather than raising them. Decided by: Anna.
+
+## evals: every numeric claim includes contextual counts and date wording
+
+Ground array lengths and numbered positions, parse written integer numbers, and require invoice
+line-count claims to match the invoice array rather than any unrelated scalar. Derive month/year
+from full tool timestamps and keep full dates coherent. Keep failed live answers as red replay
+cases; regression tests start from engine fixtures in memory. Reason: the owner reported "7
+lines" for a six-line invoice and asked for every number to be checked.
+Decided by: QA engineer under standing orders.
+
+## evals: offline correction of ISO-month count false positives
+
+Exclude ISO date components from count-claim starts. Preserve initial grading and all original
+responses, then regrade the archived full run offline. Reason: the first capture proved that
+"2026-09 invoice" was incorrectly recognized as "09 invoices"; correcting that checker defect
+changes the first-run grade from 4/15 to 6/15 without a new model call or a weakened count check.
+Decided by: QA engineer under standing orders.

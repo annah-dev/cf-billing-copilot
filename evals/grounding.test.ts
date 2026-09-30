@@ -1,13 +1,28 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { buildCases } from "./cases";
 import { checkReplay } from "./grounding";
+import { engine } from "../src/engine";
+import type { Recording } from "./recording";
 
 const cases = buildCases();
-const fixture = (id = cases[0].id) =>
-  JSON.parse(
-    readFileSync(new URL(`./recordings/${id}.json`, import.meta.url), "utf8")
-  );
+const fixture = (id = cases[0].id) => {
+  const testCase = cases.find((item) => item.id === id)!;
+  return structuredClone({
+    formatVersion: 1,
+    source: "synthetic-engine",
+    recordedAt: null,
+    seedVersion: engine.seed().seedVersion,
+    caseId: id,
+    turns: testCase.turns.map((turn) => ({
+      customerId: testCase.customerId,
+      request: turn.request,
+      response: {
+        ...turn.fixture,
+        usage: { inputTokens: 0, outputTokens: 0, modelCalls: 0 }
+      }
+    }))
+  }) as Recording;
+};
 
 describe("eval defect guards", () => {
   test("covers all six stories with 12 to 15 cases and confirms only credit starts", () => {
@@ -65,7 +80,11 @@ describe("eval defect guards", () => {
     recording.turns[0].response.toolCalls[0].input = {};
     expect(checkReplay(cases[0], recording)[0]).toContain("Invalid recording");
     const invalidOutput = fixture();
-    invalidOutput.turns[0].response.toolCalls[0].output.total.display = "$0.01";
+    (
+      invalidOutput.turns[0].response.toolCalls[0].output as {
+        total: { display: string };
+      }
+    ).total.display = "$0.01";
     expect(checkReplay(cases[0], invalidOutput)[0]).toContain(
       "Invalid recording"
     );
@@ -111,7 +130,7 @@ describe("eval defect guards", () => {
   const anomalyCase = cases.find((item) => item.id === "september-anomaly")!;
   const anomalyAnswer = (text: string) => {
     const recording = fixture(anomalyCase.id);
-    recording.turns[0].response.text = `Usage spike. $11.60; 15000; 3000; 5x. ${text}`;
+    recording.turns[0].response.text = `Usage spike. ${anomalyCase.turns[0].expected.filter((value) => !/^\d{4}-/.test(value)).join("; ")}. ${text}`;
     return checkReplay(anomalyCase, recording);
   };
 
@@ -181,6 +200,75 @@ describe("eval defect guards", () => {
     ).toContain("Turn 1: ungrounded number 2026-10-05");
   });
 
+  test("grounds month-year wording from a complete timestamp", () => {
+    expect(
+      creditAnswer("remember-credit", 1, "The deadline is in October 2026.")
+    ).toEqual([]);
+  });
+
+  const countCase = cases.find((item) => item.id === "zero-tax-invoice")!;
+  test("grounds an invoice line count from the engine's actual line array", () => {
+    expect(checkReplay(countCase, fixture(countCase.id))).toEqual([]);
+  });
+
+  test("does not mistake an ISO month next to invoice for a count", () => {
+    const recording = fixture(countCase.id);
+    recording.turns[0].response.text += " This is the 2026-09 invoice.";
+    expect(checkReplay(countCase, recording)).toEqual([]);
+  });
+  test.each(["7 lines", "seven invoice lines"])(
+    "rejects an incorrect line count %s even if that number appears elsewhere",
+    (claim) => {
+      const recording = fixture(countCase.id);
+      const output = recording.turns[0].response.toolCalls[0].output as {
+        lines: { quantity: number | null }[];
+      };
+      output.lines[0].quantity = 7;
+      recording.turns[0].response.text += ` The invoice has ${claim}.`;
+      expect(checkReplay(countCase, recording)).toContain(
+        "Turn 0: ungrounded count 7 lines"
+      );
+    }
+  );
+  test("rejects invented counts outside money and invoice lines", () => {
+    const recording = fixture(countCase.id);
+    recording.turns[0].response.text += " There were ninety-nine requests.";
+    expect(checkReplay(countCase, recording)).toContain(
+      "Turn 0: ungrounded number 99"
+    );
+  });
+
+  test.each(["-99", "1e9", "1/99", "99k"])(
+    "checks signed, fractional and compact numeric tokens %s",
+    (token) => {
+      const recording = fixture(countCase.id);
+      recording.turns[0].response.text += ` Usage was ${token}.`;
+      expect(checkReplay(countCase, recording)).toContain(
+        `Turn 0: ungrounded number ${token}`
+      );
+    }
+  );
+
+  test.each([
+    "ninety-nine dollars",
+    "ninety-nine cents",
+    "ninety-nine dollar",
+    "ninety-nine cent"
+  ])("rejects an invented amount written as %s", (phrase) => {
+    const recording = fixture(countCase.id);
+    recording.turns[0].response.text += ` Another charge was ${phrase}.`;
+    expect(checkReplay(countCase, recording)).toContain(
+      `Turn 0: ungrounded money ${phrase.replace("ninety-nine", "99")}`
+    );
+  });
+
+  test("grounds a singular invoice and ordinal line reference", () => {
+    const recording = fixture(countCase.id);
+    recording.turns[0].response.text +=
+      " One invoice was issued in 2026. The first line is a subscription.";
+    expect(checkReplay(countCase, recording)).toEqual([]);
+  });
+
   test("grounds only the UTC calendar date of a non-midnight timestamp", () => {
     expect(
       creditAnswer(
@@ -199,7 +287,7 @@ describe("eval defect guards", () => {
       (item) => item.id === "august-september-change"
     )!;
     const recording = fixture(testCase.id);
-    recording.turns[0].response.text += ` ${recording.turns[0].response.toolCalls[0].output.summary}`;
+    recording.turns[0].response.text += ` ${(recording.turns[0].response.toolCalls[0].output as { summary: string }).summary}`;
     expect(checkReplay(testCase, recording)).toEqual([]);
   });
 
@@ -208,7 +296,8 @@ describe("eval defect guards", () => {
     const recording = fixture(testCase.id);
     const laterInvoice =
       fixture("zero-tax-invoice").turns[0].response.toolCalls[0];
-    const amount = laterInvoice.output.total.display;
+    const amount = (laterInvoice.output as { total: { display: string } }).total
+      .display;
     recording.turns[0].response.text += ` Future ${amount}.`;
     recording.turns[1].response.toolCalls.push(laterInvoice);
     expect(checkReplay(testCase, recording)).toContain(

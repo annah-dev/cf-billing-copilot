@@ -1,17 +1,26 @@
 {
   "formatVersion": 1,
   "seedVersion": "engine-v2",
-  "caseId": "september-invoice",
+  "caseId": "duplicate-credit",
   "turns": [
     {
       "customerId": "cus_1",
       "request": {
-        "message": "Explain my September 2026 invoice line by line, including subtotal, credits and tax. Mention any unusual usage.",
-        "confirm": false
+        "message": "The September 2026 invoice debit was posted twice. I confirm: start a credit request for the duplicate and tell me the amount and approval status.",
+        "confirm": true
       },
       "response": {
-        "text": "Your September 2026 invoice has 7 lines: \n1. Starter fee: $30.00\n2. Edge requests on Starter: $101.60\n3. Object storage on Starter: $106.00\n4. Data transfer on Starter: $70.00\n5. Compute time on Starter: $73.80\n6. Sales tax: $31.47\nThe subtotal is $381.40, credits are $0.00, and tax is $31.47. The total is $412.87.\nThere is an unusual usage spike on 2026-09-18 for Edge requests, with a quantity of 15,000, which is 5x the baseline quantity of 3,000. The estimated excess cost is $11.60.",
+        "text": "",
         "toolCalls": [
+          {
+            "name": "startCreditRequest",
+            "input": {
+              "invoiceId": "inv_202609",
+              "reason": "The September 2026 invoice debit was posted twice."
+            },
+            "output": null,
+            "error": "No invoice inv_202609 for this customer"
+          },
           {
             "name": "getInvoice",
             "input": {
@@ -252,18 +261,146 @@
               "method": "Leave-one-day-out median of other daily totals in the same UTC month and meter; missing days are zero, even medians round half away from zero. Flag >=3x a positive baseline (>=4x warning, >=5x critical); zero baselines are not scored. Excess cost is the difference in rounded usage charges when that day's excess is removed, retaining the actual plan history; excludes fee, tax and credits."
             },
             "error": null
+          },
+          {
+            "name": "startCreditRequest",
+            "input": {
+              "invoiceId": "inv_43219e3da3298042",
+              "reason": "The September 2026 invoice debit was posted twice."
+            },
+            "output": {
+              "request": {
+                "id": "cr_0347642bd06cc8b7993d3e9f",
+                "invoiceId": "inv_43219e3da3298042",
+                "status": "requested",
+                "validatedAmount": null,
+                "createdAt": "2026-09-30T20:44:01.625Z",
+                "deadline": null,
+                "outcomeReason": null
+              },
+              "existing": false,
+              "message": "Credit request cr_0347642bd06cc8b7993d3e9f was recorded. The claim is checked against the ledger and a human approver decides; no credit is applied until then."
+            },
+            "error": null
+          },
+          {
+            "name": "getCreditRequestStatus",
+            "input": {
+              "requestId": "cr_0347642bd06cc8b7993d3e9f"
+            },
+            "output": {
+              "requests": [
+                {
+                  "request": {
+                    "id": "cr_0347642bd06cc8b7993d3e9f",
+                    "invoiceId": "inv_43219e3da3298042",
+                    "status": "pending_approval",
+                    "validatedAmount": {
+                      "cents": 41287,
+                      "display": "$412.87"
+                    },
+                    "createdAt": "2026-09-30T20:44:01.625Z",
+                    "deadline": "2026-10-01T20:44:01.889Z",
+                    "outcomeReason": null
+                  },
+                  "audit": [
+                    {
+                      "seq": 8,
+                      "at": "2026-09-30T20:44:01.625Z",
+                      "actor": "customer:cus_1",
+                      "action": "credit_requested",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_0347642bd06cc8b7993d3e9f"
+                      },
+                      "reason": "Confirmed by the customer via /turn (confirm: true): The September 2026 invoice debit was posted twice.",
+                      "before": null,
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null,
+                        "confirmedBy": "customer",
+                        "confirmedVia": "turn"
+                      }
+                    },
+                    {
+                      "seq": 9,
+                      "at": "2026-09-30T20:44:01.839Z",
+                      "actor": "workflow:cr_0347642bd06cc8b7993d3e9f",
+                      "action": "credit_validated",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_0347642bd06cc8b7993d3e9f"
+                      },
+                      "reason": "Charge le_duplicate_september duplicates earlier charge le_charge_1_2026_09: same customer, invoice, billing-run posting id and amount $412.87. Pending and applied reservations total $0.00; remaining creditable amount $412.87.",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      }
+                    },
+                    {
+                      "seq": 10,
+                      "at": "2026-09-30T20:44:01.889Z",
+                      "actor": "workflow:cr_0347642bd06cc8b7993d3e9f",
+                      "action": "memo_pending",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_0347642bd06cc8b7993d3e9f"
+                      },
+                      "reason": "Pending credit memo cm_0347642bd06cc8b7993d3e9f for $412.87 reserves le_duplicate_september",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "pending_approval",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": "2026-10-01T20:44:01.889Z",
+                        "decision": null
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "error": null
           }
         ],
         "usage": {
-          "inputTokens": 7415,
-          "outputTokens": 189,
-          "modelCalls": 2
+          "inputTokens": 10194,
+          "outputTokens": 138,
+          "modelCalls": 4
         }
       }
     }
   ],
   "source": "live",
-  "recordedAt": "2026-09-30T20:47:12.132Z",
+  "recordedAt": "2026-09-30T20:43:56.278Z",
   "baseUrl": "http://127.0.0.1:5173",
   "environment": "local dev"
 }
