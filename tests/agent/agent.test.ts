@@ -474,11 +474,16 @@ describe("neuron estimate", () => {
       const p = new ToolProvenance(state.storage.sql);
       const input = { period: "2026-09" };
       const output = { total: { cents: 41287, display: "$412.87" } };
-      await p.recordIssued(
+      // The SDK order: the tool executes (result recorded) before the step finishes.
+      await p.recordResult(
+        { toolCallId: "t1", toolName: "getInvoice", input },
+        { output }
+      );
+      await p.recordStep(
         [{ toolCallId: "t1", toolName: "getInvoice", input }],
+        [],
         true
       );
-      await p.recordOutput("t1", output);
       const part = (id: string, o: unknown, i: unknown = input) => ({
         type: "tool-getInvoice",
         toolCallId: id,

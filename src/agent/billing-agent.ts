@@ -362,8 +362,8 @@ export class BillingAgent extends AIChatAgent<Env> {
         ledger: this.ledger(),
         startCreditRequest: (input) => this.startCreditRequest(input),
         remember: (name, output) => this.remember(name, output),
-        recordOutput: (toolCallId, output) =>
-          this.provenance.recordOutput(toolCallId, output)
+        recordResult: (call, result) =>
+          this.provenance.recordResult(call, result)
       },
       cache,
       { confirmCredit: !headless }
@@ -382,7 +382,23 @@ export class BillingAgent extends AIChatAgent<Env> {
       ),
       tools,
       onStepFinish: (step) =>
-        this.provenance.recordIssued(step.toolCalls, !headless),
+        this.provenance.recordStep(
+          step.toolCalls,
+          step.content.flatMap((c) =>
+            c.type === "tool-error"
+              ? [
+                  {
+                    toolCallId: c.toolCallId,
+                    text:
+                      c.error instanceof Error
+                        ? c.error.message
+                        : String(c.error)
+                  }
+                ]
+              : []
+          ),
+          !headless
+        ),
       stopWhen: stepCountIs(MAX_STEPS),
       maxOutputTokens: config.MAX_OUTPUT_TOKENS,
       temperature: 0,
