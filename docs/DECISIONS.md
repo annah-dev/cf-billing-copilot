@@ -759,6 +759,7 @@ are kept because the rebase left src/ui, tests/ui and index.html unchanged. Reas
 must describe the checkout under review, and command output must come from the commands.
 
 Decided by: Frontend engineer under standing orders.
+
 ## evals: early-start synthetic fixtures and strict replay provenance
 
 Build fifteen cases from the current engine seed with engine-computed expected amounts,

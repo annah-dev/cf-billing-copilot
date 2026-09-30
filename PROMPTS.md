@@ -2197,6 +2197,7 @@ claude started pid=291742
 Checking the merged logs for fence balance, section numbering, and the referenced pre-rebase head.
 claude exited pid=291742 status=success
 ````
+
 ## 2026-09-29T20:35:34-07:00 - Evals early-start note
 
 Role: QA / evals engineer
@@ -2300,3 +2301,12 @@ unit project, plus an isolated opt-in live harness tested with an injected offli
 Workers AI calls 0. Live capture remains pending Anna's PR #4 merge notice, main pull and
 owner deployment. D-7's five-sandbox-per-IP cap prevents a complete 15-fresh-sandbox live run
 without an owner-approved capacity resolution. Gate review and CI pending.
+
+## 2026-09-29T20:56:49-07:00 - Evals gate review context
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Source: prompt-history/prompts/05b-evals-review-context.md
+Outcome: (pending; author context for gate, not the generated full review prompt)
+
+Implement the evals lane from prompt-history/prompts/05-evals.md under Anna's explicit EARLY-START OVERRIDE: PR #4 has NOT been confirmed merged. Contract PR #6 (D-20 confirm on /turn) is on main. Build only work that does not need the live agent: 12-15 questions, expected amounts computed by calling the engine on engine.seed() on main, harness, replay format and replay integrated into the existing npm test unit include. Use confirm:true ONLY on credit-start questions; require the September anomaly proactively without requiring the model to choose detectAnomalies. NO live Workers AI calls or recording of live model outputs until Anna says PR #4 merged and main is pulled; owner deploys. Current 15 recordings are explicitly labeled synthetic-engine with null recordedAt and zero usage, proving harness behavior only. Live runner is built and tested offline with an injected transport; it is opt-in via EVAL_LIVE_READY and EVAL_BASE_URL, refuses CI, makes one fresh sandbox per case and new requests to the same customer for memory followups, has no retries, stops immediately on budget/cap/rate limits, discards approver tokens, preserves partial recordings, reports planned-case pass fraction/date/status/token/model-call usage and never invents neuron counts. D-7 allows only five new sandboxes per IP/day, so a complete 15-case live run needs an owner-approved capacity resolution; do not bypass caps, spoof an IP, share case sandboxes or change frozen config. Live performance and deployment compatibility are explicitly NOT VERIFIED and must stay pending. Scope is evals/ and append-only PROMPTS.md, docs/DECISIONS.md and new lane prompt-history files; no application, contracts, dependencies, root config or existing historical prompt/decision rewrites. Local done-contract passed: npm ci, typecheck, 160 offline tests in normal and empty-HOME/credential-free env; test list baseline114/head160 with no loss; 15 replay cases; actual planted wrong recording amount made replay red then restored; live guard failed before fetch. Use the usual gate for Claude cross-review and CI, not deployment or merge. Review convergence: two full rounds then delta-only third, stop disputed findings FOR ANNA; the repo's standing orders authorize lane implementation/test/review-fix decisions. The document step must archive this round's actual review prompt from no-mistakes axi logs --step review --full, if exposed; otherwise save identifying run/step/version log lines verbatim in prompt-history/prompts/05g-evals-gate-review-r1.md and state exact prompt unavailable in PROMPTS.md, evals/verification.md and PR NOT VERIFIED. Do not seek other Claude session data. Append prompt outcome and update evals/verification.md gate/CI truthfully. Keep existing prompt/decision bytes unchanged; do not blanket-format the repo. PR evidence must include commands/tails, test behavior mapping, 15 synthetic replays, planted recording red, coverage comparison, decisions, zero live calls and VERIFIED/NOT VERIFIED lines. This is OFFLINE PREPARATION, not the full lane's final done claim; live recording awaits the owner's notice and deployment. Never merge or deploy. The owner merges.
