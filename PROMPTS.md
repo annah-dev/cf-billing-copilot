@@ -2056,3 +2056,38 @@ claude started pid=137713
 ""
 claude exited pid=137713 status=success
 ````
+
+## 24. UI shared-seed documentation instruction record
+
+- Timestamp: 2026-09-30T03:31:59.737848+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run 01M3R4YFDC2775KN88HGKXBJDV
+- Source: prompt-history/prompts/04l-ui-seed-document-log.md
+- Outcome: round-2 provenance was added by the gate; these exact instructions were omitted and are now recorded. Both full reviews completed, routing regression fixed, 146 tests passed normally and credential-free, browser checks and CI passed. No live model calls, deployment or merge.
+
+````text
+Keep the original supplied gate intent verbatim: its count was accurate before review added the regression test. The present evidence accurately reports 146 tests, 113 baseline and 33 UI. Do not rewrite historical prompts or relax any checks.
+
+Complete the mandatory round-2 review provenance record, without changing application code. Add prompt-history/prompts/04k-ui-seed-review-r2.md and append it verbatim in PROMPTS.md with role automated cross-review, no-mistakes v1.41.2 (Claude), run 01M3R4YFDC2775KN88HGKXBJDV, outcome full round 2 passed with no findings. Say the generated prompt text is unavailable in the full step log; the intent is logged separately in 04h-ui-seed-gate-intent.md. Capture the observed round-2 log lines exactly:
+"committed agent fixes: no-mistakes(review): Route preview plan simulation only on whole-word seeded plans"
+""
+reviewing changes...
+""
+claude started pid=137713
+""
+claude exited pid=137713 status=success
+
+Log these exact documentation instructions with a tool-copy in prompt-history/prompts/04l-ui-seed-document-log.md and PROMPTS.md as automated cross-review, the same harness/run. Update only the follow-up intent's outcome to state both full Claude review rounds completed, the routing regression fixed and 146 tests passed; generated prompt text unavailable, no model calls, no deployment or merge. Keep prior prompt text and gate-fix commits intact. No engine, contracts, frozen dependencies or configuration changes. Trim trailing whitespace and scrub home/temp paths. This is a documentation-only delta; do not launch another full code review. After checking these records, resume the remaining gate steps. Leave PR #5 open and held until agent PR #4 merges.
+````
+
+## 25. UI shared-seed third review, delta only
+
+- Timestamp: 2026-09-30T03:31:59.755658+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude)
+- Source: prompt-history/prompts/04m-ui-seed-delta-review.md
+- Outcome: exact supplied delta-review intent recorded; third review limited to prompt/evidence changes after the two passing full reviews. Final delivery verification is reported in PR #5 and the final response. Generated prompt text is unavailable in step logs.
+
+````text
+Complete Anna's shared-engine preview follow-up for PR #5, still held until agent PR #4 merges. The implementation already passed two full Claude review rounds and full no-mistakes run 01M3R4YFDC2775KN88HGKXBJDV with CI green at 16aada8db61817187a80fdef0aae4b4a66403757. Per AGENTS.md convergence, this third review is DELTA ONLY: review git diff 16aada8db61817187a80fdef0aae4b4a66403757...HEAD, consisting only of prompt logging and fresh evidence. Do not reopen the full previously reviewed code diff. The delta records the exact documentation instructions that the gate omitted, and copies the screenshots/browser results the gate captured from its own checkout after the routing fix (port 5391); it updates the evidence README to identify that rerun and refreshes the amount grep. Application code is unchanged; engine, contracts and all frozen files remain untouched. Validate this delta and run all required gate commands, retain all prior gate-fix commits, update existing PR #5, never merge or deploy. The prior code gate passes 146 tests (113 main and 33 UI), including credential-free, and browser engine parity at desktop/390px. No live model calls. All prompts written by this lane are recorded, including this intent in 04m-ui-seed-delta-review.md and PROMPTS.md. The generated prompt text is not exposed by the pinned gate's logs; do not claim it is captured. Ordinary implementation/doc choices and reversible fixes within UI ownership are authorized under standing orders. Delivery verification is reported in the PR body and final message.
+````

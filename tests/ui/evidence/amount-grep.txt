@@ -52,24 +52,6 @@ src/app.tsx:245:        <span>Deterministic billing. Human decisions. An audit t
 src/app.tsx:246:        <span>Built on Cloudflare</span>
 src/app.tsx:247:      </footer>
 src/app.tsx:248:    </div>
-src/ui/fixtures.ts:10:} from "../contracts/http";
-src/ui/fixtures.ts:11:import { BillingDatasetSchema, type BillingDataset } from "../contracts/engine";
-src/ui/fixtures.ts:17:} from "../contracts/credit";
-src/ui/fixtures.ts:18:import { LedgerEntrySchema } from "../contracts/billing";
-src/ui/fixtures.ts:19:import { type ToolInput, ToolSchemas } from "../contracts/tools";
-src/ui/fixtures.ts:20:import { engine } from "../engine";
-src/ui/fixtures.ts:21:import { fixtureAnswer } from "./messages";
-src/ui/fixtures.ts:22:import { type StoragePort, type Transport } from "./api";
-src/ui/fixtures.ts:24:// Data and monetary outputs come exclusively from the shared deterministic engine.
-src/ui/fixtures.ts:38:    .replaceAll("+", "-")
-src/ui/fixtures.ts:39:    .replaceAll("/", "_")
-src/ui/fixtures.ts:125:      /* In-memory demo remains available. */
-src/ui/fixtures.ts:142:      /* Fall back to this tab's validated data. */
-src/ui/fixtures.ts:156:      seq: world.data.audit.length + 1,
-src/ui/fixtures.ts:170:    if (path === "/api/sandboxes" && init?.method === "POST") {
-src/ui/fixtures.ts:174:        seq: data.audit.length + 1,
-src/ui/fixtures.ts:186:    const parts = path.split("/");
-src/ui/fixtures.ts:429:        deadline.setUTCDate(deadline.getUTCDate() + 1);
 src/admin/admin.tsx:2:import { Button } from "@cloudflare/kumo";
 src/admin/admin.tsx:6:} from "../contracts/http";
 src/admin/admin.tsx:13:} from "../ui/api";
@@ -115,12 +97,6 @@ src/admin/admin.tsx:255:      </div>
 src/admin/admin.tsx:256:      <a className="text-link back-link" href="/">
 src/admin/admin.tsx:258:      </a>
 src/admin/admin.tsx:259:    </main>
-src/ui/api.ts:12:} from "../contracts/http";
-src/ui/api.ts:17:} from "../contracts/ids";
-src/ui/api.ts:82:            "Content-Type": "application/json"
-src/ui/api.ts:137:  return `/admin#${new URLSearchParams({ sandbox: session.sandboxId, token: session.approverToken })}`;
-src/ui/errors.ts:5:} from "../contracts/http";
-src/ui/errors.ts:6:import { ApiError } from "./api";
 src/ui/chat.tsx:2:import { Button } from "@cloudflare/kumo";
 src/ui/chat.tsx:3:import { useAgent } from "agents/react";
 src/ui/chat.tsx:4:import { useAgentChat } from "@cloudflare/ai-chat/react";
@@ -159,6 +135,24 @@ src/ui/chat.tsx:188:    />
 src/ui/chat.tsx:207:      // Accept only the fixture message shapes and validated tool parts we produce.
 src/ui/chat.tsx:230:      /* Chat is still usable without persistence. */
 src/ui/chat.tsx:302:    />
+src/ui/fixtures.ts:10:} from "../contracts/http";
+src/ui/fixtures.ts:11:import { BillingDatasetSchema, type BillingDataset } from "../contracts/engine";
+src/ui/fixtures.ts:17:} from "../contracts/credit";
+src/ui/fixtures.ts:18:import { LedgerEntrySchema } from "../contracts/billing";
+src/ui/fixtures.ts:19:import { type ToolInput, ToolSchemas } from "../contracts/tools";
+src/ui/fixtures.ts:20:import { engine } from "../engine";
+src/ui/fixtures.ts:21:import { fixtureAnswer } from "./messages";
+src/ui/fixtures.ts:22:import { type StoragePort, type Transport } from "./api";
+src/ui/fixtures.ts:24:// Data and monetary outputs come exclusively from the shared deterministic engine.
+src/ui/fixtures.ts:38:    .replaceAll("+", "-")
+src/ui/fixtures.ts:39:    .replaceAll("/", "_")
+src/ui/fixtures.ts:125:      /* In-memory demo remains available. */
+src/ui/fixtures.ts:142:      /* Fall back to this tab's validated data. */
+src/ui/fixtures.ts:156:      seq: world.data.audit.length + 1,
+src/ui/fixtures.ts:170:    if (path === "/api/sandboxes" && init?.method === "POST") {
+src/ui/fixtures.ts:174:        seq: data.audit.length + 1,
+src/ui/fixtures.ts:186:    const parts = path.split("/");
+src/ui/fixtures.ts:429:        deadline.setUTCDate(deadline.getUTCDate() + 1);
 src/ui/messages.ts:7:} from "../contracts/tools";
 src/ui/messages.ts:8:import { TurnRequestSchema, type PanelResponse } from "../contracts/http";
 src/ui/messages.ts:9:import { type BillingDataset } from "../contracts/engine";
@@ -173,6 +167,12 @@ src/ui/messages.ts:139:    text = /spike|anomal/i.test(message)
 src/ui/messages.ts:141:      : `Your ${billed.period} invoice is ${billed.total.display}. ${billed.lines.map((line) => `${line.description}: ${line.amount.display}.`).join(" ")} `;
 src/ui/messages.ts:146:    text += anomalies.anomalies.length
 src/ui/messages.ts:150:              `${anomaly.meterName} on ${anomaly.date}: ${anomaly.multiple.display} the engine baseline; estimated excess cost ${anomaly.estimatedExcessCost.display}.`
+src/ui/api.ts:12:} from "../contracts/http";
+src/ui/api.ts:17:} from "../contracts/ids";
+src/ui/api.ts:82:            "Content-Type": "application/json"
+src/ui/api.ts:137:  return `/admin#${new URLSearchParams({ sandbox: session.sandboxId, token: session.approverToken })}`;
+src/ui/errors.ts:5:} from "../contracts/http";
+src/ui/errors.ts:6:import { ApiError } from "./api";
 src/ui/components.tsx:2:import { Badge, Button } from "@cloudflare/kumo";
 src/ui/components.tsx:7:} from "../contracts/http";
 src/ui/components.tsx:8:import { ToolSchemas } from "../contracts/tools";

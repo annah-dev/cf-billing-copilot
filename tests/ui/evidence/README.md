@@ -54,8 +54,8 @@ problem with my invoice?" to plan simulation. The regression test `answers ordin
 questions without simulating an unnamed plan` failed before the fix
 ([ui-plan-routing-regression-fail.txt](ui-plan-routing-regression-fail.txt)) and passed after it
 ([ui-plan-routing-regression-pass.txt](ui-plan-routing-regression-pass.txt)). The full and
-credential-free logs were rerun after the fix. Screenshots and browser checks predate this
-routing fix; the chat suggestions they exercise route to the same tools before and after.
+credential-free logs were rerun after the fix. The gate reran browser checks at both widths after the routing fix on its own
+checkout using dedicated port 5391. These screenshots and browser logs are from that rerun.
 
 [amount-grep.txt](amount-grep.txt) contains the review grep over the UI lane. Monetary outputs are
 engine results, validated credit memo copies, or contract `.display` references. There is no UI
