@@ -741,3 +741,31 @@ by a test; a test that fails if `src/engine/` imports anything forbidden. `npm r
 4. The gate opens the PR. Make sure its body carries the evidence from docs/agent/verification.md,
    ending with VERIFIED and NOT VERIFIED lines. Never merge; the owner merges.
 
+
+## 2026-09-29T17:49:03-07:00 - Engine gate review round 1
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Source: prompt-history/prompts/02g-engine-gate-review-r1.md
+Run id: 01M3QWB6JATFWSRR2R0NM5EQT4
+Outcome: Changes requested: duplicate-credit invoice accounting, memo snapshot lifecycle, explicit August total, complete historical pending audit. Prompt text not available; identifying log lines archived.
+
+# Engine gate review round 1
+
+Harness: no-mistakes v1.41.2 (Claude)
+Run id: 01M3QWB6JATFWSRR2R0NM5EQT4
+Step: review
+
+The prompt text was not available in `no-mistakes axi logs --step review --full`.
+The identifying log lines below are copied verbatim from that command.
+
+step: review
+run: "01M3QWB6JATFWSRR2R0NM5EQT4"
+lines: 6 total
+log[6]{line}:
+  reviewing changes...
+  ""
+  claude started pid=54062
+  ""
+  "Still reviewing: checking the seed totals and the remaining test assertions, then I'll write up the findings."
+  claude exited pid=54062 status=success

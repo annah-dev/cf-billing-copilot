@@ -7,7 +7,7 @@ import {
   money
 } from "../../src/contracts";
 import { engine } from "../../src/engine";
-import { fixture, postedCredit } from "./fixture";
+import { fixture, postedCredit, invoiceDiscount } from "./fixture";
 
 describe("invoice analysis", () => {
   it("explains every seed line with contract-valid steps and tier money", () => {
@@ -73,6 +73,7 @@ describe("invoice analysis", () => {
     data.ledger.push(postedCredit(5));
     data.customers[0].taxRateBps = 1000;
     data.plans[0].monthlyFeeCents = 30;
+    invoiceDiscount(data, 5);
     data.invoices[1] = engine.buildInvoice(data, "cus_test", "2026-09");
     const result = engine.compareInvoices(
       data,
@@ -95,7 +96,7 @@ describe("invoice analysis", () => {
     const test = fixture(10);
     test.ledger.push(postedCredit(5));
     test.customers[0].taxRateBps = 1000;
-    test.invoices.push(engine.buildInvoice(test, "cus_test", "2026-09"));
+    invoiceDiscount(test, 5);
     const simulated = engine.simulatePlan(
       test,
       "cus_test",

@@ -1,4 +1,5 @@
 import { type BillingDataset, money } from "../../src/contracts";
+import { engine } from "../../src/engine";
 
 export function fixture(quantity = 0): BillingDataset {
   return {
@@ -76,4 +77,30 @@ export function postedCredit(cents: number, at = "2026-09-10T00:00:00Z") {
     reference: "synthetic-credit:test",
     description: "Test posted credit"
   };
+}
+
+export function invoiceDiscount(data: BillingDataset, cents: number): void {
+  const index = data.invoices.findIndex(
+    (bill) => bill.customerId === "cus_test" && bill.period === "2026-09"
+  );
+  const bill =
+    index < 0
+      ? engine.buildInvoice(data, "cus_test", "2026-09")
+      : data.invoices[index];
+  bill.lines = bill.lines.filter((line) => line.kind !== "credit");
+  bill.lines.push({
+    id: "line_discount",
+    kind: "credit",
+    description: "Synthetic issued invoice discount",
+    planId: null,
+    meterId: null,
+    quantity: null,
+    amount: money(-cents),
+    tiers: []
+  });
+  bill.credits = money(cents);
+  if (index < 0) data.invoices.push(bill);
+  else data.invoices[index] = bill;
+  const updated = engine.buildInvoice(data, "cus_test", "2026-09");
+  data.invoices[index < 0 ? data.invoices.length - 1 : index] = updated;
 }

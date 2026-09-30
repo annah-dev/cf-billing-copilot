@@ -59,11 +59,18 @@ export function validateClaim(
         "Credit memo amount must be positive"
       );
     const previous = memos.get(memo.id);
-    if (previous && JSON.stringify(previous) !== JSON.stringify(memo))
+    if (
+      previous &&
+      (previous.requestId !== memo.requestId ||
+        previous.disputedLedgerEntryId !== memo.disputedLedgerEntryId ||
+        previous.amount.cents !== memo.amount.cents)
+    )
       throw new EngineError(
         "invalid_input",
         "Conflicting credit memo snapshots"
       );
+    // existingMemos is the caller's current transactional snapshot, and follows
+    // the potentially stale dataset snapshot. Immutable fields must agree.
     memos.set(memo.id, memo);
   }
   let duplicateFound = false;

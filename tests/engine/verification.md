@@ -8,37 +8,44 @@ Validation (2026-09-29, rebased on origin/main):
 
 - `npm ci`: exit 0; added 571 packages, audited 572 packages.
 - `npm run typecheck`: exit 0; `tsc --noEmit && tsc --noEmit -p tests/agent`.
-- `npm test`: exit 0; Test Files 9 passed (9), Tests 106 passed (106).
-- `env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test`: exit 0; Test Files 9 passed (9), Tests 106 passed (106). Both projects block global fetch and bindings are local.
-- `npx oxlint src/engine`: exit 0. `npx oxfmt --check src/engine tests/engine`: all 14 matched files formatted.
+- `npm test`: exit 0; Test Files 9 passed (9), Tests 109 passed (109).
+- `env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test`: exit 0; Test Files 9 passed (9), Tests 109 passed (109). Both projects block global fetch and bindings are local.
+- `npx oxlint src/engine`: exit 0. `npx oxfmt --check src/engine tests/engine`: all 15 matched files formatted.
 
-Tests added (64 cases; no skips):
+Tests added (67 cases; no skips):
 
-| Behavior | Test evidence |
-| --- | --- |
-| Graduated tier boundaries at one below, at, one above | rating: `rates tier boundary quantity %i as %i cents` (99/100/101) |
-| Exact once-per-line rounding and tier reconciliation | rating: `rounds exact fractions once per line and reconciles tier residuals`; `rounds %i cents per %i units to %i` |
-| Large intermediates and overflow refusal | rating: `keeps large intermediate products exact and rejects unsafe results` |
-| Zero usage | rating: `rates zero usage with zero usage amount and no tiers` |
-| First/last/mid-day proration | rating: `prorates a plan change on %s` (September 1, 30, 16); `uses actual calendar days including leap February and UTC boundaries` |
-| Exclusive subscription boundary and segment tier reset | rating: `uses exclusive plan boundaries and restarts usage tiers per segment` |
-| Tax, signed credits, isolation | rating: `rounds tax once after posted credits and ignores payments and void memos`; `excludes credits and usage outside the period and other customers` |
-| Invalid inputs and missing entities | rating: `rejects %s input with EngineError` (12 defects); `returns typed missing-entity errors` |
-| All line explanations parse | analysis: `explains every seed line with contract-valid steps and tier money` |
-| Meter and product deltas reconcile | analysis: `compares all meters and products and reconciles all deltas to the total`; `handles zero baselines, decreases, and non-usage changes` |
-| Plan simulation, credits/tax, plan changes, immutability | analysis: `simulates the same usage under Pro with exact credits and tax`; `reports the closing actual plan on a mid-period change and leaves data immutable`; `requires issued invoices for comparison and simulation` |
-| Spike and marginal tier cost | analysis: `detects only the seeded 5x spike and estimates marginal graduated cost` |
-| Anomaly thresholds, even median, daily aggregation, zero baseline | analysis: `scores quantity %i against a positive median baseline`; `sums multiple daily records and excludes the candidate from an even median`; `does not divide by a zero baseline and treats missing days as zero` |
-| Explicit and inferred duplicate claim | credit: `validates explicit and inferred duplicate against the ledger` |
-| Pending/applied reservations and void memo release | credit: `subtracts pending plus applied reservations once and ignores void memos`; `refuses fully reserved or over-reserved debit (%i)` |
-| Reservation isolation and malformed snapshots | credit: `ignores reservations belonging to another charge`; `rejects conflicting snapshots and nonpositive memos` |
-| No credit for original charge, payment, mismatched references/amount/customer/invoice/entry | credit: `refuses a non-matching %s` (7 cases) |
-| Chronology independent of array order | credit: `sorts ledger chronology independently of array order and finds the next available duplicate` |
-| Ledger balance | credit: `sums signed charges minus payments and posted credits, isolated by customer` |
-| Seed hash and record cap | seed: `produces identical SHA-256 hashes on two independent runs`; `reports normalized record count including nested tiers and stays under 2500` |
-| Demo invoices, usage matrix, expired history | seed: `rebuilds every invoice and produces the demo total and 38 percent change`; `contains exactly one duplicate debit and a coherent expired request, void memo and audit trail` |
-| Integer output guard | seed: `every engine output contains only safe integer numeric fields` |
-| Forbidden imports, including type/dynamic imports | imports: `engine imports only its own modules, contracts and zod (including dynamic and type imports)` |
+| Behavior                                                                                    | Test evidence                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Graduated tier boundaries at one below, at, one above                                       | rating: `rates tier boundary quantity %i as %i cents` (99/100/101)                                                                                                                                                      |
+| Exact once-per-line rounding and tier reconciliation                                        | rating: `rounds exact fractions once per line and reconciles tier residuals`; `rounds %i cents per %i units to %i`                                                                                                      |
+| Large intermediates and overflow refusal                                                    | rating: `keeps large intermediate products exact and rejects unsafe results`                                                                                                                                            |
+| Zero usage                                                                                  | rating: `rates zero usage with zero usage amount and no tiers`                                                                                                                                                          |
+| First/last/mid-day proration                                                                | rating: `prorates a plan change on %s` (September 1, 30, 16); `uses actual calendar days including leap February and UTC boundaries`                                                                                    |
+| Exclusive subscription boundary and segment tier reset                                      | rating: `uses exclusive plan boundaries and restarts usage tiers per segment`                                                                                                                                           |
+| Tax, signed credits, isolation                                                              | rating: `rounds tax once after issued invoice discounts and ignores ledger credits, payments and memos`; `excludes credits and usage outside the period and other customers`                                            |
+| Invalid inputs and missing entities                                                         | rating: `rejects %s input with EngineError` (12 defects); `returns typed missing-entity errors`                                                                                                                         |
+| All line explanations parse                                                                 | analysis: `explains every seed line with contract-valid steps and tier money`                                                                                                                                           |
+| Meter and product deltas reconcile                                                          | analysis: `compares all meters and products and reconciles all deltas to the total`; `handles zero baselines, decreases, and non-usage changes`                                                                         |
+| Plan simulation, credits/tax, plan changes, immutability                                    | analysis: `simulates the same usage under Pro with exact credits and tax`; `reports the closing actual plan on a mid-period change and leaves data immutable`; `requires issued invoices for comparison and simulation` |
+| Spike and marginal tier cost                                                                | analysis: `detects only the seeded 5x spike and estimates marginal graduated cost`                                                                                                                                      |
+| Anomaly thresholds, even median, daily aggregation, zero baseline                           | analysis: `scores quantity %i against a positive median baseline`; `sums multiple daily records and excludes the candidate from an even median`; `does not divide by a zero baseline and treats missing days as zero`   |
+| Explicit and inferred duplicate claim                                                       | credit: `validates explicit and inferred duplicate against the ledger`                                                                                                                                                  |
+| Pending/applied reservations and void memo release                                          | credit: `subtracts pending plus applied reservations once and ignores void memos`; `refuses fully reserved or over-reserved debit (%i)`                                                                                 |
+| Reservation isolation and malformed snapshots                                               | credit: `ignores reservations belonging to another charge`; `rejects conflicting snapshots and nonpositive memos`                                                                                                       |
+| No credit for original charge, payment, mismatched references/amount/customer/invoice/entry | credit: `refuses a non-matching %s` (7 cases)                                                                                                                                                                           |
+| Chronology independent of array order                                                       | credit: `sorts ledger chronology independently of array order and finds the next available duplicate`                                                                                                                   |
+| Ledger balance                                                                              | credit: `sums signed charges minus payments and posted credits, isolated by customer`                                                                                                                                   |
+| Seed hash and record cap                                                                    | seed: `produces identical SHA-256 hashes on two independent runs`; `reports normalized record count including nested tiers and stays under 2500`                                                                        |
+| Demo invoices, usage matrix, expired history                                                | seed: `rebuilds every invoice and produces the demo total and 38 percent change`; `contains exactly one duplicate debit and a coherent expired request, void memo and audit trail`                                      |
+| Integer output guard                                                                        | seed: `every engine output contains only safe integer numeric fields`                                                                                                                                                   |
+| Forbidden imports, including type/dynamic imports                                           | imports: `engine imports only its own modules, contracts and zod (including dynamic and type imports)`                                                                                                                  |
+
+Review round 1 corrections:
+
+- F1: Reproduced the duplicate-debit remedy over a full invoice/posting cycle: a 50-cent ledger credit reduced the next invoice from 217 cents to 162 cents and changed tax. The regression test failed before the fix; ledger credits now affect balance only, while re-rating retains issued invoice discounts. `posts a duplicate-debit remedy once without discounting the next invoice or its tax` proves the corrected cycle.
+- F2: Caller `existingMemos` statuses now override stale dataset statuses; immutable amount/request/charge conflicts still fail. Two `uses the current %s status over a stale pending dataset snapshot` cases cover applied and void.
+- F3: Added the explicit August `money(29918)` assertion.
+- F4: Added the request-subject pending transition and Workflow actors. The seed history test now asserts the requested/pending/expired progression and actors, with six audit records.
 
 Watched defects fail, then restored code and ran the full suite green:
 
@@ -49,23 +56,23 @@ Watched defects fail, then restored code and ran the full suite green:
 - Randomized seedVersion: two-run hash test exited 1.
 - Added 2,500 usage rows: record-cap test exited 1.
 
-Coverage comparison: `npx vitest list` collected 42 tests at origin/main (29d4887), 106 at head; 64 added, zero disappeared. Existing tests and all frozen files are unchanged. No assertions removed or loosened.
+Coverage comparison: `npx vitest list` collected 42 tests at origin/main (29d4887), 109 at head; 67 added, zero disappeared. Existing tests and all frozen files are unchanged. No assertions removed or loosened.
 
 Seed evidence:
 
-- Two independent serialized outputs both SHA-256 `a190b8b9fa7472109259bcdd2213c7a95d4139cfe1d96e7ed898c126d81dd42e`.
-- 1,305 normalized records including nested price, tier, invoice-line and tier-charge records; 1,104 daily usage rows (3 customers x 92 days x 4 meters), 9 invoices.
+- Two independent serialized outputs both SHA-256 `7e720f0be22180c36fca7552af77b941c0243e4a10bc9929bdd42f8a5d21b557`.
+- 1,306 normalized records including nested price, tier, invoice-line and tier-charge records; 1,104 daily usage rows (3 customers x 92 days x 4 meters), 9 invoices.
 - Customer 1 September: subtotal 38,140 cents, tax 3,147 cents, total 41,287 cents ($412.87). August total 29,918 cents ($299.18); delta 11,369 cents ($113.69); change display 38%.
 - Duplicate invoice debits: `le_charge_1_2026_09` and `le_duplicate_september`, each 41,287 cents, identical `billing-run:cus_1:2026-09` reference. Balance is $825.74 before a remedy and $412.87 after one full posted credit.
 - Spike: `meter_requests`, September 18, quantity 15,000, baseline 3,000, `5x`, critical; marginal excess usage cost 1,160 cents ($11.60).
 - Pro simulation total 35,917 cents ($359.17), difference -5,370 cents (-$53.70).
-- Customer 2 changes from Starter to Pro on September 16, exercising two 15-day prorated fees. Historical expired request has a void memo and five ordered audit records, with no money movement.
+- Customer 2 changes from Starter to Pro on September 16, exercising two 15-day prorated fees. Historical expired request has a void memo and six ordered audit records, with no money movement.
 
-Decisions appended, each `Decided by: Engine engineer under standing orders`: exact rational rating/line rounding; calendar proration/segment tiers; issued comparisons/full-month simulation; robust daily anomaly baseline/marginal cost; duplicate debit reservations/deterministic seed history.
+Decisions appended, each `Decided by: Engine engineer under standing orders`: exact rational rating/line rounding; calendar proration/segment tiers; issued comparisons/full-month simulation; robust daily anomaly baseline/marginal cost; duplicate debit reservations/deterministic seed history; review round 1 accounting/audit corrections.
 
 Live model calls: None (0 calls, 0 tokens, 0 neurons).
 
-Review: Claude review through no-mistakes v1.41.2 pending; review prompts and outcomes will be appended to prompt history as the gate runs.
+Review: Claude round 1 (run 01M3QWB6JATFWSRR2R0NM5EQT4) requested four changes; all addressed above. The review prompt text was not available in the full gate log; identifying log lines are archived in prompt-history/prompts/02g-engine-gate-review-r1.md. Round 2 and CI pending.
 
-VERIFIED: Engine behavior above, integer outputs and schema parsing, six defect guards observed red, 106 offline tests green, deterministic hash, 1305-record bound, no coverage loss, frozen files unchanged.
-NOT VERIFIED: Deployed runtime and live model behavior (outside engine lane, no live calls); actual SQLite rowsWritten and atomic reservation/audit integration (agent lane); production tax behavior and zero-baseline anomalies (documented demo limitations); Claude gate and CI pending.
+VERIFIED: Engine behavior above, integer outputs and schema parsing, six defect guards observed red, 109 offline tests green, deterministic hash, 1306-record bound, no coverage loss, frozen files unchanged.
+NOT VERIFIED: Deployed runtime and live model behavior (outside engine lane, no live calls); actual SQLite rowsWritten and atomic reservation/audit integration (agent lane); production tax behavior and zero-baseline anomalies (documented demo limitations); exact Claude round 1 prompt text (not exposed by gate logs); round 2 gate and CI pending.

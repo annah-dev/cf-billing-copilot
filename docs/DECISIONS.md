@@ -375,3 +375,21 @@ FNV-1a to fit frozen slug lengths. Reason: seed history is clock-independent and
 the demo debit remains available for a new credit request without double credit.
 
 Decided by: Engine engineer under standing orders.
+
+## engine: Review round 1 accounting and audit corrections
+
+Ledger credit postings affect balance only; re-rating and simulation preserve
+issued invoice discount lines instead of copying ledger credits into invoices.
+This supersedes the earlier posted-credit invoice rule. The reproduced billing
+cycle showed a 50-cent remedy also lowering the next invoice by 55 cents through
+duplicated credit and tax effects. Reason: ledger remedies must move money once
+and must not reduce tax on unrelated usage.
+
+Use the caller's existingMemos status as the current transactional snapshot over
+a stale dataset status, while still rejecting changed immutable memo fields.
+Record the seeded requested-to-pending transition on its own request subject and
+use the Workflow actor for each seeded Workflow step. Assert August's precise
+total as well as the rounded change. Reason: legitimate status changes must work
+and every claimed seed state and numeric result must have explicit evidence.
+
+Decided by: Engine engineer under standing orders.

@@ -59,7 +59,7 @@ export function explain(
   if (line.kind === "tax") {
     steps.push({
       label: "Taxable subtotal",
-      detail: `Subtotal ${bill.subtotal.display} less posted credits ${bill.credits.display}, floored at zero.`,
+      detail: `Subtotal ${bill.subtotal.display} less invoice discounts ${bill.credits.display}, floored at zero.`,
       amount: money(
         Math.max(0, difference(bill.subtotal.cents, bill.credits.cents))
       )
@@ -185,7 +185,7 @@ export function simulate(
     assumptions: [
       "Same daily usage; selected plan in force for the whole UTC calendar month.",
       "Graduated tiers restart at zero; monthly fee is charged in full.",
-      "Same posted period credits and customer tax rate; tax recomputed after credits.",
+      "Same issued invoice discounts and customer tax rate; tax recomputed after discounts. Ledger credits affect balance only.",
       "Actual total is the immutable issued invoice; actualPlanId identifies its closing plan when plans changed."
     ]
   });

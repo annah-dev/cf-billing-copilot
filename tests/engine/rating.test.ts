@@ -1,12 +1,48 @@
 import { describe, expect, it } from "vitest";
 import { EngineError, InvoiceSchema, money } from "../../src/contracts";
 import { engine } from "../../src/engine";
-import { fixture, postedCredit } from "./fixture";
+import { fixture, postedCredit, invoiceDiscount } from "./fixture";
 
 const build = (data = fixture(), period = "2026-09") =>
   engine.buildInvoice(data, "cus_test", period);
 
 describe("invoice rating", () => {
+  it("posts a duplicate-debit remedy once without discounting the next invoice or its tax", () => {
+    const data = fixture(100);
+    data.customers[0].taxRateBps = 825;
+    const september = build(data);
+    data.invoices.push(september);
+    data.usage.push({ ...data.usage[0], date: "2026-10-01" });
+    const charge = {
+      ...postedCredit(217, "2026-10-01T00:00:00Z"),
+      id: "le_original",
+      invoiceId: september.id,
+      kind: "charge" as const,
+      reference: "billing-run:test:september"
+    };
+    data.ledger.push(charge, {
+      ...charge,
+      id: "le_duplicate",
+      at: "2026-10-01T00:01:00Z"
+    });
+    data.ledger.push({
+      ...postedCredit(50, "2026-10-02T00:00:00Z"),
+      invoiceId: september.id
+    });
+    expect(engine.balance(data.ledger, "cus_test").cents).toBe(384);
+    const october = build(data, "2026-10");
+    expect(october.total).toEqual(money(217));
+    expect(october.tax).toEqual(money(17));
+    data.ledger.push({
+      ...charge,
+      id: "le_october",
+      invoiceId: october.id,
+      amount: october.total,
+      at: "2026-11-01T00:00:00Z",
+      reference: "billing-run:test:october"
+    });
+    expect(engine.balance(data.ledger, "cus_test").cents).toBe(601);
+  });
   it.each([
     [99, 198],
     [100, 200],
@@ -140,7 +176,7 @@ describe("invoice rating", () => {
     ]);
   });
 
-  it("rounds tax once after posted credits and ignores payments and void memos", () => {
+  it("rounds tax once after issued invoice discounts and ignores ledger credits, payments and memos", () => {
     const data = fixture(100);
     data.customers[0].taxRateBps = 825;
     data.ledger.push(postedCredit(50), {
@@ -148,6 +184,7 @@ describe("invoice rating", () => {
       id: "le_payment",
       kind: "payment"
     });
+    invoiceDiscount(data, 50);
     data.creditMemos.push(
       {
         id: "cm_void",
@@ -174,7 +211,7 @@ describe("invoice rating", () => {
     expect(
       result.lines.reduce((total, line) => total + line.amount.cents, 0)
     ).toBe(162);
-    data.ledger[0].amount = money(300);
+    invoiceDiscount(data, 300);
     expect(build(data).total.cents).toBe(-100);
     expect(build(data).tax.cents).toBe(0);
   });

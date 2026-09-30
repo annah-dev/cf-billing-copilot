@@ -222,25 +222,24 @@ export function invoice(
     }
   }
   const subtotal = sum(lines.map((line) => line.amount.cents));
-  const credits = data.ledger.filter(
-    (entry) =>
-      entry.customerId === customerId &&
-      entry.kind === "credit" &&
-      entry.at.slice(0, 10) >= billingMonth.start &&
-      entry.at.slice(0, 10) < billingMonth.end
+  // Ledger credits already reduce balance. Preserve only issued invoice discounts;
+  // copying a credit memo posting here would remedy the same debit twice.
+  const issued = data.invoices.filter(
+    (bill) => bill.customerId === customerId && bill.period === period
   );
+  if (issued.length > 1)
+    throw new EngineError("invalid_input", "Ambiguous invoice for period");
+  const credits =
+    issued[0]?.lines.filter((line) => line.kind === "credit") ?? [];
   for (const credit of credits) {
-    push({
-      kind: "credit",
-      description: `Posted credit ${credit.id}: ${credit.description}`,
-      planId: null,
-      meterId: null,
-      quantity: null,
-      amount: money(-credit.amount.cents),
-      tiers: []
-    });
+    if (credit.amount.cents > 0)
+      throw new EngineError(
+        "invalid_input",
+        "Invoice credit lines must be nonpositive"
+      );
+    push(credit);
   }
-  const creditAmount = sum(credits.map((credit) => credit.amount.cents));
+  const creditAmount = -sum(credits.map((credit) => credit.amount.cents));
   const taxable = safe(integer(subtotal) - integer(creditAmount));
   const tax = rounded(
     fraction(

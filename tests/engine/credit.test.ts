@@ -101,6 +101,20 @@ describe("duplicated-debit claims", () => {
     );
   });
 
+  it.each(["applied", "void"] as const)(
+    "uses the current %s status over a stale pending dataset snapshot",
+    (status) => {
+      const { data, claim, memo } = creditFixture();
+      data.creditMemos.push(memo(10000));
+      expect(
+        engine.validateCreditClaim(data, claim, [memo(10000, status)])
+      ).toMatchObject({
+        valid: true,
+        creditableAmount: money(status === "void" ? 41287 : 31287)
+      });
+    }
+  );
+
   it.each([
     "original",
     "payment",

@@ -88,6 +88,11 @@ describe("deterministic synthetic seed", () => {
       )?.total
     ).toEqual(money(41287));
     expect(
+      data.invoices.find(
+        (bill) => bill.customerId === "cus_1" && bill.period === "2026-08"
+      )?.total
+    ).toEqual(money(29918));
+    expect(
       engine.compareInvoices(data, "cus_1", "2026-08", "2026-09").totalChange
         ?.display
     ).toBe("38%");
@@ -147,10 +152,23 @@ describe("deterministic synthetic seed", () => {
       "credit_requested",
       "credit_validated",
       "memo_pending",
+      "memo_pending",
       "credit_expired",
       "memo_voided"
     ]);
-    expect(data.audit.map((record) => record.seq)).toEqual([1, 2, 3, 4, 5]);
+    expect(data.audit.map((record) => record.seq)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(
+      data.audit
+        .filter(
+          (record) => record.subject.id === request.id && record.after?.status
+        )
+        .map((record) => record.after?.status)
+    ).toEqual(["requested", "pending_approval", "expired"]);
+    expect(
+      data.audit
+        .slice(1)
+        .every((record) => record.actor === `workflow:${request.id}`)
+    ).toBe(true);
     expect(data.audit.map((record) => record.at)).toEqual(
       [...data.audit.map((record) => record.at)].sort()
     );

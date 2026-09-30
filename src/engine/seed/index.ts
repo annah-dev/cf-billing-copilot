@@ -219,7 +219,10 @@ export function seed(): BillingDataset {
     data.audit.push({
       seq: data.audit.length + 1,
       at,
-      actor: action === "credit_requested" ? "customer:cus_1" : "system",
+      actor:
+        action === "credit_requested"
+          ? "customer:cus_1"
+          : `workflow:${requestId}`,
       action,
       subject,
       reason,
@@ -251,10 +254,18 @@ export function seed(): BillingDataset {
   audit(
     "memo_pending",
     "2026-10-01T01:00:02Z",
+    requestSubject,
+    { status: "requested" },
+    { status: "pending_approval", deadline: "2026-10-02T01:00:00Z" },
+    "Pending memo reserves the duplicated debit; begin the approval wait"
+  );
+  audit(
+    "memo_pending",
+    "2026-10-01T01:00:02Z",
     memoSubject,
     null,
     { status: "pending", amount: duplicate.amount },
-    "Reserved duplicated debit; request moved to pending_approval"
+    "Reserved duplicated debit in the same transaction as the request transition"
   );
   audit(
     "credit_expired",
