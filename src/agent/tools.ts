@@ -36,6 +36,24 @@ export class ToolError extends Error {
   }
 }
 
+/** Keep a tool's failure message safe to show: unexpected errors become a generic ToolError. */
+function guard<I, O>(
+  name: ToolName,
+  execute: (input: I) => Promise<O>
+): (input: I) => Promise<O> {
+  return async (input) => {
+    try {
+      return await execute(input);
+    } catch (err) {
+      if (err instanceof ToolError) throw err;
+      console.error(`tool ${name} failed`, err);
+      throw new ToolError(
+        "Billing data could not be read just now. Please try again."
+      );
+    }
+  };
+}
+
 function unwrap<T>(result: Result<{ value: T }>): T {
   if (!result.ok) throw new ToolError(result.message);
   return result.value;
@@ -97,7 +115,7 @@ export function buildTools(
     name: N,
     fetch: (input: never) => Promise<ToolOutput<N>>
   ) {
-    return async (input: unknown): Promise<ToolOutput<N>> => {
+    return guard(name, async (input: unknown): Promise<ToolOutput<N>> => {
       const key = stableKey(name, input);
       if (cache.has(key)) return cache.get(key) as ToolOutput<N>;
       const output = ToolSchemas[name].output.parse(
@@ -106,7 +124,7 @@ export function buildTools(
       cache.set(key, output);
       host.remember(name, output);
       return output;
-    };
+    });
   }
 
   return {
@@ -168,7 +186,7 @@ export function buildTools(
       description: ToolSchemas.startCreditRequest.description,
       inputSchema: ToolSchemas.startCreditRequest.input,
       needsApproval: options.confirmCredit,
-      execute: async (input) => {
+      execute: guard("startCreditRequest", async (input: unknown) => {
         const parsed = ToolSchemas.startCreditRequest.input.parse(input);
         const disputed = parsed.disputedLedgerEntryId ?? null;
         const result = await host.startCreditRequest({
@@ -192,18 +210,18 @@ export function buildTools(
         });
         host.remember("startCreditRequest", output);
         return output;
-      }
+      })
     }),
     getCreditRequestStatus: tool({
       description: ToolSchemas.getCreditRequestStatus.description,
       inputSchema: ToolSchemas.getCreditRequestStatus.input,
       // Not cached: a status can change while the turn runs.
-      execute: async (input) => {
+      execute: guard("getCreditRequestStatus", async (input: unknown) => {
         const parsed = ToolSchemas.getCreditRequestStatus.input.parse(input);
         return ToolSchemas.getCreditRequestStatus.output.parse(
           unwrap(await ledger.creditStatus(customerId, parsed.requestId))
         );
-      }
+      })
     })
   };
 }

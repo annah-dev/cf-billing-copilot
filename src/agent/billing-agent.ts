@@ -4,6 +4,8 @@
 // decides, approves or applies a credit, and it never does money math (D-15).
 import { AIChatAgent, type OnChatMessageOptions } from "@cloudflare/ai-chat";
 import {
+  InvalidToolInputError,
+  NoSuchToolError,
   createUIMessageStream,
   createUIMessageStreamResponse,
   stepCountIs,
@@ -24,7 +26,7 @@ import { CREDIT_WORKFLOW } from "../workflows/params";
 import { historyForModel } from "./history";
 import { billingModel, newTurnStats, type TurnStats } from "./model";
 import { EMPTY_MEMORY, systemPrompt, type Memory } from "./prompt";
-import { buildTools } from "./tools";
+import { ToolError, buildTools } from "./tools";
 
 /** Model calls per turn: tool round trips plus the answer. Small on purpose (Stop 2 finding). */
 export const MAX_STEPS = 4;
@@ -49,6 +51,22 @@ function textOf(message: UIMessage | undefined): string {
     .map((p) => (p.type === "text" ? p.text : ""))
     .join("")
     .trim();
+}
+
+/**
+ * Error text shown in the chat and returned by /turn for a failed tool call. The SDK hands tool
+ * failures over as their message string; every tool turns unexpected failures into a generic
+ * ToolError first (tools.ts), so these strings are input-validation messages or the tools' own
+ * refusals and are safe to show. Anything else stays generic.
+ */
+function toolErrorText(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (InvalidToolInputError.isInstance(error)) {
+    return `Invalid input for ${error.toolName}: ${error.message}`;
+  }
+  if (NoSuchToolError.isInstance(error)) return error.message;
+  if (error instanceof ToolError) return error.message;
+  return "An internal error occurred.";
 }
 
 /** A reply that never reaches the model: a cap, the budget stop or an oversize message. */
@@ -316,7 +334,7 @@ export class BillingAgent extends AIChatAgent<Env> {
       temperature: 0,
       abortSignal: options?.abortSignal
     });
-    return result.toUIMessageStreamResponse();
+    return result.toUIMessageStreamResponse({ onError: toolErrorText });
   }
 
   /**
