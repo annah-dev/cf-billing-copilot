@@ -252,19 +252,16 @@ describe("panel and routing", () => {
 
   it("applies the per-IP rate limiter before any Durable Object call", async () => {
     const ip = freshIp();
-    const statuses: number[] = [];
-    for (let i = 0; i < 65; i++) {
-      statuses.push(
-        (
-          await call(
-            `/api/sandboxes/${"0".repeat(32)}/customers/${ACME}/panel`,
-            { ip }
-          )
-        ).status
-      );
+    const path = `/api/sandboxes/${"0".repeat(32)}/customers/${ACME}/panel`;
+    // The limiter counts in fixed 60-second windows, so a run that crosses a window boundary
+    // gets up to 60 more; what must hold is no 429 before 60 requests and a 429 after them.
+    let first429 = -1;
+    for (let i = 0; i < 125 && first429 < 0; i++) {
+      const status = (await call(path, { ip })).status;
+      if (status === 429) first429 = i;
+      else expect(status, `request ${i}`).toBe(404);
     }
-    expect(statuses.slice(0, 60).every((s) => s === 404)).toBe(true);
-    expect(statuses.slice(60).every((s) => s === 429)).toBe(true);
+    expect(first429).toBeGreaterThanOrEqual(60);
     const limited = await call("/api/sandboxes", { method: "POST", ip });
     expect(limited.status).toBe(429);
     expect((await errorOf(limited)).code).toBe("rate_limited");

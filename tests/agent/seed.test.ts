@@ -3,18 +3,27 @@
 // this file uses src/engine as it is. While the engine lane's stub is in place, seed() throws and
 // the suite is skipped; it runs as soon as the real engine is on the branch.
 import { describe, expect, it } from "vitest";
+import { EngineError } from "../../src/contracts";
 import { engine } from "../../src/engine";
 import { randomHex } from "../../src/http/config";
 import { ledgerOf } from "./support/helpers";
 
 const ROWS_WRITTEN_LIMIT = 2_500;
 
+/** True once the real engine is present. Only the foundation stub's own error means "not yet". */
 function engineReady(): boolean {
   try {
     engine.seed();
     return true;
-  } catch (_err) {
-    return false;
+  } catch (err) {
+    if (
+      err instanceof EngineError &&
+      err.code === "unsupported" &&
+      /not implemented yet/.test(err.message)
+    ) {
+      return false;
+    }
+    throw err;
   }
 }
 
@@ -33,5 +42,7 @@ describe.skipIf(!engineReady())("real engine seed", () => {
     console.log(`delete rowsWritten=${deleted.rowsWritten}`);
     expect(deleted.rowsWritten).toBeGreaterThan(1_000);
     expect(deleted.rowsWritten).toBeLessThan(ROWS_WRITTEN_LIMIT);
-  });
+    // The first Durable Object call in a file pays the module load, several seconds under a
+    // full parallel run; a warm seed takes well under 100 ms.
+  }, 30_000);
 });
