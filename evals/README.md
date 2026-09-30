@@ -23,7 +23,10 @@ confirmation flag and customer, every expected amount as its engine display, exp
 quantities/ratios, and key meanings such as pending approval or a proactive usage spike.
 Each money-looking string must trace to a validated tool output from the same or an earlier
 turn in the recording. Numeric tokens outside money must also trace to tool output.
-Future responses cannot ground an earlier answer.
+Named calendar dates ("September 2026", "September 18, 2026", "September 18") are normalized
+to ISO before checking, so the whole date must match a tool date or period; a bare year is
+grounded by any tool date in that year, and a yearless day takes its year only from a single
+grounded period for that month. Future responses cannot ground an earlier answer.
 
 The current committed recordings have `source: "synthetic-engine"`, `recordedAt: null` and
 zero model usage. They prove harness behavior, not model performance. Their prose is generated
@@ -77,3 +80,5 @@ or retry over reset boundaries. Record the stopped run honestly if capacity is u
 Review the generated results/recordings, run `npm test`, and commit them through the usual
 gate. A mixed snapshot after a stopped run can include prior synthetic recordings; report
 live completed counts from the results file, never equate replay passes to live passes.
+The replay test title `reports recording sources: N live, M synthetic-engine of 15 cases`
+shows the current mix in every `npm test` run.

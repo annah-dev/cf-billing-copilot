@@ -108,6 +108,54 @@ describe("eval defect guards", () => {
     );
   });
 
+  const anomalyCase = cases.find((item) => item.id === "september-anomaly")!;
+  const anomalyAnswer = (text: string) => {
+    const recording = fixture(anomalyCase.id);
+    recording.turns[0].response.text = `Usage spike. $11.60; 15000; 3000; 5x. ${text}`;
+    return checkReplay(anomalyCase, recording);
+  };
+
+  test.each([
+    "In September 2026 the spike fell on September 18.",
+    "The spike was on September 18, 2026.",
+    "The spike was on the 18th of September 2026.",
+    "The spike was on Sept. 18th."
+  ])("accepts a natural calendar date grounded by the engine: %s", (text) => {
+    expect(anomalyAnswer(text)).toEqual([]);
+  });
+
+  test("rejects a wrong natural date and still requires the engine date", () => {
+    const issues = anomalyAnswer(
+      "In September 2026 the spike fell on September 19."
+    );
+    expect(issues).toContain("Turn 0: ungrounded number 2026-09-19");
+    expect(issues).toContain("Turn 0: missing expected 2026-09-18");
+  });
+
+  test("rejects a fabricated full date built from separately grounded parts", () => {
+    expect(
+      anomalyAnswer(
+        "September 18, 2026 was a spike; another on September 3, 2026."
+      )
+    ).toContain("Turn 0: ungrounded number 2026-09-03");
+  });
+
+  test("rejects a named day whose month has no grounded period", () => {
+    expect(
+      anomalyAnswer(
+        "September 18, 2026 was a spike; it may recur on October 2."
+      )
+    ).toContain("Turn 0: ungrounded date October 2");
+  });
+
+  test("still rejects invented numbers and money beside natural date wording", () => {
+    const issues = anomalyAnswer(
+      "In September 2026 the spike on September 18 added 42 requests and $7.00."
+    );
+    expect(issues).toContain("Turn 0: ungrounded number 42");
+    expect(issues).toContain("Turn 0: ungrounded money $7.00");
+  });
+
   test("accepts amounts quoted from engine-written tool narratives", () => {
     const testCase = cases.find(
       (item) => item.id === "august-september-change"

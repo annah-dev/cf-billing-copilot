@@ -787,3 +787,15 @@ the owner's merge notice, pull and deployment. Reason: fresh cases avoid shared 
 D-7's five-sandbox-per-IP cap must stay enforced and partial results cannot claim completion.
 Full-run capacity is an owner decision, not a cap bypass in the evals lane.
 Decided by: QA engineer under standing orders.
+
+## evals: natural calendar dates in replay grounding
+
+Replay normalizes named calendar dates in answers to ISO before the expected-value and numeric
+provenance checks, grounds bare years from tool dates/periods, resolves a yearless day only from
+a single grounded period for its month, and reports unresolved named days. The replay test title
+reports live versus synthetic-engine recording counts. Reason: gate review round 1 (F1) showed
+natural wording such as "September 2026" or "September 18" failed as ungrounded numbers and missed
+the expected ISO anomaly date, which would count correct live answers as failures; whole-date
+matching keeps a fabricated date from passing on separately present parts, and the source count
+keeps a capped mixed snapshot from reading as live coverage (F2).
+Decided by: QA engineer under standing orders.

@@ -57,13 +57,29 @@ and 160 at this head. Comparison by project, relative test file and full test na
 zero disappeared tests, 46 added, zero skips. Baseline collection ran from an archived main
 snapshot with the identical installed dependencies; no checkout or main files changed.
 
+Gate review round 1 fix (F1 natural dates, F2 source count), 2026-09-29 Pacific:
+
+- Reproduced first: a `september-anomaly` answer worded "Usage spike in September 2026 on
+  September 18. $11.60; 15000; 3000; 5x." returned `["Turn 0: missing expected 2026-09-18",
+  "Turn 0: ungrounded number 2026", "Turn 0: ungrounded number 18"]` before the fix.
+- `npx vitest run --project unit evals/`: exit 0; Test Files 3 passed (3), Tests 55 passed (55).
+  The typecheck of the changed eval files and `npx oxfmt` on them also passed.
+- `npx vitest list --json`: 169 tests collected (160 before this fix, 9 added, none removed).
+  The full `npm test` for this head is run by the gate's test step, not recorded here.
+- Added: four `accepts a natural calendar date grounded by the engine` variants, `rejects a wrong
+  natural date and still requires the engine date`, `rejects a fabricated full date built from
+  separately grounded parts`, `rejects a named day whose month has no grounded period`, `still
+  rejects invented numbers and money beside natural date wording`, and `reports recording
+  sources: 0 live, 15 synthetic-engine of 15 cases`. No existing assertion was removed or weakened.
+
 Decisions appended: synthetic early-start provenance; memory requests/credit confirmation;
-bounded live capture with honest capacity results. Each ends with the QA standing-orders role.
+bounded live capture with honest capacity results; natural calendar dates in replay grounding.
+Each ends with the QA standing-orders role.
 
 Live Workers AI calls: None (0 calls, 0 input tokens, 0 output tokens, 0 neurons).
 Offline injected response usage is synthetic and is not counted as a real model call.
 
 Cross-review and CI: pending no-mistakes gate. Owner merge remains separate.
 
-VERIFIED: 15/15 synthetic replay cases; 160 offline tests with and without credentials; nested contracts, expected engine displays and numeric provenance, planted recording defect red, fresh-case and memory request construction, confirmation flags, cap stop and partial accounting via injected transport, live readiness guard, no coverage loss, no application or frozen-file changes.
+VERIFIED: 15/15 synthetic replay cases (0 live, 15 synthetic-engine); 160 offline tests with and without credentials before the round 1 fix, 55/55 eval tests and 169 collected after it; natural calendar dates grounded as whole ISO dates; nested contracts, expected engine displays and numeric provenance, planted recording defect red, fresh-case and memory request construction, confirmation flags, cap stop and partial accounting via injected transport, live readiness guard, no coverage loss, no application or frozen-file changes.
 NOT VERIFIED: Live agent/model performance, deployed endpoint compatibility, live pass rate/date and real model usage (waiting for Anna's PR #4 merge notice, main pull and deployment); full live-run capacity under D-7's five-sandbox-per-IP cap (owner resolution needed); actual cross-session DO persistence (offline tests prove request construction only); Claude gate review and CI (pending); exact gate review prompt (not captured yet).

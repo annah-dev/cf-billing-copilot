@@ -11,6 +11,14 @@ export const readRecording = (id: string) =>
     readFileSync(new URL(`./recordings/${id}.json`, import.meta.url), "utf8")
   );
 
+const sources = cases.map(
+  (testCase) => parseRecording(readRecording(testCase.id)).source
+);
+const live = sources.filter((source) => source === "live").length;
+const synthetic = sources.filter(
+  (source) => source === "synthetic-engine"
+).length;
+
 describe("billing eval replay", () => {
   for (const testCase of cases) {
     test(`${testCase.id} [${testCase.story}]`, () => {
@@ -19,4 +27,8 @@ describe("billing eval replay", () => {
       expect(checkReplay(testCase, recording)).toEqual([]);
     });
   }
+
+  test(`reports recording sources: ${live} live, ${synthetic} synthetic-engine of ${cases.length} cases`, () => {
+    expect(live + synthetic).toBe(cases.length);
+  });
 });
