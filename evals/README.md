@@ -83,8 +83,8 @@ EVAL_LIVE_READY=1 EVAL_CASE_IDS=september-invoice,request-tiers npm run eval:liv
 ```
 
 Reruns reuse the recorded sandbox ids and accounted message counts; they cannot rerun a passing
-case. `EVAL_PREVIOUS_RESULTS` can select the prior report. Each invocation writes a dated
-`run-*.json`, the `latest-run.json` alias, and recordings archived by the run start date.
+case. `EVAL_PREVIOUS_RESULTS` can select the prior report. Each invocation writes `run-*.json`,
+the `latest-run.json` alias and archived recordings, all named by the run start date.
 Completed model failures are successful captures with negative verdicts; incomplete/transport
 stops still fail the live command. Capture is deliberate; never put these commands
 in a loop. The owner-authorized full run and one failing-only rerun have already completed.

@@ -91,7 +91,10 @@ are in 05g-r1/r2/r3. The prior live-scope gate retry rejected the stale local br
 review. Anna now explicitly authorizes updating that local ref after green harness tests, retaining
 its old head, and retrying gated push/PR creation. The new intent is logged in 05i.
 
-New cross-review, gated delivery, PR and CI evidence will be added after they execute.
+New-scope gate review round 1 (run 01M3T67AVMBTC9CJV9A0HGDQYH) is logged in PROMPTS.md and
+05g-evals-harness-review-r1.md: F2 (run filename timestamp) fixed in `run.live.ts` (05k), F1
+(echoed-period grounding) pending Anna, F3 left as a documented proposal. Later review rounds,
+gated delivery, PR and CI evidence will be added after they execute.
 No merge or deployment is authorized. Release owns the deployed run after UI/deploy and must use
 that result for the public README. The standalone live/regrade tools are excluded from npm test,
 and both test projects prohibit global fetch.
