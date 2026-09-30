@@ -35,7 +35,7 @@ customer isolation, sandbox reset, fragment removal, storage refusal and horizon
 No browser exception or `/api/` or `/agents/` request occurred. Screenshots were visually inspected
 for readable seeded names, meters, confirmation actions, historical audit and mobile layout.
 
-The automated suite has 145 passing tests: 113 on main after the engine merge plus 32 UI tests.
+The automated suite has 146 passing tests: 113 on main after the engine merge plus 33 UI tests.
 Collection comparison in [test-collection.txt](test-collection.txt) reports no removed tests.
 New tests compare every customer's fixture invoice, plan, balance, credits and historical audit
 with the seed; comparison, simulation and anomaly tool outputs with engine results; and credit
@@ -48,6 +48,14 @@ Replacing seeded customer names with `Nimbus Studio` deliberately made `derives 
 plan, invoice, balance, history and customers from the shared seed` fail. Restoring the engine
 mapping made it pass. [ui-planted-defect.txt](ui-planted-defect.txt) and
 [ui-defect-restored.txt](ui-defect-restored.txt) record the failure and restoration.
+
+Gate review round 1 found that loose chat routing sent ordinary questions such as "Is there a
+problem with my invoice?" to plan simulation. The regression test `answers ordinary invoice
+questions without simulating an unnamed plan` failed before the fix
+([ui-plan-routing-regression-fail.txt](ui-plan-routing-regression-fail.txt)) and passed after it
+([ui-plan-routing-regression-pass.txt](ui-plan-routing-regression-pass.txt)). The full and
+credential-free logs were rerun after the fix. Screenshots and browser checks predate this
+routing fix; the chat suggestions they exercise route to the same tools before and after.
 
 [amount-grep.txt](amount-grep.txt) contains the review grep over the UI lane. Monetary outputs are
 engine results, validated credit memo copies, or contract `.display` references. There is no UI

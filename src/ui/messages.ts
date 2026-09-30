@@ -43,6 +43,14 @@ function completedTool<N extends ToolName>(
     output: ToolSchemas[name].output.parse(output)
   };
 }
+function namedPlan(message: string, data: BillingDataset) {
+  return data.plans.find((item) =>
+    new RegExp(
+      `(?<![\\w-])${item.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`,
+      "i"
+    ).test(message)
+  );
+}
 export function fixtureAnswer(
   message: string,
   panel: PanelResponse,
@@ -52,6 +60,7 @@ export function fixtureAnswer(
   const { customerId, currentInvoice: invoice } = panel;
   const parts: UIMessage["parts"][number][] = [];
   let text: string;
+  let plan: BillingDataset["plans"][number] | undefined;
   if (/credit|double|duplicate/i.test(message)) {
     const claim = engine.validateCreditClaim(
       data,
@@ -109,11 +118,7 @@ export function fixtureAnswer(
       )
     );
     text = comparison.summary;
-  } else if (/plan|pro/i.test(message)) {
-    const plan = data.plans.find((item) =>
-      message.toLowerCase().includes(item.name.toLowerCase())
-    );
-    if (!plan) throw new Error("Choose a plan from the seeded plan catalog");
+  } else if ((plan = namedPlan(message, data))) {
     const simulation = engine.simulatePlan(
       data,
       customerId,

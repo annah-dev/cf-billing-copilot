@@ -1957,7 +1957,7 @@ Log these test-gate instructions too under prompt-history/prompts/04c-ui-gate-te
 - Role: Frontend engineer
 - Harness: Codex CLI
 - Source: prompt-history/prompts/04d-ui-seed-followup.md
-- Outcome: Implemented shared-seed preview; npm ci, typecheck, 145 tests normally and credential-free, build, lint and both-width browser evidence pass. Claude gate submission pending; no model calls.
+- Outcome: Implemented shared-seed preview; npm ci, typecheck, 145 tests normally and credential-free, build, lint and both-width browser evidence passed. Claude gate review round 1 (run 01M3R4YFDC2775KN88HGKXBJDV) found one chat routing regression, fixed with a regression test; 146 tests now pass normally and credential-free. No model calls; not merged or deployed.
 
 ````text
 PR #5 looks good; hold it until the agent PR merges. While you wait: the engine is now on main,
@@ -1978,4 +1978,58 @@ gate, and tell me when it is ready again. Do not change src/engine or src/contra
 
 ````text
 Update PR #5 so its preview and evidence match the engine now merged on main. Replace hand-made fixture data with engine.seed() and shared engine functions; every billing number must have one source. Regenerate desktop and 390px evidence and run the complete gate. Do not change src/engine or src/contracts or any frozen configuration/dependency files. Hold PR #5 until the agent PR merges; never merge or deploy. The preview is still a local no-model transport while the agent lane is pending. It uses a mutable engine seed dataset, engine validation for duplicate credit claims, copied validated credit amounts and engine.balance after human decisions; issued invoices stay unchanged. Seed historical requests/audit are retained per customer. Old hand-made fixture sessions are invalidated by a fixture-only namespace migration. The live namespace remains compatible. All 145 tests pass (113 main plus 32 UI), including credential-free; browser assertions compare seeded names, invoice lines/total and balances directly to engine outputs. No main tests disappeared. All ten screenshots were regenerated and inspected. Check the full UI diff against the done-contract and this follow-up. Keep prior gate fixes and scope. Review under Claude as configured; no self-review. Log the observed review provenance; do not claim the full generated prompt was captured if unavailable. Every changed decision or review instruction must be logged in PROMPTS.md and prompt-history/prompts/ and decisions end with Decided by. No live model calls. Author implementation choices and fixes inside this scope are authorized under AGENTS.md standing orders.
+````
+
+## 21. UI shared-seed gate review, round 1
+
+- Timestamp: 2026-09-30T03:20:57+00:00 (log capture time; the gate start time was not captured)
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run id 01M3R4YFDC2775KN88HGKXBJDV
+- Source: prompt-history/prompts/04j-ui-seed-review-r1.md
+- Outcome: one finding (plan-regex-throws): loose plan routing sent ordinary invoice questions to plan simulation or an error. The complete generated review prompt is unavailable in the step logs; only the log lines below were captured. The supplied intent is entry 20.
+
+````text
+The complete generated review prompt for round 1 of run 01M3R4YFDC2775KN88HGKXBJDV is unavailable:
+the step log exposed only the lines below, not the prompt the harness sent to Claude. The intent
+supplied to the gate is logged separately in prompt-history/prompts/04h-ui-seed-gate-intent.md.
+The CLI reported version v1.41.2. Observed round-1 log lines, verbatim:
+
+step: review
+run: "01M3R4YFDC2775KN88HGKXBJDV"
+lines: 6 total
+log[6]{line}:
+reviewing changes...
+""
+claude started pid=134378
+""
+Reviewing the fixture backend against the engine; now checking the storage namespace migration and messages.Found one chat regression; checking decisions log and evidence tests next.
+claude exited pid=134378 status=success
+````
+
+## 22. UI shared-seed gate fix instruction, round 1
+
+- Timestamp: 2026-09-30T03:20:57+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run id 01M3R4YFDC2775KN88HGKXBJDV
+- Source: prompt-history/prompts/04i-ui-seed-review-fix-r1.md
+- Outcome: chat routes to plan simulation only when a seeded plan name appears as a whole word; other questions get the invoice and anomaly answer. Regression test failed before and passed after the fix. npm ci, npm run typecheck, npm test (146 passed) and the credential-free env -i CI=1 npm test (146 passed) pass; oxlint and oxfmt pass on UI files. Evidence logs and counts updated. Not merged or deployed.
+
+````text
+Fix plan-regex-throws inside UI-owned files. Ordinary invoice questions containing problem, approve, provide, process, prorated or explanation must not throw or trigger plan simulation without an actual catalog plan request. Preserve the seeded-plan simulation for 'What would I pay on Pro?'. Add a regression test, watch it fail before the fix, then pass after the fix. Keep all existing tests and schemas. No engine, contracts, frozen dependencies/config, deployment or merge changes. Log the regression test output and updated suite/collection counts in tests/ui/evidence and its README as appropriate. Ensure only truthful count claims.
+
+Record these exact fix instructions by tool-copy into prompt-history/prompts/04i-ui-seed-review-fix-r1.md and append verbatim in PROMPTS.md as automated cross-review, no-mistakes v1.41.2 (Claude), run 01M3R4YFDC2775KN88HGKXBJDV. Append a one-line reason in docs/DECISIONS.md ending 'Decided by: Frontend engineer under standing orders'. Preserve earlier gate-fix commits.
+
+Log round 1 review provenance in prompt-history/prompts/04j-ui-seed-review-r1.md and PROMPTS.md. Say the complete generated review prompt is unavailable in step logs, while the supplied intent is logged separately in 04h-ui-seed-gate-intent.md. Capture these observed lines verbatim:
+step: review
+run: "01M3R4YFDC2775KN88HGKXBJDV"
+lines: 6 total
+log[6]{line}:
+reviewing changes...
+""
+claude started pid=134378
+""
+Reviewing the fixture backend against the engine; now checking the storage namespace migration and messages.Found one chat regression; checking decisions log and evidence tests next.
+claude exited pid=134378 status=success
+
+Ensure the isolated checkout has the unchanged pinned dependencies installed with npm ci before tests (the prior UI gate initially lacked vitest). Run npm run typecheck and npm test, plus env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test. No lockfile hand edits. Update evidence command logs after the routing fix, scrub all home/temp paths, trim trailing whitespace, and keep evidence outside public assets. The completed kickoff/follow-up outcomes must state actual work and checks, without claiming merge/deployment. Re-review the full updated diff for round 2.
 ````

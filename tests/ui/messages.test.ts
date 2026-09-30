@@ -111,4 +111,31 @@ describe("tool evidence and confirmation", () => {
     });
     expect(() => fixtureAnswer(" ", panel)).toThrow();
   });
+  it("answers ordinary invoice questions without simulating an unnamed plan", () => {
+    const data = engine.seed();
+    const session = fixtureSession();
+    const panel = fixturePanel(session, session.customers[0].customerId);
+    for (const message of [
+      "Is there a problem with my invoice?",
+      "Who will approve my request?",
+      "Can you provide details?",
+      "How do you process usage?",
+      "Is this invoice pro-rated or prorated?",
+      "I need an explanation of this bill",
+      "Which plan am I on?"
+    ]) {
+      const answer = fixtureAnswer(message, panel, data);
+      expect(answer.parts.map((part) => validatedTool(part)?.name)).toEqual([
+        "getInvoice",
+        "detectAnomalies",
+        undefined
+      ]);
+    }
+    const pro = data.plans.find((plan) => plan.name === "Pro")!;
+    expect(
+      validatedTool(
+        fixtureAnswer("What would I pay on Pro?", panel, data).parts[0]
+      )?.input?.data
+    ).toEqual({ period: panel.currentInvoice.period, planId: pro.id });
+  });
 });

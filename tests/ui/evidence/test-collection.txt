@@ -1,8 +1,8 @@
 Baseline: origin/main 9883215 (engine merged).
 Main: 113 tests.
-Head: 145 tests.
+Head: 146 tests.
 Removed: 0.
-Added: 32.
+Added: 33.
 
 Added test names:
 [unit] tests/ui/api.test.ts > HTTP boundary > rejects a malformed success payload instead of rendering it
@@ -31,6 +31,7 @@ Added test names:
 [unit] tests/ui/fixtures.test.ts > interactive fixture backend > refuses wrong tokens, unknown sandboxes and expired requests
 [unit] tests/ui/fixtures.test.ts > interactive fixture backend > rejects a credit on a customer with no duplicated debit using the engine explanation
 [unit] tests/ui/fixtures.test.ts > interactive fixture backend > uses engine credit validation and balance before and after a credit without changing the invoice
+[unit] tests/ui/messages.test.ts > tool evidence and confirmation > answers ordinary invoice questions without simulating an unnamed plan
 [unit] tests/ui/messages.test.ts > tool evidence and confirmation > copies Money, Percent and Multiple display strings without formatting numeric fields
 [unit] tests/ui/messages.test.ts > tool evidence and confirmation > copies comparison, simulation and anomaly outputs from the shared engine
 [unit] tests/ui/messages.test.ts > tool evidence and confirmation > grounds the fixture invoice answer in a validated tool output

@@ -734,3 +734,7 @@ old head and the worktree moved to published head 056a7a4 before follow-up commi
 the gate fixes and merged engine while preserving the original head for inspection.
 
 Decided by: Anna.
+
+## ui: Preview chat simulates a plan only when a seeded plan is named
+
+Reason: gate review round 1 found substring matching sent words such as "problem" to plan simulation or an error, so the preview now matches seeded plan names as whole words and otherwise answers with the invoice. Decided by: Frontend engineer under standing orders.

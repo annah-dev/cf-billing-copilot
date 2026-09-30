@@ -70,44 +70,6 @@ src/ui/fixtures.ts:170:    if (path === "/api/sandboxes" && init?.method === "PO
 src/ui/fixtures.ts:174:        seq: data.audit.length + 1,
 src/ui/fixtures.ts:186:    const parts = path.split("/");
 src/ui/fixtures.ts:429:        deadline.setUTCDate(deadline.getUTCDate() + 1);
-src/ui/chat.tsx:2:import { Button } from "@cloudflare/kumo";
-src/ui/chat.tsx:3:import { useAgent } from "agents/react";
-src/ui/chat.tsx:4:import { useAgentChat } from "@cloudflare/ai-chat/react";
-src/ui/chat.tsx:14:} from "../contracts/http";
-src/ui/chat.tsx:15:import { ToolSchemas } from "../contracts/tools";
-src/ui/chat.tsx:16:import { browserStorage } from "./api";
-src/ui/chat.tsx:17:import { type FixtureBackend } from "./fixtures";
-src/ui/chat.tsx:18:import { Messages, ErrorNotice } from "./components";
-src/ui/chat.tsx:19:import { suggestions, validatedTool } from "./messages";
-src/ui/chat.tsx:61:          <span className="eyebrow">BILLING ASSISTANT</span>
-src/ui/chat.tsx:62:          <h1>Understand every charge.</h1>
-src/ui/chat.tsx:63:          <p>Ask a question. Follow the evidence.</p>
-src/ui/chat.tsx:64:        </div>
-src/ui/chat.tsx:65:        <span className="grounded-label">Tools do the math</span>
-src/ui/chat.tsx:66:      </div>
-src/ui/chat.tsx:69:          <div className="welcome-mark">B</div>
-src/ui/chat.tsx:70:          <h2>Your bill, explained.</h2>
-src/ui/chat.tsx:74:          </p>
-src/ui/chat.tsx:75:        </div>
-src/ui/chat.tsx:81:      />
-src/ui/chat.tsx:82:      {busy && <output className="working">Checking billing records...</output>}
-src/ui/chat.tsx:84:        <output className="working">Connecting to your billing agent...</output>
-src/ui/chat.tsx:87:        <ErrorNotice error={error || submitError} />
-src/ui/chat.tsx:98:            </button>
-src/ui/chat.tsx:100:        </div>
-src/ui/chat.tsx:104:          </p>
-src/ui/chat.tsx:115:          </label>
-src/ui/chat.tsx:134:          />
-src/ui/chat.tsx:138:            </Button>
-src/ui/chat.tsx:146:            </Button>
-src/ui/chat.tsx:148:        </form>
-src/ui/chat.tsx:151:        </p>
-src/ui/chat.tsx:152:      </div>
-src/ui/chat.tsx:153:    </section>
-src/ui/chat.tsx:188:    />
-src/ui/chat.tsx:207:      // Accept only the fixture message shapes and validated tool parts we produce.
-src/ui/chat.tsx:230:      /* Chat is still usable without persistence. */
-src/ui/chat.tsx:302:    />
 src/admin/admin.tsx:2:import { Button } from "@cloudflare/kumo";
 src/admin/admin.tsx:6:} from "../contracts/http";
 src/admin/admin.tsx:13:} from "../ui/api";
@@ -157,22 +119,60 @@ src/ui/api.ts:12:} from "../contracts/http";
 src/ui/api.ts:17:} from "../contracts/ids";
 src/ui/api.ts:82:            "Content-Type": "application/json"
 src/ui/api.ts:137:  return `/admin#${new URLSearchParams({ sandbox: session.sandboxId, token: session.approverToken })}`;
+src/ui/errors.ts:5:} from "../contracts/http";
+src/ui/errors.ts:6:import { ApiError } from "./api";
+src/ui/chat.tsx:2:import { Button } from "@cloudflare/kumo";
+src/ui/chat.tsx:3:import { useAgent } from "agents/react";
+src/ui/chat.tsx:4:import { useAgentChat } from "@cloudflare/ai-chat/react";
+src/ui/chat.tsx:14:} from "../contracts/http";
+src/ui/chat.tsx:15:import { ToolSchemas } from "../contracts/tools";
+src/ui/chat.tsx:16:import { browserStorage } from "./api";
+src/ui/chat.tsx:17:import { type FixtureBackend } from "./fixtures";
+src/ui/chat.tsx:18:import { Messages, ErrorNotice } from "./components";
+src/ui/chat.tsx:19:import { suggestions, validatedTool } from "./messages";
+src/ui/chat.tsx:61:          <span className="eyebrow">BILLING ASSISTANT</span>
+src/ui/chat.tsx:62:          <h1>Understand every charge.</h1>
+src/ui/chat.tsx:63:          <p>Ask a question. Follow the evidence.</p>
+src/ui/chat.tsx:64:        </div>
+src/ui/chat.tsx:65:        <span className="grounded-label">Tools do the math</span>
+src/ui/chat.tsx:66:      </div>
+src/ui/chat.tsx:69:          <div className="welcome-mark">B</div>
+src/ui/chat.tsx:70:          <h2>Your bill, explained.</h2>
+src/ui/chat.tsx:74:          </p>
+src/ui/chat.tsx:75:        </div>
+src/ui/chat.tsx:81:      />
+src/ui/chat.tsx:82:      {busy && <output className="working">Checking billing records...</output>}
+src/ui/chat.tsx:84:        <output className="working">Connecting to your billing agent...</output>
+src/ui/chat.tsx:87:        <ErrorNotice error={error || submitError} />
+src/ui/chat.tsx:98:            </button>
+src/ui/chat.tsx:100:        </div>
+src/ui/chat.tsx:104:          </p>
+src/ui/chat.tsx:115:          </label>
+src/ui/chat.tsx:134:          />
+src/ui/chat.tsx:138:            </Button>
+src/ui/chat.tsx:146:            </Button>
+src/ui/chat.tsx:148:        </form>
+src/ui/chat.tsx:151:        </p>
+src/ui/chat.tsx:152:      </div>
+src/ui/chat.tsx:153:    </section>
+src/ui/chat.tsx:188:    />
+src/ui/chat.tsx:207:      // Accept only the fixture message shapes and validated tool parts we produce.
+src/ui/chat.tsx:230:      /* Chat is still usable without persistence. */
+src/ui/chat.tsx:302:    />
 src/ui/messages.ts:7:} from "../contracts/tools";
 src/ui/messages.ts:8:import { TurnRequestSchema, type PanelResponse } from "../contracts/http";
 src/ui/messages.ts:9:import { type BillingDataset } from "../contracts/engine";
 src/ui/messages.ts:10:import { engine } from "../engine";
 src/ui/messages.ts:29:  if ("display" in value && typeof value.display === "string")
 src/ui/messages.ts:30:    return [value.display];
-src/ui/messages.ts:55:  if (/credit|double|duplicate/i.test(message)) {
-src/ui/messages.ts:90:  } else if (/changed|august|compare/i.test(message)) {
-src/ui/messages.ts:112:  } else if (/plan|pro/i.test(message)) {
-src/ui/messages.ts:130:    text = `${plan.name} would cost ${simulation.simulatedTotal.display} for the same usage, compared with ${simulation.actualTotal.display}. Difference (simulated minus actual): ${simulation.difference.display}. ${simulation.assumptions.join(" ")}`;
-src/ui/messages.ts:134:    text = /spike|anomal/i.test(message)
-src/ui/messages.ts:136:      : `Your ${billed.period} invoice is ${billed.total.display}. ${billed.lines.map((line) => `${line.description}: ${line.amount.display}.`).join(" ")} `;
-src/ui/messages.ts:141:    text += anomalies.anomalies.length
-src/ui/messages.ts:145:              `${anomaly.meterName} on ${anomaly.date}: ${anomaly.multiple.display} the engine baseline; estimated excess cost ${anomaly.estimatedExcessCost.display}.`
-src/ui/errors.ts:5:} from "../contracts/http";
-src/ui/errors.ts:6:import { ApiError } from "./api";
+src/ui/messages.ts:49:      `(?<![\\w-])${item.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`,
+src/ui/messages.ts:64:  if (/credit|double|duplicate/i.test(message)) {
+src/ui/messages.ts:99:  } else if (/changed|august|compare/i.test(message)) {
+src/ui/messages.ts:135:    text = `${plan.name} would cost ${simulation.simulatedTotal.display} for the same usage, compared with ${simulation.actualTotal.display}. Difference (simulated minus actual): ${simulation.difference.display}. ${simulation.assumptions.join(" ")}`;
+src/ui/messages.ts:139:    text = /spike|anomal/i.test(message)
+src/ui/messages.ts:141:      : `Your ${billed.period} invoice is ${billed.total.display}. ${billed.lines.map((line) => `${line.description}: ${line.amount.display}.`).join(" ")} `;
+src/ui/messages.ts:146:    text += anomalies.anomalies.length
+src/ui/messages.ts:150:              `${anomaly.meterName} on ${anomaly.date}: ${anomaly.multiple.display} the engine baseline; estimated excess cost ${anomaly.estimatedExcessCost.display}.`
 src/ui/components.tsx:2:import { Badge, Button } from "@cloudflare/kumo";
 src/ui/components.tsx:7:} from "../contracts/http";
 src/ui/components.tsx:8:import { ToolSchemas } from "../contracts/tools";
@@ -270,4 +270,4 @@ src/ui/components.tsx:302:          </ol>
 src/ui/components.tsx:304:      </section>
 src/ui/components.tsx:305:    </aside>
 
-Review: no monetary arithmetic or local formatting. All billing values come from engine functions; approved credits copy the validated memo amount. Other arithmetic concerns audit sequences, response generations, deadline dates, sorting and identifiers.
+Review: no monetary arithmetic or local formatting. All billing values come from engine functions; approved credits copy the validated memo amount. Other arithmetic concerns audit sequences, response generations, deadline dates, sorting, identifiers and escaping seeded plan names in the chat routing pattern.
