@@ -1,6 +1,8 @@
-Baseline: origin/main 9883215 (engine merged).
-Main: 113 tests.
-Head: 146 tests.
+Baseline: origin/main 2af8f1d (agent PR #4 merged).
+Head: feat/ui 37b4883 rebased on 2af8f1d.
+Command: npx vitest list on each checkout.
+Main: 190 tests.
+Head: 223 tests.
 Removed: 0.
 Added: 33.
 

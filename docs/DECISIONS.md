@@ -749,3 +749,13 @@ removed or rewritten on either side. Reason: both logs are append-only and Anna 
 sides to be kept.
 
 Decided by: Frontend engineer under standing orders.
+
+## ui: Refresh command evidence after the agent merge
+
+The command logs and test collection under tests/ui/evidence were regenerated from real runs on
+the rebased head instead of being hand-edited: 223 tests pass, and the collection grows from 190 on
+main 2af8f1d to 223, adding the 33 UI tests and removing none. The screenshots and defect proofs
+are kept because the rebase left src/ui, tests/ui and index.html unchanged. Reason: the evidence
+must describe the checkout under review, and command output must come from the commands.
+
+Decided by: Frontend engineer under standing orders.

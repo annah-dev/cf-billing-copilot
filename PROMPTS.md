@@ -2124,6 +2124,7 @@ Before finishing, copy this exact file from /tmp/ui-seed-gate-test-setup-final.m
 - Source: prompt-history/prompts/04o-ui-agent-merge-rebase.md
 - Outcome: request recorded; rebase and final validation will be reported in PR #5. No merge or deployment authorized.
 - Rebase outcome (gate run 01M3T02ME2Y028MRVA849KW9KN): all 14 UI commits replayed onto main 2af8f1d; conflicts only in PROMPTS.md (first commit) and docs/DECISIONS.md (chat-views commit), resolved by keeping the main-side agent records first and the UI-side records after them, with no line removed from either side. Range-diff: 12 commits identical, 2 differ only in conflict context. src/ui, tests/ui and index.html equal the pre-rebase head 1041474; every other difference is the merged main change. Typecheck, tests and CI had not yet run at this point.
+- Validation result (same gate run, on the rebased head): `npm ci` installed the unchanged package-lock.json; `npm run typecheck` passed; `npm test` passed 223 tests in 19 files; `env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test` passed 223 tests in 19 files. `npx vitest list` collects 190 tests on main 2af8f1d and 223 on the head: 33 UI tests added, none removed. CI, merge and deployment had not occurred at this point.
 
 ````text
 PR #4 has merged. Rebase PR #5 onto main; the conflicts are only in PROMPTS.md and
@@ -2156,4 +2157,43 @@ Resolve rebase-1 as Anna explicitly requested: continue the rebase of PR #5 onto
 After completing the rebase, copy this exact file from /tmp/ui-agent-merge-rebase-fix.md with a tool to prompt-history/prompts/04q-ui-agent-merge-rebase-fix.md and append its verbatim text in PROMPTS.md as automated cross-review instruction, no-mistakes v1.41.2 (Claude), run 01M3T02ME2Y028MRVA849KW9KN. Update the kickoff outcome for 04o-ui-agent-merge-rebase.md with the actual rebase result, without claiming checks or CI that have not yet run. Append the mechanical conflict-resolution reason in docs/DECISIONS.md, ending 'Decided by: Frontend engineer under standing orders'. Keep append-only log records and raw historical prompts intact. These instruction and decision records are part of the rebase fix.
 
 Prepare the isolated checkout's pinned dependencies with npm ci from the unchanged lockfile so later validation steps can run. No lockfile hand edits or global formatting. Return control to the outer executor to perform review/test/document/push/CI. No new UI behavior, live model calls, merge or deploy. The subsequent review should check the rebase/logging delta only; the full UI was already reviewed twice plus a delta round in the previous completed work.
+````
+
+## 30. UI agent-merge evidence refresh instruction
+
+- Timestamp: 2026-09-30T20:46:08+00:00
+- Role: automated cross-review instruction
+- Harness: no-mistakes v1.41.2 (Claude), run 01M3T02ME2Y028MRVA849KW9KN
+- Source: prompt-history/prompts/04r-ui-agent-merge-evidence-fix.md
+- Outcome: reran the commands on the rebased checkout and replaced the tests/ui/evidence command logs with their path-scrubbed output: `npm ci` passed, `npm run typecheck` passed, and both `npm test` and the credential-free run passed 223 tests in 19 files. Regenerated test-collection.txt from `npx vitest list`: 190 on main 2af8f1d, 223 on the head, 33 UI tests added, 0 removed. No test, code, schema, dependency or configuration changes; screenshots and defect proofs unchanged. No live model calls, CI claim, merge or deployment.
+
+````text
+Regenerate stale-test-collection-evidence as part of Anna's already-authorized 'rerun the checks' request and the done-contract. No product or scope decision is needed: only captured validation evidence is being refreshed. Run the actual commands on the current rebased checkout (npm ci, npm run typecheck, npm test, and env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test), and copy their real, path-scrubbed outputs to the existing tests/ui/evidence command logs. Do not manufacture counts or hand-edit command results. Compare actual npx vitest list on current origin/main and this head, regenerate tests/ui/evidence/test-collection.txt with baseline SHA, 190 main / 223 head if confirmed, all 33 UI test names and removed tests accounted for. There should be no test/code/schema change. Align the evidence README with the observed results and say agent PR #4 is merged, while live UI-agent integration remains unexercised by this offline rebase task. Preserve the ten screenshots and existing defect proofs: UI behavior is unchanged. Preserve every original main/UI raw prompt and decision entry.
+
+Copy this exact file from /tmp/ui-agent-merge-evidence-fix.md with a tool to prompt-history/prompts/04r-ui-agent-merge-evidence-fix.md; append it verbatim to PROMPTS.md as automated cross-review instruction, no-mistakes v1.41.2 (Claude), run 01M3T02ME2Y028MRVA849KW9KN. Record the actual command results and completed rebase outcome for the 04o kickoff, without claiming CI or merge before they occur. Append a decision reason ending 'Decided by: Frontend engineer under standing orders'. Log the available review provenance with source file 04s-ui-agent-merge-review.md and PROMPTS.md: generated prompt text is unavailable in full step logs, supplied intent is 04p, observed delta-review log is reviewing changes..., blank line, claude started pid=291742, blank line, Checking the merged logs for fence balance, section numbering, and the referenced pre-rebase head., claude exited pid=291742 status=success. Retain the historical prompt text unchanged; current result and provenance may be appended.
+
+Keep all prior gate-fix commits. No application, engine, contracts, frozen config, dependency, global format or test changes; no live model calls, merges or deploys. Return control for the remaining gate steps. Final delivery/CI evidence will be reported in PR #5 by the driver.
+````
+
+## 31. UI agent-merge delta review provenance
+
+- Timestamp: 2026-09-30T20:46:08+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude), run 01M3T02ME2Y028MRVA849KW9KN
+- Source: prompt-history/prompts/04s-ui-agent-merge-review.md
+- Outcome: delta review of the rebase and logging changes completed. The complete generated review prompt is unavailable in the full step logs; only the lines below were observed. The supplied intent is entry 28 (04p-ui-agent-merge-gate-intent.md).
+
+````text
+The complete generated review prompt for the delta review of run 01M3T02ME2Y028MRVA849KW9KN is
+unavailable: the full step log exposed only the lines below, not the prompt the harness sent to
+Claude. The intent supplied to the gate is logged separately in
+prompt-history/prompts/04p-ui-agent-merge-gate-intent.md. The CLI reported version v1.41.2.
+Observed review lines, verbatim (blank lines shown as ""):
+
+reviewing changes...
+""
+claude started pid=291742
+""
+Checking the merged logs for fence balance, section numbering, and the referenced pre-rebase head.
+claude exited pid=291742 status=success
 ````

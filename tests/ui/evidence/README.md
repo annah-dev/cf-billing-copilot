@@ -38,7 +38,9 @@ for readable seeded names, meters, confirmation actions, historical audit and mo
 
 The UI adds 33 tests to the suite on main. The collection comparison in
 [test-collection.txt](test-collection.txt) records the main and head counts and reports no removed
-tests.
+tests. After the rebase onto the agent merge (PR #4), the command logs and collection were
+regenerated on the rebased head; the screenshots and defect proofs are kept because the rebase left
+`src/ui`, the UI tests and `index.html` unchanged.
 New tests compare every customer's fixture invoice, plan, balance, credits and historical audit
 with the seed; comparison, simulation and anomaly tool outputs with engine results; and credit
 validation and the approved balance with engine results while preserving the issued invoice.
@@ -65,15 +67,16 @@ engine results, validated credit memo copies, or contract `.display` references.
 amount arithmetic, conversion, rounding or formatting. Nonmonetary arithmetic increments response
 generations or audit sequences, advances an approval deadline, orders statuses or serializes IDs.
 
-Live model calls: none (0). The real HTTP endpoints, deployed UI, live WebSocket stream and live
-AI SDK approval continuation are not exercised because the agent lane has not merged. The
-preview applies human decisions immediately; it does not prove the real Workflow runs. With
-browser storage blocked, preview remains usable in one tab; a second preview admin tab requires
-storage. Live admin links carry credentials independently of localStorage. Production bundle
-compilation passes with Vite's existing warning for a client chunk over 500 kB; no deployed bundle
-or performance measurement is claimed.
+Live model calls: none (0). The agent lane has merged (PR #4), but this offline evidence does not
+exercise the real HTTP endpoints, deployed UI, live WebSocket stream or live AI SDK approval
+continuation from the UI. The preview applies human decisions immediately; it does not prove the
+real Workflow runs. With browser storage blocked, preview remains usable in one tab; a second
+preview admin tab requires storage. Live admin links carry credentials independently of
+localStorage. Production bundle compilation passes with Vite's existing warning for a client
+chunk over 500 kB; no deployed bundle or performance measurement is claimed.
 
 VERIFIED: offline checks, credential-free suite, production compilation, engine parity tests,
 preview browser flows, desktop and 390 px screenshots, no amount arithmetic, no model calls.
 NOT VERIFIED: live API, live agent streaming and approval continuation, deployed UI, real Workflow,
-production performance and additional browsers; agent lane is pending and evidence uses Chromium.
+production performance and additional browsers; live UI-agent integration is unexercised and
+evidence uses Chromium.
