@@ -393,3 +393,14 @@ total as well as the rounded change. Reason: legitimate status changes must work
 and every claimed seed state and numeric result must have explicit evidence.
 
 Decided by: Engine engineer under standing orders.
+
+## engine: Current reservation snapshot is authoritative
+
+The required existingMemos argument is the complete current pending/applied
+reservation snapshot, per the frozen engine interface. Ignore dataset memo
+history when reserving a debit, and reject conflicting duplicate memo ids within
+the current snapshot. This supersedes the earlier dataset/caller merge rules.
+Reason: round 2 reproduced a stale pending memo incorrectly blocking a new claim
+after the live memo was voided and omitted from the current reservation list.
+
+Decided by: Engine engineer under standing orders.

@@ -43,10 +43,11 @@ rounding are respected; it excludes tax, fee, and credits.
 A duplicated debit has the same customer, invoice, charge kind, amount, and
 billing-run reference as an earlier posting (ordered by timestamp, then id).
 The earlier entry is never creditable. Payments are outside this claim type.
-Pending plus applied memos from the dataset and caller reserve the duplicated
-entry; repeated memo ids are counted once. The caller's `existingMemos` is the
-current transactional snapshot and overrides stale dataset statuses; conflicting
-immutable fields (request, charge, amount) are rejected.
+Pending plus applied memos in the required caller `existingMemos` snapshot
+reserve the duplicated entry; repeated memo ids are counted once and conflicting
+copies in that snapshot are rejected. Dataset memo history does not contribute
+reservations, because omitted current reservations may have been voided. The
+caller must supply the complete current pending/applied snapshot transactionally.
 Validation is pure; the Ledger must check and reserve in the same transaction.
 
 Seed `engine-v1` has 3 fictional customers (`cus_1` is the demo), 4 meters, 3

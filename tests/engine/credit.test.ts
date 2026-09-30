@@ -93,9 +93,12 @@ describe("duplicated-debit claims", () => {
   it("rejects conflicting snapshots and nonpositive memos", () => {
     const { data, claim, memo } = creditFixture();
     data.creditMemos.push(memo(10));
-    expect(() => engine.validateCreditClaim(data, claim, [memo(11)])).toThrow(
-      /Conflicting/
-    );
+    expect(() =>
+      engine.validateCreditClaim(data, claim, [memo(10), memo(11)])
+    ).toThrow(/Conflicting/);
+    expect(() =>
+      engine.validateCreditClaim(data, claim, [memo(10), memo(10, "void")])
+    ).toThrow(/Conflicting/);
     expect(() => engine.validateCreditClaim(data, claim, [memo(-1)])).toThrow(
       /positive/
     );
@@ -114,6 +117,15 @@ describe("duplicated-debit claims", () => {
       });
     }
   );
+
+  it("releases a stale dataset reservation when the current pending/applied snapshot is empty", () => {
+    const { data, claim, memo } = creditFixture();
+    data.creditMemos.push(memo(41287));
+    expect(engine.validateCreditClaim(data, claim, [])).toMatchObject({
+      valid: true,
+      creditableAmount: money(41287)
+    });
+  });
 
   it.each([
     "original",

@@ -8,11 +8,11 @@ Validation (2026-09-29, rebased on origin/main):
 
 - `npm ci`: exit 0; added 571 packages, audited 572 packages.
 - `npm run typecheck`: exit 0; `tsc --noEmit && tsc --noEmit -p tests/agent`.
-- `npm test`: exit 0; Test Files 9 passed (9), Tests 109 passed (109).
-- `env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test`: exit 0; Test Files 9 passed (9), Tests 109 passed (109). Both projects block global fetch and bindings are local.
+- `npm test`: exit 0; Test Files 9 passed (9), Tests 110 passed (110).
+- `env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test`: exit 0; Test Files 9 passed (9), Tests 110 passed (110). Both projects block global fetch and bindings are local.
 - `npx oxlint src/engine`: exit 0. `npx oxfmt --check src/engine tests/engine`: all 15 matched files formatted.
 
-Tests added (67 cases; no skips):
+Tests added (68 cases; no skips):
 
 | Behavior                                                                                    | Test evidence                                                                                                                                                                                                           |
 | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -40,10 +40,11 @@ Tests added (67 cases; no skips):
 | Integer output guard                                                                        | seed: `every engine output contains only safe integer numeric fields`                                                                                                                                                   |
 | Forbidden imports, including type/dynamic imports                                           | imports: `engine imports only its own modules, contracts and zod (including dynamic and type imports)`                                                                                                                  |
 
-Review round 1 corrections:
+Review corrections:
 
 - F1: Reproduced the duplicate-debit remedy over a full invoice/posting cycle: a 50-cent ledger credit reduced the next invoice from 217 cents to 162 cents and changed tax. The regression test failed before the fix; ledger credits now affect balance only, while re-rating retains issued invoice discounts. `posts a duplicate-debit remedy once without discounting the next invoice or its tax` proves the corrected cycle.
-- F2: Caller `existingMemos` statuses now override stale dataset statuses; immutable amount/request/charge conflicts still fail. Two `uses the current %s status over a stale pending dataset snapshot` cases cover applied and void.
+- F2: The complete caller `existingMemos` snapshot is authoritative; stale dataset history is ignored. Conflicting copies in the current snapshot still fail. Two `uses the current %s status over a stale pending dataset snapshot` cases cover applied and void.
+- Round 2 memo-snapshot-override: Reproduced a stale full reservation blocking a new claim when the current pending/applied list was empty after voiding. The regression test failed before the fix; `releases a stale dataset reservation when the current pending/applied snapshot is empty` now proves the released debit remains creditable.
 - F3: Added the explicit August `money(29918)` assertion.
 - F4: Added the request-subject pending transition and Workflow actors. The seed history test now asserts the requested/pending/expired progression and actors, with six audit records.
 
@@ -56,7 +57,7 @@ Watched defects fail, then restored code and ran the full suite green:
 - Randomized seedVersion: two-run hash test exited 1.
 - Added 2,500 usage rows: record-cap test exited 1.
 
-Coverage comparison: `npx vitest list` collected 42 tests at origin/main (29d4887), 109 at head; 67 added, zero disappeared. Existing tests and all frozen files are unchanged. No assertions removed or loosened.
+Coverage comparison: `npx vitest list` collected 42 tests at origin/main (29d4887), 110 at head; 68 added, zero disappeared. Existing tests and all frozen files are unchanged. No assertions removed or loosened.
 
 Seed evidence:
 
@@ -68,11 +69,11 @@ Seed evidence:
 - Pro simulation total 35,917 cents ($359.17), difference -5,370 cents (-$53.70).
 - Customer 2 changes from Starter to Pro on September 16, exercising two 15-day prorated fees. Historical expired request has a void memo and six ordered audit records, with no money movement.
 
-Decisions appended, each `Decided by: Engine engineer under standing orders`: exact rational rating/line rounding; calendar proration/segment tiers; issued comparisons/full-month simulation; robust daily anomaly baseline/marginal cost; duplicate debit reservations/deterministic seed history; review round 1 accounting/audit corrections.
+Decisions appended, each `Decided by: Engine engineer under standing orders`: exact rational rating/line rounding; calendar proration/segment tiers; issued comparisons/full-month simulation; robust daily anomaly baseline/marginal cost; duplicate debit reservations/deterministic seed history; review round 1 accounting/audit corrections; authoritative current reservation snapshot.
 
 Live model calls: None (0 calls, 0 tokens, 0 neurons).
 
-Review: Claude round 1 (run 01M3QWB6JATFWSRR2R0NM5EQT4) requested four changes; all addressed above. The review prompt text was not available in the full gate log; identifying log lines are archived in prompt-history/prompts/02g-engine-gate-review-r1.md. Round 2 and CI pending.
+Review: Claude round 1 (run 01M3QWB6JATFWSRR2R0NM5EQT4) requested four changes; all addressed above. The review prompt text was not available in the full gate log; identifying log lines are archived in prompt-history/prompts/02g-engine-gate-review-r1.md. Round 2 (run 01M3QWSDJSEXG17YCQR3RV6VC6) found one remaining stale snapshot issue, addressed above. Its identifying log lines are archived in prompt-history/prompts/02g-engine-gate-review-r2.md. Final delta review and CI pending.
 
-VERIFIED: Engine behavior above, integer outputs and schema parsing, six defect guards observed red, 109 offline tests green, deterministic hash, 1306-record bound, no coverage loss, frozen files unchanged.
-NOT VERIFIED: Deployed runtime and live model behavior (outside engine lane, no live calls); actual SQLite rowsWritten and atomic reservation/audit integration (agent lane); production tax behavior and zero-baseline anomalies (documented demo limitations); exact Claude round 1 prompt text (not exposed by gate logs); round 2 gate and CI pending.
+VERIFIED: Engine behavior above, integer outputs and schema parsing, six defect guards observed red, 110 offline tests green, deterministic hash, 1306-record bound, no coverage loss, frozen files unchanged.
+NOT VERIFIED: Deployed runtime and live model behavior (outside engine lane, no live calls); actual SQLite rowsWritten and atomic reservation/audit integration (agent lane); production tax behavior and zero-baseline anomalies (documented demo limitations); exact Claude round 1 prompt text (not exposed by gate logs); exact Claude round 2 prompt text (not exposed by gate logs); final delta review and CI pending.

@@ -52,7 +52,9 @@ export function validateClaim(
       "Disputed entry is not on this customer's invoice."
     );
   const memos = new Map<string, CreditMemo>();
-  for (const memo of [...data.creditMemos, ...existingMemos]) {
+  // The frozen engine interface requires the caller's current pending/applied
+  // reservation snapshot. Dataset history must never resurrect a void memo.
+  for (const memo of existingMemos) {
     if (memo.amount.cents <= 0)
       throw new EngineError(
         "invalid_input",
@@ -63,14 +65,13 @@ export function validateClaim(
       previous &&
       (previous.requestId !== memo.requestId ||
         previous.disputedLedgerEntryId !== memo.disputedLedgerEntryId ||
-        previous.amount.cents !== memo.amount.cents)
+        previous.amount.cents !== memo.amount.cents ||
+        previous.status !== memo.status)
     )
       throw new EngineError(
         "invalid_input",
         "Conflicting credit memo snapshots"
       );
-    // existingMemos is the caller's current transactional snapshot, and follows
-    // the potentially stale dataset snapshot. Immutable fields must agree.
     memos.set(memo.id, memo);
   }
   let duplicateFound = false;
