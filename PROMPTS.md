@@ -2450,3 +2450,19 @@ Harness: no-mistakes v1.41.2 (Claude)
 Run: 01M3T67AVMBTC9CJV9A0HGDQYH
 Source: prompt-history/prompts/05j-evals-gate-rebase-fix.md (copied verbatim with a tool; rebase-fix context, not a generated review prompt)
 Outcome: Rebased all eight evals commits onto origin/main 21a8069. In every rewritten commit PROMPTS.md and docs/DECISIONS.md are origin/main's bytes as an exact prefix plus that commit's lane entries appended once; no conflict markers remain (the first commit's historically committed markers were dropped, keeping both sides). evals/ at the new head is byte-identical to 9fa01a89d7a1412ac83adec1c12e3cb73abac981, so all 39 recordings, grader results and raw/corrected verdicts are unchanged. Zero Workers AI calls. Tests were not rerun in this phase; main/head test collection counts for the new base are left to the test phase.
+
+## 2026-09-30T15:25:59-07:00 - Evals harness gate review round 1
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Source: prompt-history/prompts/05g-evals-harness-review-r1.md (identifying log lines copied with a tool; exact generated review prompt unavailable, axi logs exposed only run/step/version and completion lines)
+Outcome: Three findings. F1 (warning, ask-user): tool-output-only grounding flags the user's echoed "September 2026" period as ungrounded in request-tiers, tax-line and pro-simulation, conflicting with the results README's no-known-false-positive claim; grounding-policy choice pending Anna, no change made. F2 (info, auto-fix): result filename timestamp came from a separate `new Date()` than runDate/archive. F3 (info, no-op): simulation answer can pass expected displays without a successful simulatePlan call; already documented as a proposal. Full findings JSON archived in the source file.
+
+## 2026-09-30T15:25:59-07:00 - Evals gate F2 fix
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Source: prompt-history/prompts/05k-evals-gate-F2-fix.md (fix context copied verbatim with a tool)
+Outcome: evals/run.live.ts now builds the future run result path inside saveResult from result.runDate, so the report filename, runDate and archive directory share the run start timestamp. Existing committed run filenames, all 39 recordings, grader source and raw/corrected verdicts unchanged. Zero Workers AI calls. F1 still pending Anna; F3 left as documented proposal.

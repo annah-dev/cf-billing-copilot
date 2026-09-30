@@ -35,7 +35,6 @@ test("one deliberate live eval run", async () => {
   if (selectedIds && cases.length !== new Set(selectedIds).size)
     throw new Error("Unknown eval case id");
   mkdirSync("evals/results", { recursive: true });
-  const resultPath = `evals/results/run-${new Date().toISOString().replaceAll(":", "-")}.json`;
   const result = await runLive({
     baseUrl,
     cases,
@@ -49,7 +48,10 @@ test("one deliberate live eval run", async () => {
     },
     saveResult: (result) => {
       const text = `${JSON.stringify(result, null, 2)}\n`;
-      writeFileSync(resultPath, text);
+      writeFileSync(
+        `evals/results/run-${result.runDate.replaceAll(":", "-")}.json`,
+        text
+      );
       writeFileSync("evals/results/latest-run.json", text);
     }
   });
