@@ -105,7 +105,7 @@ Core user stories:
 - Role: Architect
 - Harness: Claude Code
 - Source: prompt-history/prompts/01-architect.md
-- Outcome: (pending; filled in at the end of the session)
+- Outcome: Stop 1 merged as PR #1 (plan docs, 3 Codex review rounds). Stop 2 opened as PR #2 (scaffold, contracts, bindings, tests, CI, no-mistakes, model round trip, lane prompts; 3 Codex review rounds, approved). The round trip found native streaming broken for Llama 3.3 tool calls (fixed with simulated streaming). An accidental readiness loop made 58 live model calls (about 2,300 neurons).
 
 ````text
 # 01 - Architect kickoff
@@ -429,7 +429,7 @@ line, what is wrong, and the fix you suggest. End with:
 - Role: Architect
 - Harness: Claude Code
 - Source: prompt-history/prompts/01e-stop2-go.md
-- Outcome: (pending)
+- Outcome: D-13 recorded as decided and documented in README and D-13, off switch put in the release lane's checklist; Stop 2 built as PR #2.
 
 ````text
    A1 B1. PR #1 is merged; start Stop 2.
@@ -558,7 +558,7 @@ you suggest. Do not report style preferences. End with:
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/01h-review-pr2-r3.md
-- Outcome: (pending)
+- Outcome: APPROVE; both round 2 fixes adequate, no new findings. Review loop complete.
 
 ````text
 You are the cross-reviewer for PR #2 on annah-dev/cf-billing-copilot, round 3: delta only, and the
