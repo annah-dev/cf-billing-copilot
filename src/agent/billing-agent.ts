@@ -32,6 +32,7 @@ import { ToolError, buildTools } from "./tools";
 export const MAX_STEPS = 4;
 const MAX_REMEMBERED_QUESTIONS = 8;
 const QUESTION_CHARS = 160;
+const MAX_TRACKED_TURNS = 16;
 
 /** The /turn endpoint marks its user messages so the turn runs headless (no confirmation UI). */
 export const HEADLESS_CHANNEL = "turn";
@@ -274,6 +275,11 @@ export class BillingAgent extends AIChatAgent<Env> {
       .find((m) => m.role === "user");
     const record: TurnRecord = { ...newTurnStats(), capRefusal: null };
     this.turns.set(lastUser?.id ?? options?.requestId ?? "unknown", record);
+    // Only /turn reads these back; keep the map small for chat turns nobody collects.
+    for (const key of this.turns.keys()) {
+      if (this.turns.size <= MAX_TRACKED_TURNS) break;
+      this.turns.delete(key);
+    }
     const headless =
       (lastUser?.metadata as { channel?: string } | undefined)?.channel ===
       HEADLESS_CHANNEL;
