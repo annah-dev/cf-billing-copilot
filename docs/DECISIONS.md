@@ -717,11 +717,12 @@ Decided by: Frontend engineer under standing orders.
 The preview creates its mutable dataset with engine.seed() and derives customer names, plans,
 invoices, balances, comparisons, simulations, anomalies and validated credits through the shared
 engine. Approval copies the validated memo into the credit ledger; engine.balance computes the
-result and the issued invoice stays unchanged. Historical request and audit records come from
-the seed, scoped to the selected customer. A new fixture storage namespace discards older
-hand-made sessions; live storage remains compatible. Reason: Anna requested preview values and
-evidence that match the live demo with one source for every number. No engine, contract,
-dependency or configuration changes.
+result and the issued invoice stays unchanged. Historical request and audit records come from the
+seed, scoped to the selected customer. A new fixture storage namespace discards older hand-made
+sessions; live storage remains compatible. This supersedes the earlier rule that fixtures only
+illustrate the interface and are not the engine's seed. Reason: Anna requested preview values and
+evidence that match the live demo with one source for every number. No engine, contract, dependency
+or configuration changes.
 
 Decided by: Frontend engineer under standing orders.
 
