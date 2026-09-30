@@ -1,0 +1,209 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "august-invoice",
+  "turns": [
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "Explain my August 2026 invoice line by line, including subtotal, credits and tax.",
+        "confirm": false
+      },
+      "response": {
+        "text": "Invoice breakdown. $30.00; $93.00; $84.40; $46.50; $22.48; $22.80; $276.38; $0.00; $299.18.",
+        "toolCalls": [
+          {
+            "name": "getInvoice",
+            "input": {
+              "period": "2026-08"
+            },
+            "output": {
+              "id": "inv_43219f3da32981f5",
+              "customerId": "cus_1",
+              "period": "2026-08",
+              "issuedOn": "2026-09-01",
+              "lines": [
+                {
+                  "id": "line_20ac64a35785e934",
+                  "kind": "subscription",
+                  "description": "Starter fee: 2026-08-01 to 2026-09-01 (end exclusive); 31 of 31 days",
+                  "planId": "plan_starter",
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 3000,
+                    "display": "$30.00"
+                  },
+                  "tiers": []
+                },
+                {
+                  "id": "line_20ac65a35785eae7",
+                  "kind": "usage",
+                  "description": "Edge requests on Starter: 2026-08-01 to 2026-09-01 (end exclusive)",
+                  "planId": "plan_starter",
+                  "meterId": "meter_requests",
+                  "quantity": 93000,
+                  "amount": {
+                    "cents": 9300,
+                    "display": "$93.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 93000,
+                      "unitPrice": {
+                        "cents": 100,
+                        "display": "$1.00"
+                      },
+                      "perUnits": 1000,
+                      "rateDisplay": "$1.00 per 1,000 requests",
+                      "amount": {
+                        "cents": 9300,
+                        "display": "$93.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_20ac66a35785ec9a",
+                  "kind": "usage",
+                  "description": "Object storage on Starter: 2026-08-01 to 2026-09-01 (end exclusive)",
+                  "planId": "plan_starter",
+                  "meterId": "meter_storage",
+                  "quantity": 930,
+                  "amount": {
+                    "cents": 8440,
+                    "display": "$84.40"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 500,
+                      "unitPrice": {
+                        "cents": 10,
+                        "display": "$0.10"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.10 per 1 GB-day",
+                      "amount": {
+                        "cents": 5000,
+                        "display": "$50.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 430,
+                      "unitPrice": {
+                        "cents": 8,
+                        "display": "$0.08"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.08 per 1 GB-day",
+                      "amount": {
+                        "cents": 3440,
+                        "display": "$34.40"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_20ac67a35785ee4d",
+                  "kind": "usage",
+                  "description": "Data transfer on Starter: 2026-08-01 to 2026-09-01 (end exclusive)",
+                  "planId": "plan_starter",
+                  "meterId": "meter_transfer",
+                  "quantity": 930,
+                  "amount": {
+                    "cents": 4650,
+                    "display": "$46.50"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 930,
+                      "unitPrice": {
+                        "cents": 5,
+                        "display": "$0.05"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.05 per 1 GB",
+                      "amount": {
+                        "cents": 4650,
+                        "display": "$46.50"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_20ac60a35785e268",
+                  "kind": "usage",
+                  "description": "Compute time on Starter: 2026-08-01 to 2026-09-01 (end exclusive)",
+                  "planId": "plan_starter",
+                  "meterId": "meter_compute",
+                  "quantity": 2248,
+                  "amount": {
+                    "cents": 2248,
+                    "display": "$22.48"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 2248,
+                      "unitPrice": {
+                        "cents": 1,
+                        "display": "$0.01"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.01 per 1 CPU-minute",
+                      "amount": {
+                        "cents": 2248,
+                        "display": "$22.48"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_20ac61a35785e41b",
+                  "kind": "tax",
+                  "description": "Sales tax: 825 basis points on $276.38",
+                  "planId": null,
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 2280,
+                    "display": "$22.80"
+                  },
+                  "tiers": []
+                }
+              ],
+              "subtotal": {
+                "cents": 27638,
+                "display": "$276.38"
+              },
+              "credits": {
+                "cents": 0,
+                "display": "$0.00"
+              },
+              "tax": {
+                "cents": 2280,
+                "display": "$22.80"
+              },
+              "total": {
+                "cents": 29918,
+                "display": "$299.18"
+              }
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "modelCalls": 0
+        }
+      }
+    }
+  ],
+  "source": "synthetic-engine",
+  "recordedAt": null
+}

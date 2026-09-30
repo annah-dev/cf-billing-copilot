@@ -2197,3 +2197,106 @@ claude started pid=291742
 Checking the merged logs for fence balance, section numbering, and the referenced pre-rebase head.
 claude exited pid=291742 status=success
 ````
+## 2026-09-29T20:35:34-07:00 - Evals early-start note
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05a-evals-early-start.md
+Outcome: (pending)
+
+Early-start note: you are starting before the agent lane (PR #4) has merged. Contract PR #6 (confirm on /turn, D-20) is on main. Until I tell you PR #4 has merged, build only what does not need the live agent: the question set, expected answers computed from the engine and seed on main (never typed by hand), the harness, the replay format, and replay mode wired into npm test. Use confirm: true on /turn only for the credit-request questions. Expect the September anomaly to be mentioned without the model choosing to call detectAnomalies; the agent lane is making that deterministic. Record live model outputs only after PR #4 has merged and you have pulled main.
+
+## 2026-09-29T20:35:34-07:00 - Evals lane kickoff
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05-evals.md
+Outcome: (pending)
+
+# 05 - Evals lane kickoff
+
+Role: QA / evals engineer. Harness: Codex CLI. You start after the engine and agent lanes have
+merged. You work alone in this worktree (~/projects/wt/cf-billing-copilot-evals, branch
+feat/evals, cut from that main). You see this prompt, the assignment and the repo; nothing else.
+
+## Read first, in this order
+
+1. prompt-history/prompts/00-assignment.md: the user stories and the eval requirement.
+2. AGENTS.md: the rules, including Decision rights. They bind you.
+3. docs/agent/plan.md, section "evals": what you own, what you build, your definition of done.
+4. docs/agent/verification.md: the evidence your PR must carry.
+5. src/contracts/http.ts (`TurnRequest`, `TurnResponse`, `ToolCallRecord`), tools.ts and
+   engine.ts; src/engine/ (read only); docs/DECISIONS.md D-7, D-8, D-15, D-17.
+
+At session start, append this prompt to PROMPTS.md by copying this file with a tool (not by
+retyping), with an ISO-8601 timestamp with offset, role, harness "Codex CLI", source path and
+outcome "(pending)". Fill in the outcome at the end.
+
+## Scope
+
+You own `evals/`, including `evals/vitest.live.config.ts` (the existing `npm run eval:live` script
+runs it), plus the append-only files. Application code is read only.
+
+Build:
+
+- 12 to 15 cases covering all six user stories (invoice explanation, what changed, plan
+  simulation, anomaly, credit request, memory across sessions), each with expected numbers computed
+  by calling `engine` on `engine.seed()` inside the harness, never typed by hand;
+- replay mode, collected by the `unit` project (`evals/**/*.test.ts`) into `npm test`: runs each
+  case against a committed recording of `TurnResponse`s and checks that every expected number
+  appears in the answer as its `display` string and that every money-looking string in the answer
+  traces to a tool output in the same recording;
+- live mode (`npm run eval:live`, never in CI or `npm test`): posts each case to the deployed
+  `/api/sandboxes/:sid/customers/:cid/turn` in a fresh sandbox, re-records, stops on the first
+  `budget_exhausted`, `cap_reached` or `rate_limited`, and writes the pass rate and run date to a
+  committed results file. The deployed URL comes from an environment variable, never hard-coded
+  secrets.
+
+## Definition of done
+
+As in docs/agent/plan.md "evals / Done": `npm test` passes offline with no network; a planted
+wrong number in a recording makes replay fail (show it red); one live run recorded with its pass
+rate and date once the owner has deployed (a few dozen model calls; report the count). If the demo
+is not deployed yet, finish everything else, say so, and give the owner the exact command to run.
+
+## Rules that are easy to miss
+
+- When web docs and the installed type definitions disagree, the installed types win; record the
+  disagreement in docs/DECISIONS.md.
+- Contracts are frozen. If one is wrong, stop, explain, and wait: the fix is its own PR to main.
+- Decide implementation details yourself; record each non-obvious one at the end of
+  docs/DECISIONS.md headed `## evals: <decision>`, with a one-line reason and "Decided by: QA
+  engineer under standing orders". Owner questions go in one batched message with a recommendation
+  each; keep working on anything they do not block.
+- One live run, never a loop against the live model; a readiness check never calls the turn
+  endpoint.
+- Plain ASCII in docs and comments. Small conventional commits, no co-author footers.
+
+## Review loop and finishing
+
+1. Rebase on origin/main, run the done-contract commands, commit.
+2. Push through the gate: `git push no-mistakes feat/evals`. Claude reviews there
+   (docs/agent/no-mistakes.md). Capture each gate review prompt: `no-mistakes axi logs --step review
+   --full` shows what the gate sent to Claude. Save that prompt text verbatim with a tool to
+   `prompt-history/prompts/05g-evals-gate-review-r<round>.md` and append it to PROMPTS.md with
+   role "automated cross-review", harness "no-mistakes v1.41.2 (Claude)" and the run id. If the log
+   does not contain the prompt text, save the log lines that identify the run, step and version,
+   say in that file and in PROMPTS.md that the prompt text was not available, and list it under NOT
+   VERIFIED in the PR.
+3. Read parked findings yourself (`no-mistakes axi status`, `no-mistakes axi logs --step review
+   --full`), fix them on your branch (after `no-mistakes axi sync` if offered), push through the
+   gate again. Two full rounds, a third on the delta only, then stop. Anything still disputed goes
+   to the owner as a FOR ANNA list with both positions.
+4. The gate opens the PR. Make sure its body carries the evidence from docs/agent/verification.md,
+   ending with VERIFIED and NOT VERIFIED lines. Never merge; the owner merges.
+
+## Evals early-start preparation - checkpoint outcome
+
+Sources: prompt-history/prompts/05a-evals-early-start.md and prompt-history/prompts/05-evals.md
+(the kickoff entries above remain unchanged because this lane is append-only).
+Outcome: Built 15 engine-derived cases, labeled synthetic recordings and replay in the existing
+unit project, plus an isolated opt-in live harness tested with an injected offline transport.
+160 tests green in normal and credential-free runs; a planted extra amount made replay fail.
+Workers AI calls 0. Live capture remains pending Anna's PR #4 merge notice, main pull and
+owner deployment. D-7's five-sandbox-per-IP cap prevents a complete 15-fresh-sandbox live run
+without an owner-approved capacity resolution. Gate review and CI pending.

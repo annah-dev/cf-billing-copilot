@@ -1,0 +1,240 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "scale-simulation",
+  "turns": [
+    {
+      "customerId": "cus_3",
+      "request": {
+        "message": "What would September 2026 have cost on Scale? Give actual total, simulated total and signed difference.",
+        "confirm": false
+      },
+      "response": {
+        "text": "Scale simulation. $262.00; $0.00.",
+        "toolCalls": [
+          {
+            "name": "simulatePlan",
+            "input": {
+              "period": "2026-09",
+              "planId": "plan_scale"
+            },
+            "output": {
+              "customerId": "cus_3",
+              "period": "2026-09",
+              "actualPlanId": "plan_scale",
+              "simulatedPlanId": "plan_scale",
+              "actualTotal": {
+                "cents": 26200,
+                "display": "$262.00"
+              },
+              "simulatedTotal": {
+                "cents": 26200,
+                "display": "$262.00"
+              },
+              "difference": {
+                "cents": 0,
+                "display": "$0.00"
+              },
+              "simulatedLines": [
+                {
+                  "id": "line_796705c104262969",
+                  "kind": "subscription",
+                  "description": "Scale fee: 2026-09-01 to 2026-10-01 (end exclusive); 30 of 30 days",
+                  "planId": "plan_scale",
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 9000,
+                    "display": "$90.00"
+                  },
+                  "tiers": []
+                },
+                {
+                  "id": "line_796704c1042627b6",
+                  "kind": "usage",
+                  "description": "Edge requests on Scale: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_scale",
+                  "meterId": "meter_requests",
+                  "quantity": 180000,
+                  "amount": {
+                    "cents": 7400,
+                    "display": "$74.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 100000,
+                      "unitPrice": {
+                        "cents": 50,
+                        "display": "$0.50"
+                      },
+                      "perUnits": 1000,
+                      "rateDisplay": "$0.50 per 1,000 requests",
+                      "amount": {
+                        "cents": 5000,
+                        "display": "$50.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 80000,
+                      "unitPrice": {
+                        "cents": 30,
+                        "display": "$0.30"
+                      },
+                      "perUnits": 1000,
+                      "rateDisplay": "$0.30 per 1,000 requests",
+                      "amount": {
+                        "cents": 2400,
+                        "display": "$24.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_796703c104262603",
+                  "kind": "usage",
+                  "description": "Object storage on Scale: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_scale",
+                  "meterId": "meter_storage",
+                  "quantity": 1200,
+                  "amount": {
+                    "cents": 5800,
+                    "display": "$58.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 500,
+                      "unitPrice": {
+                        "cents": 6,
+                        "display": "$0.06"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.06 per 1 GB-day",
+                      "amount": {
+                        "cents": 3000,
+                        "display": "$30.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 700,
+                      "unitPrice": {
+                        "cents": 4,
+                        "display": "$0.04"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.04 per 1 GB-day",
+                      "amount": {
+                        "cents": 2800,
+                        "display": "$28.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_796702c104262450",
+                  "kind": "usage",
+                  "description": "Data transfer on Scale: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_scale",
+                  "meterId": "meter_transfer",
+                  "quantity": 1500,
+                  "amount": {
+                    "cents": 4000,
+                    "display": "$40.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 1000,
+                      "unitPrice": {
+                        "cents": 3,
+                        "display": "$0.03"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.03 per 1 GB",
+                      "amount": {
+                        "cents": 3000,
+                        "display": "$30.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 500,
+                      "unitPrice": {
+                        "cents": 2,
+                        "display": "$0.02"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.02 per 1 GB",
+                      "amount": {
+                        "cents": 1000,
+                        "display": "$10.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_796709c104263035",
+                  "kind": "usage",
+                  "description": "Compute time on Scale: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_scale",
+                  "meterId": "meter_compute",
+                  "quantity": 6600,
+                  "amount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 6600,
+                      "unitPrice": {
+                        "cents": 0,
+                        "display": "$0.00"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.00 per 1 CPU-minute",
+                      "amount": {
+                        "cents": 0,
+                        "display": "$0.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_796708c104262e82",
+                  "kind": "tax",
+                  "description": "Sales tax: 0 basis points on $262.00",
+                  "planId": null,
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "tiers": []
+                }
+              ],
+              "assumptions": [
+                "Same daily usage; selected plan in force for the whole UTC calendar month.",
+                "Graduated tiers restart at zero; monthly fee is charged in full.",
+                "Same issued invoice discounts and customer tax rate; tax recomputed after discounts. Ledger credits affect balance only.",
+                "Actual total is the immutable issued invoice; actualPlanId identifies its closing plan when plans changed."
+              ]
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "modelCalls": 0
+        }
+      }
+    }
+  ],
+  "source": "synthetic-engine",
+  "recordedAt": null
+}

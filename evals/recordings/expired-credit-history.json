@@ -1,0 +1,157 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "expired-credit-history",
+  "turns": [
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "Before starting anything new, tell me the status and validated amount of my historical credit request.",
+        "confirm": false
+      },
+      "response": {
+        "text": "Historical credit request expired. $412.87.",
+        "toolCalls": [
+          {
+            "name": "getCreditRequestStatus",
+            "input": {},
+            "output": {
+              "requests": [
+                {
+                  "request": {
+                    "id": "cr_historical_expired",
+                    "invoiceId": "inv_43219e3da3298042",
+                    "status": "expired",
+                    "validatedAmount": {
+                      "cents": 41287,
+                      "display": "$412.87"
+                    },
+                    "createdAt": "2026-10-01T01:00:00Z",
+                    "deadline": "2026-10-02T01:00:00Z",
+                    "outcomeReason": "no approver decision within 24 hours"
+                  },
+                  "audit": [
+                    {
+                      "seq": 1,
+                      "at": "2026-10-01T01:00:00Z",
+                      "actor": "customer:cus_1",
+                      "action": "credit_requested",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_historical_expired"
+                      },
+                      "reason": "Customer requested duplicate-debit validation",
+                      "before": null,
+                      "after": {
+                        "status": "requested"
+                      }
+                    },
+                    {
+                      "seq": 2,
+                      "at": "2026-10-01T01:00:01Z",
+                      "actor": "workflow:cr_historical_expired",
+                      "action": "credit_validated",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_historical_expired"
+                      },
+                      "reason": "Matching invoice debit and posting reference found",
+                      "before": {
+                        "validatedAmount": null
+                      },
+                      "after": {
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        }
+                      }
+                    },
+                    {
+                      "seq": 3,
+                      "at": "2026-10-01T01:00:02Z",
+                      "actor": "workflow:cr_historical_expired",
+                      "action": "memo_pending",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_historical_expired"
+                      },
+                      "reason": "Pending memo reserves the duplicated debit; begin the approval wait",
+                      "before": {
+                        "status": "requested"
+                      },
+                      "after": {
+                        "status": "pending_approval",
+                        "deadline": "2026-10-02T01:00:00Z"
+                      }
+                    },
+                    {
+                      "seq": 4,
+                      "at": "2026-10-01T01:00:02Z",
+                      "actor": "workflow:cr_historical_expired",
+                      "action": "memo_pending",
+                      "subject": {
+                        "type": "credit_memo",
+                        "id": "cm_historical_void"
+                      },
+                      "reason": "Reserved duplicated debit in the same transaction as the request transition",
+                      "before": null,
+                      "after": {
+                        "status": "pending",
+                        "amount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        }
+                      }
+                    },
+                    {
+                      "seq": 5,
+                      "at": "2026-10-02T01:00:00Z",
+                      "actor": "workflow:cr_historical_expired",
+                      "action": "credit_expired",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_historical_expired"
+                      },
+                      "reason": "no approver decision within 24 hours",
+                      "before": {
+                        "status": "pending_approval"
+                      },
+                      "after": {
+                        "status": "expired"
+                      }
+                    },
+                    {
+                      "seq": 6,
+                      "at": "2026-10-02T01:00:00Z",
+                      "actor": "workflow:cr_historical_expired",
+                      "action": "memo_voided",
+                      "subject": {
+                        "type": "credit_memo",
+                        "id": "cm_historical_void"
+                      },
+                      "reason": "Expired request releases reservation without moving money",
+                      "before": {
+                        "status": "pending"
+                      },
+                      "after": {
+                        "status": "void"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "modelCalls": 0
+        }
+      }
+    }
+  ],
+  "source": "synthetic-engine",
+  "recordedAt": null
+}

@@ -1,0 +1,212 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "july-august-change",
+  "turns": [
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "Compare my July and August 2026 bills: totals, dollar change and percentage change.",
+        "confirm": false
+      },
+      "response": {
+        "text": "Invoice comparison. $273.59; $299.18; $25.59; 9%.",
+        "toolCalls": [
+          {
+            "name": "compareInvoices",
+            "input": {
+              "fromPeriod": "2026-07",
+              "toPeriod": "2026-08"
+            },
+            "output": {
+              "customerId": "cus_1",
+              "fromPeriod": "2026-07",
+              "toPeriod": "2026-08",
+              "fromTotal": {
+                "cents": 27359,
+                "display": "$273.59"
+              },
+              "toTotal": {
+                "cents": 29918,
+                "display": "$299.18"
+              },
+              "totalDelta": {
+                "cents": 2559,
+                "display": "$25.59"
+              },
+              "totalChange": {
+                "basisPoints": 935,
+                "display": "9%"
+              },
+              "byMeter": [
+                {
+                  "meterId": "meter_requests",
+                  "meterName": "Edge requests",
+                  "product": "Edge",
+                  "fromQuantity": 83700,
+                  "toQuantity": 93000,
+                  "fromAmount": {
+                    "cents": 8370,
+                    "display": "$83.70"
+                  },
+                  "toAmount": {
+                    "cents": 9300,
+                    "display": "$93.00"
+                  },
+                  "delta": {
+                    "cents": 930,
+                    "display": "$9.30"
+                  },
+                  "change": {
+                    "basisPoints": 1111,
+                    "display": "11%"
+                  }
+                },
+                {
+                  "meterId": "meter_storage",
+                  "meterName": "Object storage",
+                  "product": "Storage",
+                  "fromQuantity": 837,
+                  "toQuantity": 930,
+                  "fromAmount": {
+                    "cents": 7696,
+                    "display": "$76.96"
+                  },
+                  "toAmount": {
+                    "cents": 8440,
+                    "display": "$84.40"
+                  },
+                  "delta": {
+                    "cents": 744,
+                    "display": "$7.44"
+                  },
+                  "change": {
+                    "basisPoints": 967,
+                    "display": "10%"
+                  }
+                },
+                {
+                  "meterId": "meter_transfer",
+                  "meterName": "Data transfer",
+                  "product": "Edge",
+                  "fromQuantity": 837,
+                  "toQuantity": 930,
+                  "fromAmount": {
+                    "cents": 4185,
+                    "display": "$41.85"
+                  },
+                  "toAmount": {
+                    "cents": 4650,
+                    "display": "$46.50"
+                  },
+                  "delta": {
+                    "cents": 465,
+                    "display": "$4.65"
+                  },
+                  "change": {
+                    "basisPoints": 1111,
+                    "display": "11%"
+                  }
+                },
+                {
+                  "meterId": "meter_compute",
+                  "meterName": "Compute time",
+                  "product": "Compute",
+                  "fromQuantity": 2023,
+                  "toQuantity": 2248,
+                  "fromAmount": {
+                    "cents": 2023,
+                    "display": "$20.23"
+                  },
+                  "toAmount": {
+                    "cents": 2248,
+                    "display": "$22.48"
+                  },
+                  "delta": {
+                    "cents": 225,
+                    "display": "$2.25"
+                  },
+                  "change": {
+                    "basisPoints": 1112,
+                    "display": "11%"
+                  }
+                }
+              ],
+              "otherChanges": [
+                {
+                  "label": "subscription",
+                  "fromAmount": {
+                    "cents": 3000,
+                    "display": "$30.00"
+                  },
+                  "toAmount": {
+                    "cents": 3000,
+                    "display": "$30.00"
+                  },
+                  "delta": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  }
+                },
+                {
+                  "label": "proration",
+                  "fromAmount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "toAmount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "delta": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  }
+                },
+                {
+                  "label": "credit",
+                  "fromAmount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "toAmount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "delta": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  }
+                },
+                {
+                  "label": "tax",
+                  "fromAmount": {
+                    "cents": 2085,
+                    "display": "$20.85"
+                  },
+                  "toAmount": {
+                    "cents": 2280,
+                    "display": "$22.80"
+                  },
+                  "delta": {
+                    "cents": 195,
+                    "display": "$1.95"
+                  }
+                }
+              ],
+              "summary": "2026-08 total $299.18 versus 2026-07 $273.59: change $25.59 (9%). Usage by product: Edge: $13.95; Storage: $7.44; Compute: $2.25. Other changes: subscription: $0.00; proration: $0.00; credit: $0.00; tax: $1.95."
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "modelCalls": 0
+        }
+      }
+    }
+  ],
+  "source": "synthetic-engine",
+  "recordedAt": null
+}

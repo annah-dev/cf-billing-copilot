@@ -1,0 +1,91 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "remember-credit",
+  "turns": [
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "The September 2026 invoice debit was posted twice. I confirm: start a credit request for the duplicate and tell me the amount and approval status.",
+        "confirm": true
+      },
+      "response": {
+        "text": "Credit request pending human approval. $412.87.",
+        "toolCalls": [
+          {
+            "name": "startCreditRequest",
+            "input": {
+              "invoiceId": "inv_43219e3da3298042",
+              "reason": "The September invoice debit appears twice."
+            },
+            "output": {
+              "request": {
+                "id": "cr_eval_pending",
+                "invoiceId": "inv_43219e3da3298042",
+                "status": "pending_approval",
+                "validatedAmount": {
+                  "cents": 41287,
+                  "display": "$412.87"
+                },
+                "createdAt": "2026-10-03T00:00:00Z",
+                "deadline": "2026-10-04T00:00:00Z",
+                "outcomeReason": null
+              },
+              "existing": false,
+              "message": "Credit request pending human approval."
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "modelCalls": 0
+        }
+      }
+    },
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "I have reopened the chat. What is the status and amount of the credit request we just started?",
+        "confirm": false
+      },
+      "response": {
+        "text": "Credit request pending human approval. $412.87.",
+        "toolCalls": [
+          {
+            "name": "getCreditRequestStatus",
+            "input": {},
+            "output": {
+              "requests": [
+                {
+                  "request": {
+                    "id": "cr_eval_pending",
+                    "invoiceId": "inv_43219e3da3298042",
+                    "status": "pending_approval",
+                    "validatedAmount": {
+                      "cents": 41287,
+                      "display": "$412.87"
+                    },
+                    "createdAt": "2026-10-03T00:00:00Z",
+                    "deadline": "2026-10-04T00:00:00Z",
+                    "outcomeReason": null
+                  },
+                  "audit": []
+                }
+              ]
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "modelCalls": 0
+        }
+      }
+    }
+  ],
+  "source": "synthetic-engine",
+  "recordedAt": null
+}

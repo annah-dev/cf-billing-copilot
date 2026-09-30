@@ -759,3 +759,30 @@ are kept because the rebase left src/ui, tests/ui and index.html unchanged. Reas
 must describe the checkout under review, and command output must come from the commands.
 
 Decided by: Frontend engineer under standing orders.
+## evals: early-start synthetic fixtures and strict replay provenance
+
+Build fifteen cases from the current engine seed with engine-computed expected amounts,
+and label pre-agent recordings `synthetic-engine` with no timestamp or model usage. Replay
+validates each tool input/output and checks expected displays, semantic phrases, and money
+and numeric provenance using only current and earlier recorded tool outputs. Reason: the
+owner authorized offline work before PR #4 merges, and synthetic harness evidence must not
+be reported as live model performance. Decided by: QA engineer under standing orders.
+
+## evals: memory turns and credit confirmation
+
+Each memory case sends a new HTTP request without client history to the same sandbox/customer;
+only credit-start questions send `confirm: true`, and September invoice/change cases require
+the proactive anomaly without asserting that the model selected detectAnomalies. Reason:
+this exercises persisted context and D-20 while respecting the agent lane's deterministic
+anomaly behavior. Decided by: QA engineer under standing orders.
+
+## evals: bounded live capture with honest capacity results
+
+Use a separate opt-in live config, HTTPS origin from the environment, one fresh sandbox per
+case, sequential requests without retries, and immediate stop on caps or other request failures.
+Persist UTC date, pass fraction over all planned cases, completed counts and reported token/
+model-call usage; discard approver tokens. Require an explicit readiness acknowledgment after
+the owner's merge notice, pull and deployment. Reason: fresh cases avoid shared state, while
+D-7's five-sandbox-per-IP cap must stay enforced and partial results cannot claim completion.
+Full-run capacity is an owner decision, not a cap bypass in the evals lane.
+Decided by: QA engineer under standing orders.
