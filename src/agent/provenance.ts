@@ -57,6 +57,14 @@ export class ToolProvenance {
     sql.exec(
       "CREATE TABLE IF NOT EXISTS issued_tool_calls (id TEXT PRIMARY KEY, name TEXT NOT NULL, input_hash TEXT NOT NULL, output_hash TEXT, error_text TEXT, confirmation TEXT)"
     );
+    // Tables created before error_text existed gain the column; their rows are kept.
+    const columns = sql
+      .exec<{ name: string }>("PRAGMA table_info(issued_tool_calls)")
+      .toArray()
+      .map((c) => c.name);
+    if (!columns.includes("error_text")) {
+      sql.exec("ALTER TABLE issued_tool_calls ADD COLUMN error_text TEXT");
+    }
   }
 
   private async upsertCall(call: IssuedCall): Promise<void> {

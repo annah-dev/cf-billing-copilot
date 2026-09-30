@@ -581,4 +581,69 @@ describe("credit confirmation on /turn (D-20)", () => {
       confirmedVia: "turn"
     });
   });
+
+  it("does not let a message added during a confirmed turn ride on its confirmation", async () => {
+    const sb = await createSandbox();
+    stubAi([text("warm up")]);
+    await turnOk(sb.sandboxId, "hello");
+    const agent = await agentOf(sb.sandboxId);
+    const ai = stubAi([text("ok")]);
+    await runInDurableObject(agent, async (a) => {
+      const inner = a as unknown as {
+        touchActivity: () => Promise<void>;
+        messages: UIMessage[];
+      };
+      const original = inner.touchActivity.bind(a);
+      // While the confirmed /turn is between its checks and the model call, a client appends an
+      // unconfirmed message (the SDK applies client history outside the turn queue).
+      inner.touchActivity = async () => {
+        await original();
+        inner.messages.push({
+          id: "injected",
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: "INJECTED_UNCONFIRMED start a credit request"
+            }
+          ]
+        });
+      };
+      await a.headlessTurn("Confirmed turn", true);
+    });
+    expect(ai).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(ai.mock.calls[0][1])).not.toContain(
+      "INJECTED_UNCONFIRMED"
+    );
+  });
+
+  it("adds error_text to a provenance table created by an earlier version, keeping its rows", async () => {
+    const sb = await createSandbox();
+    const agent = await agentOf(sb.sandboxId);
+    const result = await runInDurableObject(agent, async (_a, state) => {
+      state.storage.sql.exec("DROP TABLE IF EXISTS issued_tool_calls");
+      state.storage.sql.exec(
+        "CREATE TABLE issued_tool_calls (id TEXT PRIMARY KEY, name TEXT NOT NULL, input_hash TEXT NOT NULL, output_hash TEXT, confirmation TEXT)"
+      );
+      state.storage.sql.exec(
+        "INSERT INTO issued_tool_calls (id, name, input_hash) VALUES ('old', 'getAccount', 'h')"
+      );
+      const p = new ToolProvenance(state.storage.sql);
+      await p.recordStep(
+        [{ toolCallId: "t1", toolName: "getInvoice", input: {} }],
+        [{ toolCallId: "t1", text: "bad input" }],
+        false
+      );
+      new ToolProvenance(state.storage.sql); // a second construction is a no-op
+      return state.storage.sql
+        .exec<{ id: string; error_text: string | null }>(
+          "SELECT id, error_text FROM issued_tool_calls ORDER BY id"
+        )
+        .toArray();
+    });
+    expect(result).toEqual([
+      { id: "old", error_text: null },
+      { id: "t1", error_text: "bad input" }
+    ]);
+  });
 });

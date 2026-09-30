@@ -308,9 +308,11 @@ export class BillingAgent extends AIChatAgent<Env> {
   ): Promise<Response> {
     const { sandboxId, customerId } = this.identity();
     const config = getConfig(this.env);
-    const lastUser = [...this.messages]
-      .reverse()
-      .find((m) => m.role === "user");
+    // One immutable snapshot for the whole turn: the confirmation, the cap exemption and the model
+    // context all come from it. The SDK applies client-sent history outside its turn queue, so
+    // this.messages can change at any await below (PR #4 review round 4).
+    const conversation = structuredClone(this.messages);
+    const lastUser = [...conversation].reverse().find((m) => m.role === "user");
     const record: TurnRecord = { ...newTurnStats(), capRefusal: null };
     this.turns.set(lastUser?.id ?? options?.requestId ?? "unknown", record);
     // Only /turn reads these back; keep the map small for chat turns nobody collects.
@@ -330,7 +332,7 @@ export class BillingAgent extends AIChatAgent<Env> {
     // frame, which the SDK still continues) is charged as a message.
     const exempt =
       continuation &&
-      (await this.provenance.consumeAnsweredConfirmation(this.messages));
+      (await this.provenance.consumeAnsweredConfirmation(conversation));
     if (!exempt) {
       if (!continuation) {
         const text = textOf(lastUser);
@@ -383,7 +385,7 @@ export class BillingAgent extends AIChatAgent<Env> {
       }),
       system: systemPrompt(this.memory(), utcDay(Date.now())),
       messages: await historyForModel(
-        await this.provenance.verified(this.messages),
+        await this.provenance.verified(conversation),
         { continuation, confirmedTurn: preConfirmed }
       ),
       tools,
