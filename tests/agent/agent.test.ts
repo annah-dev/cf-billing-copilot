@@ -647,3 +647,95 @@ describe("credit confirmation on /turn (D-20)", () => {
     ]);
   });
 });
+
+describe("proactive anomaly mention (user story 4)", () => {
+  type Call = {
+    name: string;
+    input: unknown;
+    output: unknown;
+    error: string | null;
+  };
+  const anomalyCalls = (body: TurnBody) =>
+    (body.toolCalls as Call[]).filter((c) => c.name === "detectAnomalies");
+
+  it("adds the server's anomaly check when the model fetches an invoice but never asks for it", async () => {
+    const sb = await createSandbox();
+    // The model only ever calls getInvoice: the mention cannot depend on its choice.
+    const ai = stubAi([
+      toolCall("getInvoice", { period: "2026-09" }),
+      text("Your bill is $412.87; note the spike on 2026-09-18.")
+    ]);
+    const body = await turnOk(
+      sb.sandboxId,
+      "Why is my September bill $412.87?"
+    );
+    expect(ai).toHaveBeenCalledTimes(2); // no extra model call
+    const seen = JSON.stringify(ai.mock.calls[1][1]);
+    expect(seen).toContain("detectAnomalies");
+    expect(seen).toContain("2026-09-18");
+    expect(seen).toContain("5.00x");
+    expect(JSON.stringify(ai.mock.calls[0][1])).not.toContain("2026-09-18");
+    const [check] = anomalyCalls(body);
+    expect(check.input).toEqual({ period: "2026-09" });
+    expect(check.error).toBeNull();
+    expect(check.output).toMatchObject({
+      period: "2026-09",
+      anomalies: [{ date: "2026-09-18", multiple: { display: "5.00x" } }]
+    });
+
+    // It is part of the stored conversation and passes provenance on later turns.
+    const agent = await agentOf(sb.sandboxId);
+    const kept = await runInDurableObject(agent, async (a, state) =>
+      (await new ToolProvenance(state.storage.sql).verified(a.messages))
+        .flatMap((m) => m.parts)
+        .filter((p) => p.type === "tool-detectAnomalies")
+        .map((p) => (p as { state: string }).state)
+    );
+    expect(kept).toEqual(["output-available"]);
+  });
+
+  it("adds it when the model explains a line of the invoice", async () => {
+    const sb = await createSandbox();
+    const ai = stubAi([
+      toolCall("explainLineItem", {
+        invoiceId: INV_SEP,
+        lineId: "line_acme_2026_09_req"
+      }),
+      text("Explained.")
+    ]);
+    const body = await turnOk(
+      sb.sandboxId,
+      "How was the requests line computed?"
+    );
+    expect(ai).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(ai.mock.calls[1][1])).toContain("2026-09-18");
+    expect(anomalyCalls(body)).toHaveLength(1);
+  });
+
+  it("does not add a second check when the model checks the month itself", async () => {
+    const sb = await createSandbox();
+    stubAi([
+      {
+        response: "",
+        tool_calls: [
+          { name: "getInvoice", arguments: { period: "2026-09" } },
+          { name: "detectAnomalies", arguments: { period: "2026-09" } }
+        ],
+        usage: { prompt_tokens: 900, completion_tokens: 40 }
+      },
+      text("Done.")
+    ]);
+    const body = await turnOk(
+      sb.sandboxId,
+      "Explain September and check spikes"
+    );
+    expect(anomalyCalls(body)).toHaveLength(1);
+  });
+
+  it("does not run it when no invoice was fetched or explained", async () => {
+    const sb = await createSandbox();
+    stubAi([toolCall("getAccount", {}), text("You are on Starter.")]);
+    const body = await turnOk(sb.sandboxId, "Which plan am I on?");
+    expect(anomalyCalls(body)).toHaveLength(0);
+  });
+});

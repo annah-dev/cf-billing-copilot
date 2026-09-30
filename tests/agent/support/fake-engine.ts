@@ -329,11 +329,26 @@ export const fakeEngine: BillingEngine = {
   },
   detectAnomalies: (data, customerId, period) => {
     forPeriod(data, customerId, period);
+    const spike =
+      customerId === ACME && period === "2026-09"
+        ? [
+            {
+              meterId: "meter_requests",
+              meterName: "Requests",
+              date: "2026-09-18",
+              quantity: 15000,
+              baselineQuantity: 3000,
+              multiple: { hundredths: 500, display: "5.00x" },
+              estimatedExcessCost: money(3600),
+              severity: "critical" as const
+            }
+          ]
+        : [];
     return {
       customerId,
       period,
-      anomalies: [],
-      method: "fake: none"
+      anomalies: spike,
+      method: "fake: fixed September 18 spike for Acme"
     };
   },
   validateCreditClaim: (

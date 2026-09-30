@@ -644,3 +644,18 @@ real tool result) and the message cap must not depend on client honesty (PR #4 r
 and 3).
 
 Decided by: Agent engineer under standing orders.
+
+## agent: the server runs the anomaly check for every invoice a turn touches
+
+User story 4 asks the copilot to mention the September spike proactively; in the live run Llama 3.3
+did not call `detectAnomalies` although the prompt asked it to. Whenever a turn's tool results
+include `getInvoice` or `explainLineItem` for a period that neither the model nor the server has
+checked in that turn, the server runs `detectAnomalies` for the period itself before the next model
+step (`prepareStep`, src/agent/anomalies.ts). The result goes to the model as a server-issued
+`detectAnomalies` tool call and result, and the same pair is written to the chat stream, so it is
+stored, shown in the UI and in `/turn`, and recorded in provenance. It costs no extra model call,
+and the prompt tells the model to mention any spike it reports. The tool already exists, so no
+contract changes. Reason: the mention must not depend on the model's choice. Limit: if the
+invoice fetch is the turn's last allowed step, no further model step can mention it.
+
+Decided by: Anna (the requirement); Agent engineer under standing orders (the mechanism).

@@ -26,6 +26,7 @@ import { CREDIT_WORKFLOW } from "../workflows/params";
 import { historyForModel } from "./history";
 import { billingModel, newTurnStats, type TurnStats } from "./model";
 import { EMPTY_MEMORY, systemPrompt, type Memory } from "./prompt";
+import { serverAnomalyChecks } from "./anomalies";
 import { ToolProvenance } from "./provenance";
 import { ToolError, buildTools } from "./tools";
 
@@ -364,12 +365,13 @@ export class BillingAgent extends AIChatAgent<Env> {
       await this.touchActivity();
     }
 
+    const ledger = this.ledger();
     const cache = new Map<string, unknown>();
     const tools = buildTools(
       {
         sandboxId,
         customerId,
-        ledger: this.ledger(),
+        ledger,
         startCreditRequest: (input) => this.startCreditRequest(input),
         remember: (name, output) => this.remember(name, output),
         recordResult: (call, result) =>
@@ -378,41 +380,60 @@ export class BillingAgent extends AIChatAgent<Env> {
       cache,
       { confirmCredit: !preConfirmed }
     );
-    const result = streamText({
-      model: billingModel(this.env, record, {
-        maxOutputTokens: config.MAX_OUTPUT_TOKENS,
-        neuronStop: config.NEURON_DAILY_STOP
-      }),
-      system: systemPrompt(this.memory(), utcDay(Date.now())),
-      messages: await historyForModel(
-        await this.provenance.verified(conversation),
-        { continuation, confirmedTurn: preConfirmed }
-      ),
-      tools,
-      onStepFinish: (step) =>
-        this.provenance.recordStep(
-          step.toolCalls,
-          step.content.flatMap((c) =>
-            c.type === "tool-error"
-              ? [
-                  {
-                    toolCallId: c.toolCallId,
-                    text:
-                      c.error instanceof Error
-                        ? c.error.message
-                        : String(c.error)
-                  }
-                ]
-              : []
-          ),
-          !preConfirmed
-        ),
-      stopWhen: stepCountIs(MAX_STEPS),
-      maxOutputTokens: config.MAX_OUTPUT_TOKENS,
-      temperature: 0,
-      abortSignal: options?.abortSignal
+    const messages = await historyForModel(
+      await this.provenance.verified(conversation),
+      { continuation, confirmedTurn: preConfirmed }
+    );
+    const system = systemPrompt(this.memory(), utcDay(Date.now()));
+    const stream = createUIMessageStream({
+      onError: toolErrorText,
+      execute: ({ writer }) => {
+        const result = streamText({
+          model: billingModel(this.env, record, {
+            maxOutputTokens: config.MAX_OUTPUT_TOKENS,
+            neuronStop: config.NEURON_DAILY_STOP
+          }),
+          system,
+          messages,
+          tools,
+          // User story 4: the spike is mentioned whether or not the model asks for it (anomalies.ts).
+          prepareStep: serverAnomalyChecks({
+            detectAnomalies: tools.detectAnomalies.execute as NonNullable<
+              (typeof tools)[string]["execute"]
+            >,
+            periodOfInvoice: async (invoiceId) => {
+              const found = await ledger.invoice(customerId, { invoiceId });
+              return found.ok ? found.value.period : null;
+            },
+            writer
+          }),
+          onStepFinish: (step) =>
+            this.provenance.recordStep(
+              step.toolCalls,
+              step.content.flatMap((c) =>
+                c.type === "tool-error"
+                  ? [
+                      {
+                        toolCallId: c.toolCallId,
+                        text:
+                          c.error instanceof Error
+                            ? c.error.message
+                            : String(c.error)
+                      }
+                    ]
+                  : []
+              ),
+              !preConfirmed
+            ),
+          stopWhen: stepCountIs(MAX_STEPS),
+          maxOutputTokens: config.MAX_OUTPUT_TOKENS,
+          temperature: 0,
+          abortSignal: options?.abortSignal
+        });
+        writer.merge(result.toUIMessageStream({ onError: toolErrorText }));
+      }
     });
-    return result.toUIMessageStreamResponse({ onError: toolErrorText });
+    return createUIMessageStreamResponse({ stream });
   }
 
   /**
