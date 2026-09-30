@@ -701,3 +701,13 @@ script uses the already installed external Playwright runtime and is excluded fr
 vitest patterns. Reason: capture the actual app through npm run dev without contacting the model.
 
 Decided by: Frontend engineer under standing orders.
+
+## ui: Evidence kept out of deployed static assets
+
+Done-contract evidence (screenshots, command logs, browser checks) lives in `tests/ui/evidence/`,
+written there by `tests/ui/browser-evidence.mjs`. It was first placed in `public/ui-evidence/`,
+which is both Wrangler's assets directory and Vite's publicDir, so it would have been served on
+the deployed site. Absolute home paths and temporary config-directory paths are scrubbed from the
+logs. Reason: gate review round 1 found the evidence would be published with local paths.
+
+Decided by: Frontend engineer under standing orders.

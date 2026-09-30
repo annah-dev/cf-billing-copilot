@@ -9,4 +9,4 @@ Sourcemap for "<repo>/node_modules/cron-schedule/dist/cron-parser.js" points to 
    Start at  18:33:10
    Duration  6.39s (transform 3.29s, setup 725ms, import 6.55s, tests 422ms, environment 1ms)
 
-🪵  Logs were written to "/home/annah-dev/.config/.wrangler/logs/wrangler-2026-09-30_01-33-09_617.log"
+🪵  Logs were written to "<config-dir>/.wrangler/logs/wrangler-2026-09-30_01-33-09_617.log"

@@ -15,7 +15,7 @@ within each layout. The fixture banner distinguishes illustrative UI values from
 Start the existing dev server without remote bindings:
 
 ```sh
-XDG_CONFIG_HOME=/tmp/billing-ui-wrangler CLOUDFLARE_VITE_FORCE_LOCAL=true WRANGLER_SEND_METRICS=false npm run dev -- --host 127.0.0.1 --port 5174 --strictPort
+XDG_CONFIG_HOME="$(mktemp -d)" CLOUDFLARE_VITE_FORCE_LOCAL=true WRANGLER_SEND_METRICS=false npm run dev -- --host 127.0.0.1 --port 5174 --strictPort
 ```
 
 Run the browser script with an existing external Playwright installation (no repo dependency or

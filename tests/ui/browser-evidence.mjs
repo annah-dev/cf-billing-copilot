@@ -5,7 +5,7 @@ const { chromium } = await import(
   process.env.UI_PLAYWRIGHT_MODULE || "@playwright/test"
 );
 const origin = process.env.UI_EVIDENCE_ORIGIN || "http://127.0.0.1:5174";
-const folder = new URL("../../public/ui-evidence/", import.meta.url).pathname;
+const folder = new URL("./evidence/", import.meta.url).pathname;
 await mkdir(folder, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const failures = [];

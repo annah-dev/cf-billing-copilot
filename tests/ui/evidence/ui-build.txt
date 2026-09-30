@@ -9,4 +9,4 @@ dist/client/assets/index-DSEp0Igp.js   566.80 kB │ gzip: 169.59 kB
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-🪵  Logs were written to "/home/annah-dev/.config/.wrangler/logs/wrangler-2026-09-30_01-34-59_660.log"
+🪵  Logs were written to "<config-dir>/.wrangler/logs/wrangler-2026-09-30_01-34-59_660.log"
