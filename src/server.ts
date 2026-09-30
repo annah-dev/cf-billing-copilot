@@ -1,31 +1,23 @@
-// Worker entry. The Stop 2 foundation ships a minimal router; the agent lane owns
-// this file and builds the full HTTP surface (docs/ARCHITECTURE.md, "HTTP surface").
-import { routeAgentRequest } from "agents";
-import { MODEL_ID, type ErrorResponse } from "./contracts";
+// Worker entry: exports every bound class and delegates HTTP to src/http/router.ts
+// (docs/ARCHITECTURE.md, "HTTP surface"). Static assets are served before the Worker runs,
+// except for /agents/* and /api/* (wrangler.jsonc, run_worker_first).
+import { handleRequest } from "./http/router";
 
 export { BillingAgent } from "./agent/billing-agent";
 export { Ledger } from "./ledger/ledger";
 export { Quota } from "./quota/quota";
 export { CreditRequestWorkflow } from "./workflows/credit-request";
 
-function notFound(): Response {
-  const body: ErrorResponse = {
-    error: { code: "not_found", message: "Not found" }
-  };
-  return Response.json(body, { status: 404 });
-}
-
 export default {
   async fetch(request: Request, env: Env) {
-    const url = new URL(request.url);
-    if (url.pathname === "/api/health") {
-      return Response.json({ ok: true, model: MODEL_ID });
+    try {
+      return await handleRequest(request, env);
+    } catch (err) {
+      console.error("unhandled error", err);
+      return Response.json(
+        { error: { code: "internal", message: "Internal error" } },
+        { status: 500 }
+      );
     }
-    // routeAgentRequest maps every Durable Object binding by name (LEDGER, QUOTA included),
-    // so only the BillingAgent namespace may reach it (DECISIONS.md D-18).
-    if (!url.pathname.startsWith("/agents/billing-agent/")) {
-      return notFound();
-    }
-    return (await routeAgentRequest(request, env)) ?? notFound();
   }
 } satisfies ExportedHandler<Env>;
