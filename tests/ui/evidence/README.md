@@ -22,6 +22,7 @@ XDG_CONFIG_HOME="$(mktemp -d)" CLOUDFLARE_VITE_FORCE_LOCAL=true WRANGLER_SEND_ME
 
 Run the browser script with an existing external Playwright installation (no repo dependency or
 config changes). `UI_PLAYWRIGHT_MODULE` is its module path; if it is already resolvable, omit it.
+`UI_EVIDENCE_ORIGIN` overrides the default origin `http://127.0.0.1:5174` for another port.
 
 ```sh
 UI_PLAYWRIGHT_MODULE=/path/to/@playwright/test/index.mjs node tests/ui/browser-evidence.mjs
@@ -54,8 +55,9 @@ problem with my invoice?" to plan simulation. The regression test `answers ordin
 questions without simulating an unnamed plan` failed before the fix
 ([ui-plan-routing-regression-fail.txt](ui-plan-routing-regression-fail.txt)) and passed after it
 ([ui-plan-routing-regression-pass.txt](ui-plan-routing-regression-pass.txt)). The full and
-credential-free logs were rerun after the fix. The gate reran browser checks at both widths after the routing fix on its own
-checkout using dedicated port 5391. These screenshots and browser logs are from that rerun.
+credential-free logs were rerun after the fix. The gate reran browser checks at both widths after
+the routing fix on its own checkout using dedicated port 5391. These screenshots and browser logs
+are from that rerun.
 
 [amount-grep.txt](amount-grep.txt) contains the review grep over the UI lane. Monetary outputs are
 engine results, validated credit memo copies, or contract `.display` references. There is no UI
