@@ -105,7 +105,7 @@ Core user stories:
 - Role: Architect
 - Harness: Claude Code
 - Source: prompt-history/prompts/01-architect.md
-- Outcome: (pending; filled in at the end of the session)
+- Outcome: Stop 1 merged as PR #1 (plan docs, 3 Codex review rounds). Stop 2 opened as PR #2 (scaffold, contracts, bindings, tests, CI, no-mistakes, model round trip, lane prompts; 3 Codex review rounds, approved). The round trip found native streaming broken for Llama 3.3 tool calls (fixed with simulated streaming). An accidental readiness loop made 58 live model calls (about 2,300 neurons).
 
 ````text
 # 01 - Architect kickoff
@@ -417,6 +417,230 @@ UNVERIFIED.
 
 Output format: a verdict line (APPROVE or CHANGES REQUESTED), the five adequacy verdicts, then
 numbered new findings, most severe first, each with severity (blocker, major, minor, nit), file and
+line, what is wrong, and the fix you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 7. D-13 answer and Stop 2 go (typed mid-session)
+
+- Timestamp: 2026-09-29T16:16:00-07:00
+- Role: Architect
+- Harness: Claude Code
+- Source: prompt-history/prompts/01e-stop2-go.md
+- Outcome: D-13 recorded as decided and documented in README and D-13, off switch put in the release lane's checklist; Stop 2 built as PR #2.
+
+````text
+   A1 B1. PR #1 is merged; start Stop 2.
+
+   Why A1 and not A2: the rate-limit binding is a cheap, platform-native filter in front of the
+   Durable Objects. A hard lifetime only bounds storage, which costs cents, so it is not worth
+   reopening E2. I have set a $10 budget alert on the account.
+
+   Document in the README and D-13: abuse cost is bounded by caps at an estimated figure, not a
+   hard ceiling; the rate limiter is per-location and approximate by design; the budget alert
+   only emails; the off switch is disabling the workers.dev route in the dashboard, which
+   takes the demo offline without deleting data. Put that off switch in the release checklist.
+````
+
+## 8. PR #2 cross-review, round 1
+
+- Timestamp: 2026-09-29T16:42:12-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/01f-review-pr2-r1.md
+- Outcome: CHANGES REQUESTED, 7 findings (3 major, 4 minor); all accepted and fixed (PR #2 comment, commits dc9070b, f4c8888, dda5fb2, 76235a3, 02360ca).
+
+````text
+You are the cross-reviewer for PR #2 on annah-dev/cf-billing-copilot, round 1 of 2 (full review).
+The PR was written by Claude Code (the Architect). You are Codex, running read-only: do not edit,
+commit, push or comment anywhere; your whole output is your review. You may run read-only commands
+such as `npm test` and `npm run typecheck` if the sandbox allows; say so if it does not.
+
+Review the full branch diff: `git diff origin/main...HEAD` and `git log origin/main..HEAD`. This is
+the Stop 2 foundation that every parallel lane forks from; after it merges, src/contracts/,
+wrangler.jsonc, package files, vitest config, CI and AGENTS.md are frozen, so defects here are
+expensive later.
+
+Check it against:
+1. prompt-history/prompts/01-architect.md, "Stop 2: foundation on main", items 6 to 14, and its
+   "Pre-decided" section.
+2. prompt-history/prompts/00-assignment.md (design principles and acceptance criteria).
+3. prompt-history/prompts/01a-stop1-decisions.md and 01e-stop2-go.md (owner decisions).
+4. docs/ARCHITECTURE.md, docs/DECISIONS.md, docs/agent/plan.md, docs/agent/verification.md,
+   docs/agent/cross-review.md (use its "What the reviewer checks" list).
+
+Look for, most important first:
+- Contract defects a lane will hit: a schema that cannot represent the seeded story (tiers,
+  proration, tax, the duplicate charge, the spike, the expired historical request), a tool
+  input/output that forces money math on the model or the UI, a missing field the flows in
+  ARCHITECTURE.md need, an HTTP shape that does not match the documented routes, an inconsistency
+  between contracts and docs.
+- Config defects: a binding missing or misnamed, a migration problem, the rate limiter or vars not
+  matching D-7 and D-13, `npm test` able to reach the network or credentials, CI not running what
+  verification.md says.
+- Security: the routing guard, anything that lets a model tool write, secrets in the repo.
+- Lane prompts (02 to 06): each self-contained, matching plan.md ownership, carrying the rules the
+  owner required (installed types win, decision rights, the review loop, prompt logging), and
+  runnable as written.
+- Anything item 6 to 14 requires that is missing or only claimed.
+- Plain-ASCII violations in docs and code comments (verbatim prompt text is exempt).
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. Do not report style preferences. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 9. PR #2 cross-review, round 2
+
+- Timestamp: 2026-09-29T16:55:55-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/01g-review-pr2-r2.md
+- Outcome: CHANGES REQUESTED, 2 findings (1 major, 1 minor); both fixed (commit 3dcb2e7, refreshed PR body).
+
+````text
+You are the cross-reviewer for PR #2 on annah-dev/cf-billing-copilot, round 2 of 2 (full review).
+The PR was written by Claude Code (the Architect). You are Codex, running read-only: do not edit,
+commit, push or comment anywhere; your whole output is your review. You may run read-only commands
+such as `npm test` and `npm run typecheck` if the sandbox allows; say so if it does not.
+
+Review the full branch diff: `git diff origin/main...HEAD` and `git log origin/main..HEAD`. This is
+the Stop 2 foundation that every parallel lane forks from; after it merges, src/contracts/,
+wrangler.jsonc, package files, vitest config, CI and AGENTS.md are frozen, so defects here are
+expensive later.
+
+Round 1 raised 7 findings; the author's responses are in the PR #2 comment "Automated
+cross-review, round 1" (`gh pr view 2 --comments` if you can reach GitHub) and in commits dc9070b,
+f4c8888, dda5fb2, 76235a3 and 02360ca. Review the whole diff again, not only those commits. For
+each round 1 finding, say whether the fix is adequate. Then report anything new, including problems
+the fixes introduced.
+
+Check it against:
+1. prompt-history/prompts/01-architect.md, "Stop 2: foundation on main", items 6 to 14, and its
+   "Pre-decided" section.
+2. prompt-history/prompts/00-assignment.md (design principles and acceptance criteria).
+3. prompt-history/prompts/01a-stop1-decisions.md and 01e-stop2-go.md (owner decisions).
+4. docs/ARCHITECTURE.md, docs/DECISIONS.md, docs/agent/plan.md, docs/agent/verification.md,
+   docs/agent/cross-review.md (use its "What the reviewer checks" list).
+
+Look for, most important first:
+- Contract defects a lane will hit: a schema that cannot represent the seeded story (tiers,
+  proration, tax, the duplicate charge, the spike, the expired historical request), a tool
+  input/output that forces money math on the model or the UI, a missing field the flows in
+  ARCHITECTURE.md need, an HTTP shape that does not match the documented routes, an inconsistency
+  between contracts and docs.
+- Config defects: a binding missing or misnamed, a migration problem, the rate limiter or vars not
+  matching D-7 and D-13, `npm test` able to reach the network or credentials, CI not running what
+  verification.md says.
+- Security: the routing guard, anything that lets a model tool write, secrets in the repo.
+- Lane prompts (02 to 06): each self-contained, matching plan.md ownership, carrying the rules the
+  owner required (installed types win, decision rights, the review loop, prompt logging), and
+  runnable as written.
+- Anything item 6 to 14 requires that is missing or only claimed.
+- Plain-ASCII violations in docs and code comments (verbatim prompt text is exempt).
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. Do not report style preferences. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 10. PR #2 cross-review, round 3 (delta only)
+
+- Timestamp: 2026-09-29T17:04:35-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/01h-review-pr2-r3.md
+- Outcome: APPROVE; both round 2 fixes adequate, no new findings. Review loop complete.
+
+````text
+You are the cross-reviewer for PR #2 on annah-dev/cf-billing-copilot, round 3: delta only, and the
+last round. The PR was written by Claude Code (the Architect). You are Codex, running read-only: do
+not edit, commit, push or comment anywhere; your whole output is your review.
+
+Review only the round 2 fixes: `git diff 56f1a55 3dcb2e7` (tests/agent/tsconfig.json, docs/DECISIONS.md),
+plus the refreshed PR body (`gh pr view 2` if you can reach GitHub). Round 2 found: (1) the agent
+test project inherited the root exclusion and typechecked nothing; (2) the PR body described an
+older head.
+
+For each, say whether the fix is adequate; for (1), verify with `npx tsc -p tests/agent
+--listFilesOnly` and `npm run typecheck` if the sandbox allows. Then report only new defects the
+delta introduces. Do not reopen settled points unless the delta broke them. Mark any claim you
+cannot verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), the adequacy verdicts, then numbered
+new findings, most severe first, each with severity (blocker, major, minor, nit), file and line,
+what is wrong, and the fix you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 11. PR #2 billing semantics round (typed mid-session)
+
+- Timestamp: 2026-09-29T17:14:51-07:00
+- Role: Architect
+- Harness: Claude Code
+- Source: prompt-history/prompts/01i-pr2-billing-semantics.md
+- Outcome: billing semantics, release README requirement and gate-doc wording changed in PR #2 (commits 95cdb6c..99fd77c); Codex delta review approved.
+
+````text
+Before I merge PR #2, one small round, then a delta-only Codex review:
+
+1. Billing semantics. LedgerEntry.reference gives "a card-processor charge id" as its example, but
+   a charge entry is a debit that raises what the customer owes. A duplicated card payment is
+   handled as a refund or a credit balance; a credit memo is the remedy for a duplicated debit.
+   Change the example to a billing-run posting id, and state in ARCHITECTURE.md and 02-engine.md
+   that the seeded duplicate is the September invoice debit posted twice by a billing run retried
+   without an idempotency key. Add one README line that a duplicated card payment would be a
+   refund, which is out of scope.
+2. 06-release.md: the README must include the Llama 3.3 streaming finding (DEV-16, D-14), with
+   the garbled-arguments evidence and the simulated-streaming fix.
+3. docs/agent/no-mistakes.md: say "another repo of mine that already runs the gate" instead of
+   naming its path. Recorded prompts stay verbatim.
+
+Tell me when it is ready and I will merge.
+````
+
+## 12. PR #2 cross-review, owner round (delta only)
+
+- Timestamp: 2026-09-29T17:16:02-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/01j-review-pr2-delta.md
+- Outcome: APPROVE; all three items pass, no findings.
+
+````text
+You are the cross-reviewer for PR #2 on annah-dev/cf-billing-copilot: a delta-only review of an
+owner-requested round made after the three regular review rounds. The PR was written by Claude Code
+(the Architect). You are Codex, running read-only: do not edit, commit, push or comment anywhere;
+your whole output is your review.
+
+Review only this delta: `git diff 95cdb6c 99fd77c`. The owner asked for (read
+prompt-history/prompts/01i-pr2-billing-semantics.md):
+1. Billing semantics: `LedgerEntry.reference` is a billing-run posting id, not a card-processor
+   charge id; ARCHITECTURE.md and 02-engine.md state that the seeded duplicate is the September
+   invoice debit posted twice by a billing run retried without an idempotency key; one README line
+   says a duplicated card payment would be a refund, out of scope.
+2. 06-release.md requires the README to include the Llama 3.3 streaming finding (DEV-16, D-14)
+   with the garbled-arguments evidence and the simulated-streaming fix.
+3. docs/agent/no-mistakes.md no longer names another repo's path; recorded prompts stay verbatim.
+
+For each item, say whether the delta does it fully and accurately. Check that the billing wording
+is consistent with the contracts (a `charge` ledger entry is a debit; the credit memo is the
+remedy), with the engine's `validateCreditClaim` contract, and across every file that describes
+the seeded duplicate. Report only defects in or caused by the delta. Mark anything you cannot
+verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), the three item verdicts, then
+numbered findings, most severe first, each with severity (blocker, major, minor, nit), file and
 line, what is wrong, and the fix you suggest. End with:
 
     VERIFIED:     <what you checked and how>

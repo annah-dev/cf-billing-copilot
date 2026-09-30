@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "ask": [
+      "Bash(gh pr merge:*)",
+      "Bash(wrangler deploy:*)",
+      "Bash(npx wrangler deploy:*)",
+      "Bash(wrangler secret:*)",
+      "Bash(npx wrangler secret:*)",
+      "Bash(wrangler login:*)",
+      "Bash(npx wrangler login:*)",
+      "Bash(npm run deploy:*)"
+    ]
+  }
+}

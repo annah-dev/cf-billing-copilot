@@ -6,15 +6,14 @@ SQLite, and runs credit requests through a Cloudflare Workflow that waits for a 
 All money math happens in a pure TypeScript billing engine. The model (Llama 3.3 on Workers AI)
 only chooses tools and explains their results.
 
-Status: this is the Stop 1 plan, with the owner's Stop 1 decisions folded in. Names of files and
-directories are provisional until the scaffold lands (Stop 2); class names, bindings and flows are
-the intended design. The reasoning behind each choice is in docs/DECISIONS.md.
+Status: the design as of the Stop 2 foundation (scaffold, contracts and bindings in place, lanes
+not yet built). The reasoning behind each choice is in docs/DECISIONS.md.
 
 ## Components
 
 | Component | Cloudflare primitive | Responsibility |
 |---|---|---|
-| Worker entry (`src/server.ts`) | Worker | Routes `/agents/*` to the chat agent (`routeAgentRequest`), `/api/*` to the HTTP handlers, everything else to static assets. Enforces request caps. |
+| Worker entry (`src/server.ts`) | Worker | Applies the per-IP rate limiter first, then routes `/agents/billing-agent/*` (and only that namespace) to the chat agent through `routeAgentRequest`, `/api/*` to the HTTP handlers, everything else to static assets. |
 | `BillingAgent` | Durable Object (SQLite), `AIChatAgent` from `@cloudflare/ai-chat` | One instance per (sandbox, customer). Holds conversation history and customer memory (account context, prior questions, open credit request ids). Runs the Llama 3.3 tool loop. Reads the ledger, never writes money. Starts credit requests. |
 | `Ledger` | Durable Object (SQLite) | One instance per sandbox. The single source of truth: plans, tiers, usage, invoices, ledger entries, credit requests, credit memos, append-only audit log. Enforces the credit state machine and idempotency keys. Seeds itself from the engine's seed data. |
 | `CreditRequestWorkflow` | Workflow (`AgentWorkflow` from `agents/workflows`) | validate, create pending memo, wait for the approver event (`step.waitForEvent` with an explicit timeout), apply or reject, or expire on timeout. Every transition is a Ledger call that writes an audit record in the same SQLite transaction. |
@@ -82,7 +81,11 @@ Tables, all amounts `INTEGER` cents, all timestamps ISO-8601 UTC:
 - `customers`, `plans`, `plan_tiers`, `subscriptions` (plan history, for proration)
 - `usage_daily` (customer, meter, date, quantity)
 - `invoices`, `invoice_lines` (materialised from the engine at seed time; immutable once issued)
-- `ledger_entries` (charges, payments, credits; append-only; the seeded duplicate charge lives here)
+- `ledger_entries` (charges, payments, credits; append-only). The seeded duplicate lives here: the
+  September invoice debit posted twice, with the same billing-run posting id in `reference`, by a
+  billing run that was retried without an idempotency key. A credit memo is the remedy for a
+  duplicated debit; a duplicated card payment would be a refund or a credit balance instead, which
+  is out of scope.
 - `credit_requests` (id, idempotency_key UNIQUE, customer, invoice, disputed ledger entry, claimed
   amount, validated amount, status, workflow instance id, deadline, recorded decision)
 - `credit_memos` (request id UNIQUE, disputed ledger entry, amount, status `pending | applied | void`)
@@ -151,7 +154,8 @@ own idle deletion uses the Agents SDK scheduler, which multiplexes onto that obj
 
 1. The UI connects to `BillingAgent` over the Agents SDK WebSocket (`useAgentChat`).
 2. `onChatMessage` checks the per-sandbox caps, trims history to fit the 24k-token context, and
-   calls `streamText` with Llama 3.3, the typed tools, a bounded `maxOutputTokens` and a small step
+   calls `streamText` with Llama 3.3 wrapped in `simulateStreamingMiddleware` (native streaming
+   garbles tool arguments, DEV-16), the typed tools, a bounded `maxOutputTokens` and a small step
    limit. A model middleware reserves an estimated neuron cost in `Quota` before every inference
    call, including tool continuations (input tokens estimated from the prompt, output at the
    `maxOutputTokens` bound); `Quota` grants or refuses atomically, so concurrent turns cannot
@@ -264,7 +268,9 @@ same status without writing.
   about $34 over the $5 plan. Normal demo traffic stays inside the included amounts.
 - Not covered by that estimate: refused traffic. The per-sandbox caps are counted inside the
   Ledger, so a call refused with 429 or 404 still costs one Durable Object request (no write).
-  Bounding that needs a limit before any Durable Object is invoked; it is an open decision (D-13).
+  The per-IP `RATE_LIMITER` (60 requests a minute) runs in the Worker before any Durable Object is
+  invoked and slows that traffic, but it is per location and approximate, so it is a brake, not a
+  bound (D-13).
 - Workflows: 30-day retention of completed instances; waiting instances do not count toward
   concurrency.
 
