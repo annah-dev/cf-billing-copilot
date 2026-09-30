@@ -19,6 +19,117 @@ function assertIntegers(value: unknown, path = "output"): void {
 }
 
 describe("deterministic synthetic seed", () => {
+  it("shapes daily usage on every meter and customer with quieter UTC weekends", () => {
+    const data = engine.seed();
+    for (const customer of data.customers)
+      for (const meter of data.meters)
+        for (const period of ["2026-07", "2026-08", "2026-09"]) {
+          const rows = data.usage.filter(
+            (row) =>
+              row.customerId === customer.id &&
+              row.meterId === meter.id &&
+              row.date.startsWith(period) &&
+              !(
+                customer.id === "cus_1" &&
+                meter.id === "meter_requests" &&
+                row.date === "2026-09-18"
+              )
+          );
+          const label = `${customer.id}/${meter.id}/${period}`;
+          expect(
+            new Set(rows.map((row) => row.quantity)).size,
+            label
+          ).toBeGreaterThan(1);
+          const weekend = rows.filter((row) =>
+            [0, 6].includes(new Date(`${row.date}T00:00:00Z`).getUTCDay())
+          );
+          const weekday = rows.filter((row) => !weekend.includes(row));
+          const sum = (items: typeof rows) =>
+            items.reduce((total, row) => total + row.quantity, 0);
+          expect(sum(weekday) * weekend.length, label).toBeGreaterThan(
+            sum(weekend) * weekday.length
+          );
+          const sorted = rows.map((row) => row.quantity).sort((a, b) => a - b);
+          expect(sorted[0], label).toBeGreaterThan(0);
+          expect(sorted.at(-1), label).toBeLessThan(
+            2 * sorted[Math.trunc(sorted.length / 2)]
+          );
+        }
+  });
+
+  it("makes July quantities and invoices differ from August for every customer and meter", () => {
+    const data = engine.seed();
+    for (const customer of data.customers) {
+      for (const meter of data.meters) {
+        const quantity = (period: string) =>
+          data.usage
+            .filter(
+              (row) =>
+                row.customerId === customer.id &&
+                row.meterId === meter.id &&
+                row.date.startsWith(period)
+            )
+            .reduce((total, row) => total + row.quantity, 0);
+        expect(quantity("2026-07")).toBeLessThan(quantity("2026-08"));
+      }
+      const july = data.invoices.find(
+        (bill) => bill.customerId === customer.id && bill.period === "2026-07"
+      )!;
+      const august = data.invoices.find(
+        (bill) => bill.customerId === customer.id && bill.period === "2026-08"
+      )!;
+      expect(july.total.cents).not.toBe(august.total.cents);
+    }
+  });
+
+  it("preserves all August and September quantities, plan segments and invoice totals", () => {
+    const data = engine.seed();
+    const quantities: Record<string, number[][]> = {
+      "2026-08": [
+        [93000, 930, 930, 2248],
+        [155000, 930, 1395, 6200],
+        [186000, 1240, 1550, 6820]
+      ],
+      "2026-09": [
+        [102000, 1200, 1500, 7380],
+        [150000, 900, 1350, 6000],
+        [180000, 1200, 1500, 6600]
+      ]
+    };
+    const totals: Record<string, number[]> = {
+      "2026-08": [29918, 40551, 26640],
+      "2026-09": [41287, 38771, 26200]
+    };
+    for (const period of Object.keys(quantities))
+      data.customers.forEach((customer, customerIndex) => {
+        data.meters.forEach((meter, meterIndex) => {
+          const rows = data.usage.filter(
+            (row) =>
+              row.customerId === customer.id &&
+              row.meterId === meter.id &&
+              row.date.startsWith(period)
+          );
+          expect(rows.reduce((total, row) => total + row.quantity, 0)).toBe(
+            quantities[period][customerIndex][meterIndex]
+          );
+        });
+        const bill = data.invoices.find(
+          (invoice) =>
+            invoice.customerId === customer.id && invoice.period === period
+        )!;
+        expect(bill.total).toEqual(money(totals[period][customerIndex]));
+      });
+    const changed = data.invoices.find(
+      (bill) => bill.customerId === "cus_2" && bill.period === "2026-09"
+    )!;
+    for (const planId of ["plan_starter", "plan_pro"])
+      expect(
+        changed.lines
+          .filter((line) => line.kind === "usage" && line.planId === planId)
+          .map((line) => line.quantity)
+      ).toEqual([75000, 450, 675, 3000]);
+  });
+
   it("produces identical SHA-256 hashes on two independent runs", () => {
     const first = engine.seed();
     const second = engine.seed();

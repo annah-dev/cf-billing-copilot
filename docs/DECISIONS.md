@@ -404,3 +404,26 @@ Reason: round 2 reproduced a stale pending memo incorrectly blocking a new claim
 after the live memo was voided and omitted from the current reservation list.
 
 Decided by: Engine engineer under standing orders.
+
+## engine: Deterministic daily usage shape with stable demo invoices
+
+Rank UTC weekends below weekdays with deterministic customer/meter/date scores,
+then allocate centered integer offsets and remaining units without changing
+monthly totals. Keep each September plan segment separate for customer 2 and
+lock the 15,000-unit September 18 spike with its 3,000-unit baseline. Set July
+meter totals to 90 percent of August, floored to whole units, and bump the seed
+to engine-v2. Reason: every customer/meter varies daily and July differs, while
+all August/September invoices and the sole 5x anomaly remain unchanged.
+
+Decided by: Engine engineer under standing orders.
+
+## engine: Recover exact gate prompts from Claude session history
+
+Read only the matched review sessions under ~/.claude/projects, identify them
+by run directory, timestamp, review phase and reviewed commit ids, and copy
+only each original user prompt into its existing 02g archive. Append recovery
+entries to PROMPTS.md without copying other session messages or results.
+Reason: the CLI review logs omitted prompt text, but the matched Claude sessions
+contain it, as Anna requested for the PR follow-up.
+
+Decided by: Engine engineer under standing orders.

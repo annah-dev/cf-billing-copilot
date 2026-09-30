@@ -50,13 +50,25 @@ reservations, because omitted current reservations may have been voided. The
 caller must supply the complete current pending/applied snapshot transactionally.
 Validation is pure; the Ledger must check and reserve in the same transaction.
 
-Seed `engine-v1` has 3 fictional customers (`cus_1` is the demo), 4 meters, 3
+Seed `engine-v2` has 3 fictional customers (`cus_1` is the demo), 4 meters, 3
 plans, 92 days of daily usage, 9 invoices, and one September plan change for
 `cus_2`. Customer 1 has August total $299.18 and September total $412.87 (38%
 displayed change). Requests on September 18 are 15,000 versus the 3,000 baseline.
 The September invoice debit posts twice on October 1. Its historical request
 expires October 2 after 24 hours; the void memo releases the full reservation.
 These dates are synthetic fixture history, independent of the current clock.
+
+Every customer and meter has deterministic daily variation: UTC weekends rank
+below weekdays, and weekday/date scores vary by customer and meter. Centered
+integer rank offsets sum to zero; even day counts skip the zero offset. The
+step is at least one unit, otherwise one percent of the integer daily base,
+floored. Remainder units go to the highest ranks, preserving the exact total.
+Normal daily peaks stay below twice the median. July totals are ten percent
+below August, floored to whole units on each meter. August and September monthly
+totals remain exactly those of v1; customer 2's September plan-segment totals
+are preserved separately so graduated tiers and its invoice also stay unchanged.
+Customer 1's September 18 request spike is locked at 15,000 units; the other
+29 days sum to 87,000 with median 3,000, preserving the single 5x anomaly.
 
 Derived invoice and line identifiers use deterministic 64-bit FNV-1a over their
 keys to keep identifiers within the frozen slug length. These are internal

@@ -7,6 +7,85 @@ import {
 } from "../../contracts";
 import { month } from "../data";
 import { invoice } from "../rating";
+import { integer, safe } from "../math";
+
+/** Centered integer ranks preserve the total and median while lowering weekends. */
+function shapedUsage(
+  dates: readonly string[],
+  total: number,
+  customerIndex: number,
+  meterIndex: number
+): number[] {
+  const score = (date: string, day: number) => {
+    const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+    const weekend = weekday === 0 || weekday === 6;
+    return (
+      (weekend ? 0 : 100) +
+      ((weekday + customerIndex + meterIndex) % 3) * 5 +
+      (day % 5)
+    );
+  };
+  const ranked = dates
+    .map((date, day) => ({ day, score: score(date, day) }))
+    .sort((a, b) => a.score - b.score || a.day - b.day);
+  const base = Math.trunc(total / dates.length);
+  const remainder = total % dates.length;
+  const step = Math.max(1, Math.trunc(base / 100));
+  const middle = Math.trunc(dates.length / 2);
+  const quantities = new Array<number>(dates.length);
+  ranked.forEach(({ day }, rank) => {
+    // Even counts skip zero, so rank offsets still sum to zero.
+    const offset =
+      rank - middle + (dates.length % 2 === 0 && rank >= middle ? 1 : 0);
+    quantities[day] =
+      base + offset * step + (rank >= dates.length - remainder ? 1 : 0);
+  });
+  return quantities;
+}
+
+function monthlyUsage(
+  dates: readonly string[],
+  period: string,
+  customerIndex: number,
+  meterIndex: number
+): number[] {
+  const september = period === "2026-09";
+  const daily =
+    customerIndex === 0
+      ? [3000, september ? 40 : 30, september ? 50 : 30, 246][meterIndex]
+      : [
+          4000 + customerIndex * 1000,
+          20 + customerIndex * 10,
+          40 + customerIndex * 5,
+          180 + customerIndex * 20
+        ][meterIndex];
+  let total =
+    customerIndex === 0 && meterIndex === 3 && !september
+      ? 2248
+      : daily * dates.length;
+  if (period === "2026-07") total = safe((integer(total) * 9n) / 10n);
+  if (customerIndex === 1 && september) {
+    // Preserve each plan segment, not only the month: tier ladders restart on September 16.
+    return [dates.slice(0, 15), dates.slice(15)].flatMap((segment) =>
+      shapedUsage(segment, daily * segment.length, customerIndex, meterIndex)
+    );
+  }
+  if (customerIndex === 0 && meterIndex === 0 && september) {
+    // The extra 12,000 units remain confined to the locked 15,000-unit spike.
+    const normalDates = dates.filter((date) => date !== "2026-09-18");
+    const normal = shapedUsage(
+      normalDates,
+      total - 3000,
+      customerIndex,
+      meterIndex
+    );
+    let index = 0;
+    return dates.map((date) =>
+      date === "2026-09-18" ? 15000 : normal[index++]
+    );
+  }
+  return shapedUsage(dates, total, customerIndex, meterIndex);
+}
 
 function plan(
   id: string,
@@ -46,7 +125,7 @@ function plan(
 
 export function seed(): BillingDataset {
   const data: BillingDataset = {
-    seedVersion: "engine-v1",
+    seedVersion: "engine-v2",
     meters: [
       {
         id: "meter_requests",
@@ -119,31 +198,16 @@ export function seed(): BillingDataset {
       customerIndex++
     ) {
       const customerId = data.customers[customerIndex].id;
+      const quantities = data.meters.map((_, meterIndex) =>
+        monthlyUsage(dates, period, customerIndex, meterIndex)
+      );
       dates.forEach((date, day) => {
-        const september = period === "2026-09";
-        const quantities =
-          customerIndex === 0
-            ? [
-                september && date === "2026-09-18" ? 15_000 : 3_000,
-                september ? 40 : 30,
-                september ? 50 : 30,
-                september
-                  ? 246
-                  : Math.trunc(2_248 / dates.length) +
-                    (day < 2_248 % dates.length ? 1 : 0)
-              ]
-            : [
-                4_000 + customerIndex * 1_000,
-                20 + customerIndex * 10,
-                40 + customerIndex * 5,
-                180 + customerIndex * 20
-              ];
         data.meters.forEach((meter, meterIndex) =>
           data.usage.push({
             customerId,
             meterId: meter.id,
             date,
-            quantity: quantities[meterIndex]
+            quantity: quantities[meterIndex][day]
           })
         );
       });
