@@ -93,9 +93,7 @@
     {
       "id": "scale-simulation",
       "passed": false,
-      "issues": [
-        "Turn 0: missing meaning /Scale/i"
-      ]
+      "issues": ["Turn 0: missing meaning /Scale/i"]
     },
     {
       "id": "duplicate-credit",
@@ -264,5 +262,5 @@
       "gradedAt": "2026-09-30T20:47:12.096Z"
     }
   ],
-  "regradedAt": "2026-09-30T21:20:11.745Z"
+  "regradedAt": "2026-09-30T22:12:52.165Z"
 }

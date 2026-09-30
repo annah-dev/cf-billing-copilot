@@ -849,3 +849,26 @@ turns. Reason: real plan-memory captures recover from an invalid plan id and ans
 so failing solely on the rejected call misgraded valid behavior. The credit capture also recovers
 its tools but fails because its answers are empty. Preserve all prior grades and responses when
 regrading offline. Decided by: QA engineer under standing orders.
+
+## evals: test harness stability instead of model perfection
+
+Replay regrades all active and archived recordings and compares exact verdicts/issues with
+committed results. Known-good and known-bad grader unit tests remain independent. Model failures
+are negative reported verdicts, not failing tests. Reason: Anna requires a green harness gate
+without letting its automatic test fix alter grading or recordings to improve model results.
+Decided by: Anna.
+
+## evals: explicit all-recordings grading with raw/corrected reporting
+
+An offline, opt-in generator applies one shared grader to every recording, preserves capture-time
+and intermediate grades, checks active copies are the latest attempts, and writes corrected
+results plus recording digests. Tests never regenerate results. Reason: Anna requires every
+correction to have a unit regression and a visible full-recording result diff, with no per-answer
+override. Capture archives use run start time separately from individual case timestamps.
+Decided by: QA engineer under standing orders.
+
+## evals: gate retry after the harness passes
+
+Update only the stale local gate branch ref, retaining its old head, and retry gated delivery
+after npm test is green. Reason: Anna explicitly authorized this ref update and PR creation
+with the results labeled local dev; no merge or deployment is authorized. Decided by: Anna.

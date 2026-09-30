@@ -98,9 +98,7 @@
     {
       "id": "scale-simulation",
       "passed": false,
-      "issues": [
-        "Turn 0: missing meaning /Scale/i"
-      ]
+      "issues": ["Turn 0: missing meaning /Scale/i"]
     },
     {
       "id": "september-anomaly",
@@ -150,9 +148,7 @@
       {
         "id": "august-invoice",
         "passed": false,
-        "issues": [
-          "Turn 0: ungrounded count 08 invoices"
-        ]
+        "issues": ["Turn 0: ungrounded count 08 invoices"]
       },
       {
         "id": "request-tiers",
@@ -176,9 +172,7 @@
       {
         "id": "zero-tax-invoice",
         "passed": false,
-        "issues": [
-          "Turn 0: ungrounded count 09 invoices"
-        ]
+        "issues": ["Turn 0: ungrounded count 09 invoices"]
       },
       {
         "id": "august-september-change",
@@ -243,7 +237,7 @@
     "passRate": "4/15",
     "passedCases": 4
   },
-  "regradedAt": "2026-09-30T21:19:53.169Z",
+  "regradedAt": "2026-09-30T22:12:52.165Z",
   "gradingHistory": [
     {
       "cases": [

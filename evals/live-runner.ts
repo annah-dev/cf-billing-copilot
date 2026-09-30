@@ -40,7 +40,7 @@ export interface RunOptions {
   cases: EvalCase[];
   fetcher?: typeof fetch;
   now?: () => Date;
-  saveRecording: (recording: Recording) => void;
+  saveRecording: (recording: Recording, runDate: string) => void;
   saveResult: (result: RunResult) => void;
   reuseSandboxes?: RunResult["sandboxes"];
 }
@@ -193,7 +193,7 @@ export async function runLive(options: RunOptions): Promise<RunResult> {
         });
         // Keep completed turns even if a memory follow-up hits a cap or loses transport.
         // A partial recording deliberately fails replay's turn-count check.
-        options.saveRecording(RecordingSchema.parse(recording));
+        options.saveRecording(RecordingSchema.parse(recording), result.runDate);
       }
       const issues = checkReplay(testCase, recording);
       // Preserve even schema-invalid tool payloads for replay to expose the actual failure.

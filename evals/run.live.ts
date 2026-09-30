@@ -40,11 +40,13 @@ test("one deliberate live eval run", async () => {
     baseUrl,
     cases,
     reuseSandboxes: selectedIds ? previous?.sandboxes : undefined,
-    saveRecording: (recording) =>
-      writeFileSync(
-        `evals/recordings/${recording.caseId}.json`,
-        `${JSON.stringify(recording, null, 2)}\n`
-      ),
+    saveRecording: (recording, runDate) => {
+      const archive = `evals/recordings/runs/${runDate.replaceAll(":", "-")}`;
+      mkdirSync(archive, { recursive: true });
+      const text = `${JSON.stringify(recording, null, 2)}\n`;
+      writeFileSync(`evals/recordings/${recording.caseId}.json`, text);
+      writeFileSync(`${archive}/${recording.caseId}.json`, text);
+    },
     saveResult: (result) => {
       const text = `${JSON.stringify(result, null, 2)}\n`;
       writeFileSync(resultPath, text);
@@ -58,5 +60,4 @@ test("one deliberate live eval run", async () => {
     `Reported model calls: ${result.modelCallCount}. Estimated neurons: ${result.estimatedNeurons}. Tokens: ${result.usage.inputTokens} input, ${result.usage.outputTokens} output.`
   );
   expect(result.status, result.stopCode ?? "run status").toBe("complete");
-  expect(result.passedCases).toBe(result.totalCases);
 });

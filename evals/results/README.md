@@ -1,50 +1,86 @@
 # Local-dev eval results
 
-These captures use real Llama 3.3 through Workers AI, served by local dev at
-`http://127.0.0.1:5173` after rebasing onto merged PR #4 (`2af8f1d`). They are labeled
-`local dev`, not deployed-demo results. The release lane will run the deployed evaluation at
-`https://cf-billing-copilot.anna-hester.workers.dev` after deployment; the public README's
-pass rate must come from that deployed run.
+Real Llama 3.3 through Workers AI, served by local dev at `http://127.0.0.1:5173` after
+rebasing onto merged PR #4 (`2af8f1d`). Run date: 2026-09-30 UTC. These are local-dev results.
+Release owns the deployed rerun at `https://cf-billing-copilot.anna-hester.workers.dev`;
+the public README pass rate must come from that deployed run.
 
-| Run (UTC, 2026-09-30)       | Coverage                  | Passed     | Model calls | Estimated neurons |
-| --------------------------- | ------------------------- | ---------- | ----------- | ----------------- |
-| 20:42:51 full set           | 15 cases, 17 turns        | 9/15 (60%) | 46          | 3,687             |
-| 20:47:12 failing-only rerun | 9 failing cases, 11 turns | 2/9        | 33          | 2,999             |
+| Run (UTC)                   | Coverage           | Raw capture-time grade | Corrected grade | Model calls | Estimated neurons |
+| --------------------------- | ------------------ | ---------------------- | --------------- | ----------- | ----------------- |
+| 20:42:51 full set           | 15 cases, 17 turns | 4/15 (26.7%)           | 9/15 (60%)      | 46          | 3,687             |
+| 20:47:12 failing-only rerun | 9 cases, 11 turns  | 1/9 (11.1%)            | 2/9 (22.2%)     | 33          | 2,999             |
 
 Total: 79 model calls, 225,252 input tokens, 3,246 output tokens, estimated 6,686 neurons.
-Estimates use the pinned `estimateNeurons` function on each turn's reported token totals;
-they are not a Cloudflare meter reading. Per-call rounding can differ from per-turn rounding.
-No further model calls were made. Four sandboxes were used, with existing sandbox ids reused
-for the failing-only rerun. Caps were unchanged.
+Estimates use pinned `estimateNeurons` on each turn's reported token totals, not Cloudflare
+meter readings; per-call rounding can differ. One full run and one explicit failing-only rerun
+were made, with no loop, cap increase or further model calls. Rerun selection used the grades
+available at capture time. Four sandboxes were used, with existing ids reused on rerun.
 
-The first run originally graded 4/15. An offline correction stopped reading the month
-suffix in `2026-09 invoice` as an invoice count, bringing it to 6/15. A second correction
-allows the agent to recover after a rejected tool call: rejected calls must have null output
-and provide no grounding evidence, while successful calls still validate inputs and outputs.
-This changes the full-run grade to 9/15 and the rerun to 2/9. `initialGrading`,
-`gradingHistory` and `regradedAt` preserve the earlier grades. Raw responses and usage did
-not change. Rerun selection used the failing grades available at capture time.
+The latest-recording snapshot is **8/15 pass**, versus **5/15** under the capture-time graders.
+This is a mixture of the latest attempts, not a second full run. Tier and tax answers passed
+initially but regressed on rerun; plan memory recovers correctly and passes both attempts under
+the corrected grader. Every active fixture is live. Both attempts are archived unchanged.
 
-Current replay snapshot: 8/15 pass. This combines the latest recording for every case; it is
-not a second full run. The tier and tax cases passed initially but regressed on the rerun.
-Every active fixture is live. Both response sets are archived under `evals/recordings/runs/`.
+`run-*.json` holds each run's capture-time `initialGrading`, intermediate `gradingHistory`,
+corrected `cases` and `regradedAt`; response text and usage never change during regrading.
+`latest-run.json` aliases the failing-only run. `replay.json` holds raw and corrected verdicts
+for all 15 active recordings, target/date/usage metadata, and SHA-256 digests for all 39 active
+and archived recording files. Its usage totals cover all captured attempts at this target.
+Sum only `run-*.json` for total usage; aliases and snapshots are not additional calls.
 
-Seven cases still fail:
+## Failure analysis
 
-- `september-invoice`: says "7 lines" for an engine invoice with six; both attempts caught.
-- `request-tiers` and `tax-line`: fabricated invoice ids prevent explanation; expected amounts
-  are absent in the latest answers.
-- `august-september-change`: comparison answer omits the spike/date/multiplier. The agent's
-  deterministic anomaly trigger covers invoice fetch/explanation, not comparison alone.
-- `pro-simulation`: rejected plan ids prevent the expected simulation answer.
-- `scale-simulation`: after rejected plan ids, answers about the current invoice without
-  identifying Scale. Some amounts coincide with the expected simulation, but meaning fails.
-- `remember-credit`: the first turn recovers and creates a request, but both final answer texts
-  are empty. The separate duplicate-credit and plan-memory cases pass in the latest captures.
+The table analyzes the seven latest failing questions. Evidence comes from the linked raw
+recording, not a new model run. Categories describe observed behavior; proposed fixes are not
+implemented here. `src/agent` is unchanged. No remaining failure is a known grader false positive.
 
-`npm test` must expose these failures. Recordings are not rewritten, assertions are not
-weakened, and failing questions are not skipped to make the suite green. The owning agent
-lane needs to correct the behavior before the replay done-contract can pass.
+| Question                                                              | Category                          | Evidence                                                                                                                                                                                                                                                                                          | Proposed fix and owner                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [september-invoice](../recordings/september-invoice.json)             | ungrounded number stated          | Says "has 7 lines", lists only 1 through 6, and successful getInvoice returns six lines. Both captures do this. Verdict includes `ungrounded count 7 lines` and `ungrounded number 7`.                                                                                                            | Agent: validate count claims against the returned invoice array before finalizing. Prompt: explicitly copy counts from array lengths. Do not relax the grader.                                                                                                                                                                                                   |
+| [request-tiers](../recordings/request-tiers.json)                     | wrong tool input; tool not called | Calls explainLineItem with invented `inv_1234567890` and `line_1234567890`; gets "No invoice". Never calls getInvoice and says it lacks the invoice id. Expected tier displays and quantity are absent. Initial attempt recovered and passed.                                                     | Agent: require invoice lookup before line explanation, supplying returned invoice/line ids. Prompt: reinforce copying ids and recovery after tool errors; rule 5 already forbids invented ids.                                                                                                                                                                   |
+| [tax-line](../recordings/tax-line.json)                               | wrong tool input; tool not called | Same invented invoice/line ids and no getInvoice. Final answer says it cannot explain tax. Expected taxable-subtotal and tax displays are absent. Initial attempt recovered and passed.                                                                                                           | Agent: use the same invoice-lookup prerequisite as tiers, then explain the returned tax line. Prompt: reinforce error recovery instead of ending with a fabricated-id failure.                                                                                                                                                                                   |
+| [august-september-change](../recordings/august-september-change.json) | tool not called                   | Successful compareInvoices supplies totals/deltas, but there is no detectAnomalies call and no spike, date or multiplier in the answer. Both attempts omit the September anomaly.                                                                                                                 | Agent (`anomalies.ts`): include comparison periods in the deterministic anomaly trigger and inject the result before the final answer. Prompt: require mentioning reported spikes for comparisons too. The existing trigger only covers getInvoice/explainLineItem.                                                                                              |
+| [pro-simulation](../recordings/pro-simulation.json)                   | wrong tool input; tool not called | Calls simulatePlan with `plan_Pro`, rejected by the lowercase slug schema. No getAccount lookup; says it lacks Pro's plan id. Expected simulation displays are absent.                                                                                                                            | Agent: obtain availablePlans first and pass the exact returned id; guard invalid plan selections before simulation. Prompt: reinforce verbatim ids. No contract or grader change needed.                                                                                                                                                                         |
+| [scale-simulation](../recordings/scale-simulation.json)               | wrong tool input; other           | Calls simulatePlan with `plan_Scale` twice, even after successful getAccount returns valid ids. Falls back to getInvoice and answers about the current bill without naming Scale. Verdict is missing Scale meaning; some expected displays happen to coincide with this zero-difference scenario. | Agent/prompt: select the returned `plan_scale`, recover from the rejected call and answer the requested scenario. Grader follow-up: require successful simulation evidence for all simulation questions, so coincident current-invoice amounts cannot establish a simulation. This additional rule is proposed, not applied to these grades.                     |
+| [remember-credit](../recordings/remember-credit.json)                 | other; wrong tool input           | First invents `inv_202609`, then gets the real invoice and successfully creates a credit request. Its final text is empty. Follow-up calls getCreditRequestStatus four times and also ends empty. Both turns lack expected amount/status text despite valid receipts.                             | Agent (`billing-agent.ts`): reserve a final answer step within the budget, stop repeated identical status calls and return an explicit incomplete-answer error if exhausted. Prompt: after a successful receipt/status, answer with amount and approval state. The trace supports step exhaustion as an inference; it does not prove the model's internal cause. |
 
-Every run JSON includes base URL, UTC date, environment label, model call count and estimated
-neurons. `latest-run.json` aliases the failing-only run; sum only `run-*.json` for total usage.
+## Every grading correction
+
+All rules are shared across cases. The current grader was applied to **every recording**:
+15 full-run archives, nine rerun archives and 15 active copies. No per-answer override, pass
+exception, raw response edit or automatic regrade in `npm test` exists. Earlier grades remain
+visible rather than being relabeled as model improvements.
+
+| Correction                                | Why                                                                                                                                                                                                                                                                                                                                            | Unit evidence and result impact                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Natural named/abbreviated calendar dates  | The original numeric matcher rejected correct "September 18" / "September 2026" wording or treated separately grounded date parts as proof of a fabricated full date. Normalize coherent dates, infer a year only from one grounded month/year.                                                                                                | `accepts a natural calendar date grounded by the engine` and wrong/fabricated-date tests. Fixed before live capture; no capture-time grade change.                                                                                                                                                                                                              |
+| Calendar day from UTC timestamps          | The `T` separator hid the date in credit creation/deadline timestamps, falsely rejecting correct natural dates.                                                                                                                                                                                                                                | `accepts a deadline date taken from a UTC timestamp` and `rejects a fabricated deadline date`. Fixed before live capture.                                                                                                                                                                                                                                       |
+| Month/year from complete timestamps       | Grounding a timestamp day did not ground its YYYY-MM prefix, falsely rejecting "October 2026".                                                                                                                                                                                                                                                 | `grounds month-year wording from a complete timestamp`, with a red regression observed before fixing. Fixed before live capture.                                                                                                                                                                                                                                |
+| Numeric/count coverage                    | Money-only/scalar checks missed written numbers and did not derive counts or ordinal positions from arrays. Add written integer/ordinal normalization, array lengths/positions, contextual invoice-line counts, signed/fractional/compact tokens and singular/plural money words. An unrelated scalar seven cannot excuse seven invoice lines. | Known-good engine answers for every case; both `7 lines` and `seven invoice lines` known-bad tests; invented written counts/money and signed/fractional/compact tests. Added before live capture per the owner's every-number instruction; actual seven-line failures remain failures.                                                                          |
+| ISO period next to invoice is not a count | `2026-09 invoice` matched `09 invoices`. Exclude hyphenated date components; a grounded year before singular invoice is date wording.                                                                                                                                                                                                          | `does not mistake an ISO month next to invoice for a count` and singular-invoice/ordinal tests. Offline full-run grade 4/15 to 6/15; no response or usage change.                                                                                                                                                                                               |
+| Recovery after rejected tools             | The original parser failed any rejected tool call even when the agent subsequently called a valid tool and answered correctly. Validate successful inputs/outputs; failed calls must have null output and provide no evidence. Confirmed credit turns still require a successful start receipt.                                                | `allows recovery after a rejected tool call without trusting its failed output or input`, schema/failed-output guards, and `a confirmed credit answer requires a successful request receipt`. Offline full run 6/15 to 9/15; rerun 1/9 to 2/9. Tiers, tax and plan memory's first answers were previously graded too strictly. Empty credit answers still fail. |
+
+The every-case known-good tests cover all six stories; known-bad tests also cover invented
+money, missing expected displays, dates assembled from unrelated parts, wrong counts, rejected
+inputs used as evidence, future-turn provenance, malformed successful tool payloads and credit
+claims without receipts. The historical raw grades cannot be regenerated by today's corrected
+grader; their original reports are retained as evidence.
+
+## Test and release behavior
+
+`npm test` checks the harness. It regrades every committed recording and compares the exact
+verdict and issue list with committed results, including negative verdicts. A grader change
+fails replay until an explicit all-recordings regrade makes the result diff reviewable. Known-bad
+answers must stay bad in the grader unit tests. Model failures are reported data, not failing
+tests, and the gate is not allowed to repair a model by changing its recording or verdict.
+
+For a documented grader fix with unit coverage, explicitly regenerate all verdicts offline:
+
+```sh
+EVAL_REGRADE_ALL=1 npx vitest run --config evals/vitest.fixture.config.ts evals/regrade.fixture.ts
+```
+
+Review the raw/corrected result diff and correction rationale. This command never calls the
+model or writes a recording. A future live capture archives responses automatically; release
+runs the same explicit report generation after its deployed capture. The test suite must stay
+offline and the public README must use the deployed run's result.

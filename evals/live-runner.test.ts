@@ -18,15 +18,18 @@ const reply = (value: unknown, status = 200) =>
 
 function setup(selected = [cases[0]]) {
   const recordings: Recording[] = [];
+  const recordingRunDates: string[] = [];
   const results: RunResult[] = [];
   return {
     recordings,
+    recordingRunDates,
     results,
     options: {
       baseUrl: "https://synthetic.invalid",
       cases: selected,
       now,
-      saveRecording: (recording: Recording) => {
+      saveRecording: (recording: Recording, runDate: string) => {
+        recordingRunDates.push(runDate);
         const previous = recordings.findIndex(
           (item) => item.caseId === recording.caseId
         );
@@ -82,7 +85,8 @@ describe("live harness with an injected offline transport", () => {
 
   test("uses one sandbox for memory turns, new requests without history, and accounts for model usage", async () => {
     const memory = cases.find((item) => item.id === "remember-credit")!;
-    const { options, results, recordings } = setup([memory]);
+    const { options, results, recordings, recordingRunDates } = setup([memory]);
+    let clockTicks = 0;
     const requests: { url: string; body: unknown }[] = [];
     const fetcher: typeof fetch = async (input, init) => {
       const body: unknown = JSON.parse(String(init?.body));
@@ -94,7 +98,13 @@ describe("live harness with an injected offline transport", () => {
         usage: { inputTokens: 10, outputTokens: 5, modelCalls: 2 }
       });
     };
-    const result = await runLive({ ...options, fetcher });
+    const result = await runLive({
+      ...options,
+      fetcher,
+      now: () => new Date(now().getTime() + clockTicks++ * 1000)
+    });
+    expect(recordingRunDates).toEqual([result.runDate, result.runDate]);
+    expect(recordings[0].recordedAt).not.toBe(result.runDate);
     expect(result.status).toBe("complete");
     expect(result.passRate).toBe("1/1");
     expect(result.usage).toEqual({
@@ -110,7 +120,9 @@ describe("live harness with an injected offline transport", () => {
       memory.turns.map((turn) => turn.request)
     );
     expect(recordings[0].source).toBe("live");
-    expect(recordings[0].recordedAt).toBe(now().toISOString());
+    expect(recordings[0].recordedAt).toBe(
+      new Date(now().getTime() + 1000).toISOString()
+    );
     expect(JSON.stringify({ results, recordings })).not.toContain(
       "approverToken"
     );

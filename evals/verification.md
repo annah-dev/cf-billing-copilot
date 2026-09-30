@@ -1,105 +1,100 @@
 # Evals verification evidence
 
-Live capture is complete; the repo done-contract is not passing. Main was fetched and this lane
-rebased onto merged PR #4 (`2af8f1d`). The original offline gate's two fix commits were recovered
-before rebase. Scope remains evals/ and append-only prompt/decision files. Frozen files and
-application code are unchanged; merged main's prompt/decision text remains a byte-identical prefix.
+The harness now checks committed verdict stability, not model perfection, as Anna instructed
+in 05h-evals-verdict-tests.md. Negative model results stay visible while the offline suite passes.
+The lane was rebased onto merged PR #4 (`2af8f1d`), preserving the historical gate's fixes.
+Scope is evals/ and append-only prompts/decisions. Frozen files and application source are unchanged;
+main's existing PROMPTS.md and DECISIONS.md bytes remain intact.
 
-## Local-dev capture, 2026-09-30
+## Local-dev model evidence, 2026-09-30 UTC
 
-Anna authorized real Workers AI through local dev before release deployment, one full set and
-failing-only reruns, with no loops or cap increases. Base URL: `http://127.0.0.1:5173`.
+Base URL: `http://127.0.0.1:5173`, environment `local dev`, real Llama 3.3 via Workers AI.
+Anna authorized this target before release deployment, one full run then explicit failing-only
+reruns, no loops and no cap increases. No model calls were made during the harness redesign.
 
-- Full run: 15 cases / 17 turns, 9/15 pass (60%), 46 model calls, estimated 3,687 neurons.
-- One failing-only rerun: 9 cases / 11 turns, 2/9 pass, 33 model calls, estimated 2,999 neurons.
-- Total: 79 model calls, 225,252 input tokens, 3,246 output tokens, estimated 6,686 neurons.
-- Current snapshot: 8/15 pass, selecting the latest recording for each case. All 15
-  recordings have live provenance. Both attempts are archived unchanged as response data.
-- Four sandboxes: read-only questions together; separate duplicate-credit, plan-memory and
-  credit-memory groups. Reruns reuse those ids and message accounting. No cap raised, no
-  approver token persisted, no approver decision made, no further real model calls planned.
-- `/api/health` succeeded before capture and did not call the model. Local dev was stopped
-  after capture. Capture configs remain excluded from `npm test`; tests use stubbed AI.
+| Capture                                              | Raw grade | Corrected grade | Model calls | Estimated neurons |
+| ---------------------------------------------------- | --------- | --------------- | ----------- | ----------------- |
+| Full set, 20:42:51 UTC, 15 cases / 17 turns          | 4/15      | 9/15 (60%)      | 46          | 3,687             |
+| Failing-only rerun, 20:47:12 UTC, 9 cases / 11 turns | 1/9       | 2/9             | 33          | 2,999             |
+| Total usage across both captures                     |           |                 | 79          | 6,686             |
 
-`results/README.md` details the failures and run artifacts. Every results JSON includes URL,
-UTC date, environment `local dev`, reported model call count and estimated neurons. The estimate
-uses the pinned helper on each turn's token totals; it is not a Cloudflare meter reading.
+Reported tokens: 225,252 input, 3,246 output. Estimates use the pinned helper on each turn's
+token totals, not Cloudflare meter readings; per-call rounding can differ. Four sandboxes:
+read-only questions together, separate duplicate-credit, plan-memory and credit-memory groups.
+Reruns reuse those ids and message accounting. No approver token persisted, no human approval
+decision made and no further Workers AI calls planned. `/api/health` succeeded without calling
+the model; local dev was stopped after capture.
 
-The first grade was 4/15 due to an ISO-month count false positive. A regression reproduces
-`2026-09 invoice` being treated as `09 invoices`; correcting that parser and regrading offline
-produced 6/15. A second correction allows recovery after rejected calls, without trusting their
-inputs or null outputs, bringing the full run to 9/15 and rerun to 2/9. The earlier grades remain
-in `initialGrading` and `gradingHistory`, with `regradedAt`. No response or usage changed. Rerun
-selection used the then-current grades. The plan-memory capture demonstrates valid recovery;
-the credit-memory capture also recovers its tools, but its final answers are empty.
+The latest mixed snapshot grades 8/15 corrected versus 5/15 at capture time, not a new full run.
+Tier and tax regressed on rerun. The seven latest failures are september-invoice, request-tiers,
+tax-line, august-september-change, pro-simulation, scale-simulation and remember-credit.
+Each failure's category, raw evidence and proposed agent/prompt/grader fix is in
+[results/README.md](results/README.md). No agent fix was implemented here.
 
-## Validation at this head
+## Verdict and correction evidence
+
+- Every active and archived recording is regraded and compared with exact committed verdicts
+  and issue lists: 15 active cases plus 24 archival cases. Source/seed/schema, digest, archive
+  completeness, latest-attempt provenance, raw/corrected totals and usage are also checked.
+- `results/replay.json` contains the active verdicts, capture-time grades, target/date/usage,
+  and SHA-256 digests for all 39 recording files. Run files retain `initialGrading`, intermediate
+  `gradingHistory`, corrected `cases` and `regradedAt`. Aliases/snapshots are not extra usage.
+- All 39 recording files remain byte-identical to the captured evidence at a852b66. The current
+  grading rules were reapplied to every one, using the explicit offline all-recordings command.
+  Tests never write recordings or regenerate verdicts. No per-answer override exists.
+- Every correction is listed with its reason and unit evidence in results/README.md: natural
+  date wording, calendar days from timestamps, month/year from timestamps, every-number/count
+  coverage, ISO-period count false positives, rejected-tool recovery and the credit receipt guard.
+  The first four were established before capture; the last two explain the raw/corrected gap.
+- Natural-date, timestamp and month regressions were observed red before their fixes. The ISO
+  count false positive was observed in the first live grade (4/15, then 6/15). Rejected-tool
+  strictness was observed in the recovered live answers (then 9/15 full and 2/9 rerun). Corrected
+  graders still reject wrong dates, failed-input evidence and missing credit receipts.
+- Known-good engine answers for all 15 cases cover all six stories. Known-bad guards cover
+  fabricated money/numbers, missing displays/meaning, natural-date fabrication, malformed
+  successful tool payloads, failed-output provenance, future-turn evidence and missing receipts.
+- Actual September answers on both attempts say "7 lines" while getInvoice returns six. Replay
+  keeps `ungrounded count 7 lines` and `ungrounded number 7` as negative verdict evidence.
+  Dedicated count-question expectations come from engine invoice `.lines.length` and pass live.
+  Unit tests reject both `7 lines` and `seven invoice lines` even with scalar seven elsewhere.
+- To prove exact-verdict comparison, planted a grader-only extra issue before checkReplay's
+  return. Filtered september-invoice replay went red: 1 failed / 40 filtered skips of 41, with
+  `Planted verdict change for harness verification` in the diff. Its pass boolean stayed false,
+  proving issue changes cannot silently pass. Restored grader bytes; recordings/results unchanged.
+  The final full suite has no skips. The earlier planted `$999,999.99` recording also went red
+  (one failed / 14 passed), was restored byte-for-byte and was green before live capture.
+- Offline transport tests cover cap/budget/rate stops, failure accounting, partial memory capture,
+  no client history on reopened sessions, discarded tokens, target validation, grouping and
+  sandbox reuse. Stable archive run dates are tested with a clock that advances between run and
+  case starts. Live capture archives automatically, with case timestamps preserved.
+
+## Commands and collection
 
 - `npm ci`: exit 0; added 571 packages, audited 572 packages; pinned lock unchanged.
 - `npm run typecheck`: exit 0; `tsc --noEmit && tsc --noEmit -p tests/agent`.
-- `npm test`: exit 1; Test Files 1 failed / 18 passed (19); Tests 7 failed / 262 passed (269).
-- `env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test`: exit 1 with the same 7 failed / 262
-  passed (269). Every failure is a captured live answer, not a network/credential failure.
-- Formatting and diff whitespace checks run on lane-owned files. No global formatter ran on
-  existing prompt/decision text; no frozen files were edited.
-- `npx vitest list --json`: origin/main collects 190 tests, head 269. Comparing project,
-  relative test file and full name found zero disappeared tests, 79 added, zero new skips.
-  Main collection used an archive of `2af8f1d` with the identical installed pins.
-
-Seven remaining replay failures are intentionally visible:
-
-`september-invoice`, `request-tiers`, `tax-line`, `august-september-change`, `pro-simulation`,
-`scale-simulation`, `remember-credit`.
-
-The other eight replay cases and the source report pass. All 63 standalone harness checks pass.
-Successful calls with malformed inputs/outputs, failed calls with non-null outputs, fabricated
-numbers and missing expected displays remain failures. Rejected calls may recover but cannot
-ground answers. Confirmed credit turns require a successful request receipt. No bad response
-was rewritten and no case skipped to make tests green.
-
-## Defect and behavior evidence
-
-- Actual live September answers on both attempts say "7 lines" for the engine's six-line invoice.
-  Replay reports `ungrounded count 7 lines` and `ungrounded number 7`.
-- The dedicated count question asks for invoice lines including tax; its expected count comes
-  from `engine.buildInvoice(engine.seed(), ...).lines.length` and passes in the live answer.
-- `rejects an incorrect line count ... even if that number appears elsewhere` covers both
-  `7 lines` and `seven invoice lines`, with seven deliberately planted in another tool field.
-- `grounds an invoice line count from the engine's actual line array` proves valid counts.
-- `rejects invented counts outside money and invoice lines` covers written numbers;
-  `checks signed, fractional and compact numeric tokens` covers -99, 1e9, 1/99 and 99k;
-  four `rejects an invented amount written as ...` cases cover singular/plural money words;
-  `grounds a singular invoice and ordinal line reference` checks valid object/position counts.
-- Natural-date tests cover named/abbreviated dates, yearless dates, wrong dates, fabricated dates
-  made from separate components, timestamp days and month-year wording. The last old gate
-  finding was reproduced red (`ungrounded number 2026-10`) before correcting timestamp month
-  grounding. `does not mistake an ISO month next to invoice for a count` covers the live grader bug.
-- Existing money fabrication, missing expected amounts, unsupported formats, nested tool schema,
-  failed-output provenance and successful credit receipt, customer/turn mismatch, proactive anomaly and future-output provenance checks
-  remain. The original planted `$999,999.99` recording run failed one case with 14 passing;
-  the mutation restored original bytes and was observed green before any live capture.
-- Offline transport tests cover all three budget/cap/rate stops at create and turn, failure
-  accounting, partial memory capture, new requests with no client history, discarded tokens,
-  default loopback URL validation, grouping within caps, and reuse of known rerun sandboxes.
-- Fixture generation remains explicit, engine-backed and refuses live overwrite. Guard tests
-  construct synthetic engine responses in memory independently of failing live fixtures.
+- `npm test`: exit 0; Test Files 19 passed (19); Tests 309 passed (309), no skips.
+- Credential-free command: `env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test`.
+  Exit 0; Test Files 19 passed (19); Tests 309 passed (309), no skips.
+- `npx vitest list --json`: main at 2af8f1d collects 190 tests, head 309. Compared project,
+  relative file and full name: zero disappeared, 119 added. The baseline used an archive of
+  main with identical installed pins. Existing 15 replay case names remain, with owner-authorized
+  verdict-comparison assertions; known-good and known-bad grading assertions stay independent.
+- Formatting and whitespace checks cover lane-owned files only. No global formatter touched
+  old prompt/decision text; no frozen files or dependencies changed.
 
 ## Review and delivery
 
-The earlier offline gate (`01M3R7B6ANF0QPEFS9F3Z2G9DX`) performed two full reviews and a delta-only
-third. It found natural dates, timestamp dates and month grounding, plus a provenance-reporting
-suggestion. Its fixes were preserved; the remaining month issue is corrected in this live phase.
-The exact generated prompts were not exposed by `axi logs --step review --full`; identifying
-logs are copied into the three 05g archives, and author context is separately identified.
-The new gate invocation failed before review: its local gate branch still points to the
-pre-rebase head and rejected the rebased branch as non-fast-forward. AXI status reports the old
-run cancelled, custody returned and no PR. No force-push or gate bypass was performed; AGENTS.md
-Decision rights 3 reserves force-push/history replacement for Anna. Expanded-scope review/PR/CI
-remain unperformed. No merge or deployment performed.
+The previous offline gate (01M3R7B6ANF0QPEFS9F3Z2G9DX) performed two full reviews and a delta-only
+third. Natural-date and timestamp fixes were recovered before rebase; the remaining month issue
+was fixed afterward. Exact generated prompts were not exposed in review logs; identifying logs
+are in 05g-r1/r2/r3. The prior live-scope gate retry rejected the stale local branch ref before
+review. Anna now explicitly authorizes updating that local ref after green harness tests, retaining
+its old head, and retrying gated push/PR creation. The new intent is logged in 05i.
 
-The release lane must run against `https://cf-billing-copilot.anna-hester.workers.dev` after
-owner deployment and use that result in the public README. Local performance is not a deployed
-pass-rate claim. Outstanding model/tool-selection failures belong to the agent lane.
+New cross-review, gated delivery, PR and CI evidence will be added after they execute.
+No merge or deployment is authorized. Release owns the deployed run after UI/deploy and must use
+that result for the public README. The standalone live/regrade tools are excluded from npm test,
+and both test projects prohibit global fetch.
 
-VERIFIED: Merged-main rebase with preserved fixes; all 15 cases captured locally and one failing-only rerun; 79 calls and estimated 6686 neurons; immutable response archives and honest target/date/results; eight live replay passes and seven demonstrated failures; every-number/count/date/schema guards; 262 passing offline tests with and without credentials; no coverage loss or frozen/application changes; historical review identifying logs retained.
-NOT VERIFIED: A passing done-contract (seven genuine replay failures remain); a deployed run/public README pass rate (release lane after deployment); current expanded-scope gate/PR/CI (gate start rejected non-fast-forward); exact historical generated review prompts (not exposed); Cloudflare-measured neurons (token-based estimate only); human approval of the new live credit (intentionally not performed).
+VERIFIED: Local-dev real model captures and reported usage; unchanged response evidence; raw/corrected grades and shared all-recordings regrade; exact verdict/digest/provenance replay; seven failures reported without making tests fail; known-good/bad grader guards including seven lines for six; planted grader change observed red; 309 passing offline tests with and without credentials; typecheck/npm ci; 119 added tests with no coverage loss; unchanged frozen/application source.
+NOT VERIFIED: New-scope cross-review/gated PR/CI until executed; deployed run/public README pass rate (release lane after deploy); exact historical generated review prompts (not exposed); Cloudflare-metered neurons (estimate only); human approval of new live credit (intentionally not performed); proposed agent/prompt/grader fixes in failure analysis (not implemented).

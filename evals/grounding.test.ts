@@ -25,6 +25,12 @@ const fixture = (id = cases[0].id) => {
 };
 
 describe("eval defect guards", () => {
+  test.each(cases)(
+    "accepts the known-good engine answer for $id",
+    (testCase) => {
+      expect(checkReplay(testCase, fixture(testCase.id))).toEqual([]);
+    }
+  );
   test("covers all six stories with 12 to 15 cases and confirms only credit starts", () => {
     expect(cases.length).toBeGreaterThanOrEqual(12);
     expect(cases.length).toBeLessThanOrEqual(15);

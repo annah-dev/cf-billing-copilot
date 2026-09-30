@@ -2391,3 +2391,54 @@ Perform the usual source cross-review for this newly authorized scope. Source-ve
 
 Sources: prompt-history/prompts/05-evals.md, prompt-history/prompts/05c-evals-live-and-counts.md, prompt-history/prompts/05d-evals-local-dev-budget.md and prompt-history/prompts/05f-evals-live-review-context.md
 Outcome: Live capture remains one full run and one failing-only rerun, 79 model calls and estimated 6686 neurons; no additional model calls. Correcting rejected-tool recovery offline produces full-run 9/15, rerun 2/9, latest snapshot 8/15. Earlier grading and raw responses are preserved. Seven captured answer failures remain visible; npm test reports 262 pass, 7 fail (269). Expanded-scope review did not start: the local no-mistakes remote rejected the rebased branch as non-fast-forward. Old gate status is cancelled with custody returned; no new review prompt was generated, no PR/CI ran, no force-push was attempted. Owner permission is required to replace the stale local gate ref under AGENTS.md Decision rights 3. The done-contract is not passing; app failures remain for the agent lane and deployed results remain for release.
+
+## 2026-09-30T14:54:53-07:00 - Evals harness verdict tests and failure analysis
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05h-evals-verdict-tests.md
+Outcome: (pending)
+
+Hold the gate retry for now. With 7 failing tests, the gate's test step would let Claude attempt
+one automatic fix, and for an eval that could mean changing grading or recordings. The pass rate
+must not depend on that.
+
+Change the test design instead: npm test checks the harness, not the model.
+- Replay mode re-grades the committed recordings and asserts the verdicts match the committed
+  results file, so any grader change shows up as a visible diff.
+- Add grader unit tests with known-good and known-bad answers, including the 7-lines case.
+- Model failures are reported results, not test failures.
+
+Grading corrections: only as a grader fix with a unit test, applied to every recording, with raw
+and corrected results both reported. No per-answer overrides. List every correction you made and
+why.
+
+Then add a failure analysis to evals/results/README.md: for each failing question, the category
+(ungrounded number stated, tool not called, wrong tool input, grader too strict, other), the
+evidence, and the fix you would propose and where it belongs (agent, prompt, grader). Do not
+change src/agent.
+
+When npm test is green, you may update the gate's stale local branch ref, retry the gated push,
+and open the PR with the results clearly labelled as a local-dev run.
+
+## 2026-09-30T15:08:42-07:00 - Evals harness cross-review context
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Source: prompt-history/prompts/05i-evals-harness-review-context.md
+Outcome: (pending; author context, not exact generated review prompt)
+
+Review the evals lane under Anna's latest instructions in 05h-evals-verdict-tests.md. PR #4 merged and this lane rebased onto main. She authorized one local-dev full run and failing-only reruns, then explicitly changed the test design: npm test validates the harness, not model perfection. Regrade committed recordings and assert exact verdicts and issues match committed results; use independent known-good and known-bad grader unit tests including seven lines for a six-line invoice. Model failures are reported results, not test failures. Corrections need a shared grader fix and unit regression, applied to every recording, with original and corrected grades retained. No per-answer overrides. Document every correction and, for each failure, category, evidence, proposed fix and agent/prompt/grader ownership. Do not change src/agent. Only after npm test is green, update the stale local gate ref, retry gated push and open the PR clearly labeled local-dev. Anna has now explicitly authorized that local ref update; preserve the old head. No merge or deployment.
+
+Authorized model capture remains complete: one full local-dev set (15 cases, 17 turns, 46 calls, estimated 3687 neurons), one failing-only rerun (9 cases, 11 turns, 33 calls, estimated 2999 neurons). Total 79 Workers AI model calls, 225252 input tokens, 3246 output tokens, estimated 6686 neurons. Zero additional model calls are authorized for this phase. Four sandboxes with reuse, no cap increases. Full run raw capture-time 4/15 versus corrected 9/15 (60%); rerun raw 1/9 versus corrected 2/9; latest mixed snapshot raw 5/15 versus corrected 8/15. Tier/tax regressed on rerun. Seven remaining model failures are honest negative verdicts. All 39 active/archive response files are unchanged, hashed in replay.json. Raw grading, intermediate grading and corrected grading are preserved. No root README pass-rate claim: release owns the deployed rerun after UI/deploy at https://cf-billing-copilot.anna-hester.workers.dev.
+
+Replay tests now compare exact verdicts/issues, recording digests, latest-attempt provenance, complete archive coverage, raw/corrected totals and usage; no auto-regeneration. Explicit EVAL_REGRADE_ALL=1 generation is offline and grades all recordings with the same function. Known-good engine answers for all 15 cases plus known-bad guards are independent of model text. A planted grader-only extra issue made the september-invoice replay fail even though its negative pass boolean remained unchanged, and was restored byte-for-byte without touching a recording or result. All money expectations come from the engine on seed. Every-number/count/date guards remain. Live capture now archives by run start date while preserving individual case timestamps; completed negative model verdicts do not fail the live command, but transport/cap/incomplete runs still do.
+
+Source scope is evals/ plus append-only PROMPTS.md/DECISIONS.md and new prompt files. Application code, contracts, configs and pins are unchanged. Keep main's existing prompt/decision text as a byte-identical prefix. Do not rewrite recordings, alter expected results automatically, relax grounding to improve model pass rates, skip cases or call the live model. If a test unexpectedly fails in the gate, diagnose the harness and report the cause; do not regrade or change recordings as an automatic test fix. Grader fixes require meaningful unit coverage and explicit all-recordings result diffs. Source-verifiable harness defects may be fixed under standing orders; model behavior fixes belong to agent/prompt and are only proposals here.
+
+Run the new-scope source cross-review, then the usual tests/docs/push/PR/CI steps. All offline preflight tests are green (309 tests, 19 files); typecheck and npm ci pass; main collection 190 versus head 309 with no disappearance. Credential-free evidence is in evals/verification.md. The local gate's old pre-rebase head is retained, old run cancelled and custody returned; no gate bypass or origin push. Gate review rounds: two full reviews, then third on delta only; report unresolved disputes to Anna. Archive the exact generated review prompt from axi logs if exposed; otherwise archive identifying run/step/version lines and mark exact prompt unavailable. Log each review in PROMPTS.md. Include full evidence and raw/corrected local results in the PR, ending with VERIFIED and NOT VERIFIED. Public deployed performance, Cloudflare-metered neurons and credit human approval remain not verified; no such claims. Review calls are not Workers AI eval calls.
+
+## 2026-09-30T15:11:47-07:00 - Verdict-test redesign outcome before gate
+
+Source: prompt-history/prompts/05h-evals-verdict-tests.md
+Outcome: Implemented exact verdict/issue comparisons for all 39 active/archived recordings, raw/corrected reports and digests, independent known-good engine tests for all 15 questions and existing known-bad numeric/count/date/schema guards. Explicit offline regrade applied one shared grader to every recording; all raw response bytes and earlier grades preserved. Listed every correction and analyzed each of seven current failures with category, evidence and proposed owner. npm ci and typecheck pass; normal and credential-free npm test each pass 309 tests across 19 files, zero skips; main/head collection 190/309 with no losses. Planted a grader-only issue, observed replay red despite unchanged negative boolean, restored byte-for-byte. No new model calls: total remains 79 and estimated 6686 neurons. Green harness now permits the owner-authorized local gate ref update and delivery retry.

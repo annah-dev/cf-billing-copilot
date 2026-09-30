@@ -26,9 +26,21 @@ recover. Confirmed credit turns require a successful request receipt. The report
 counts live versus synthetic recordings.
 
 Recordings are immutable model evidence. The active snapshot contains the latest captured
-response for each case; archives under `recordings/runs/` preserve both attempts. Genuine
-model failures make replay red. See `results/README.md` for first-run results, total usage,
-the offline grading corrections and the outstanding agent failures.
+response for each case; archives under `recordings/runs/` preserve both attempts. Replay
+compares every active and archived verdict and issue list with committed results. Model failures
+are reported data; unexpected verdict changes or recording digests make the tests fail. Known-good
+engine answers and known-bad answers, including seven lines for six, have independent unit tests.
+See `results/README.md` for raw and corrected results, every correction and failure analysis.
+
+After a grader fix with a unit regression, explicitly apply it to every recording:
+
+```sh
+EVAL_REGRADE_ALL=1 npx vitest run --config evals/vitest.fixture.config.ts evals/regrade.fixture.ts
+```
+
+This offline command preserves capture-time and intermediate grades, updates the corrected run
+reports and `results/replay.json`, and never writes raw recordings. Review the result diff; do
+not add per-answer overrides. `npm test` never regenerates verdicts.
 
 The separate defect-guard tests build engine fixtures in memory, so a bad model response
 cannot contaminate a validator regression's starting point. To generate synthetic recordings
@@ -72,7 +84,9 @@ EVAL_LIVE_READY=1 EVAL_CASE_IDS=september-invoice,request-tiers npm run eval:liv
 
 Reruns reuse the recorded sandbox ids and accounted message counts; they cannot rerun a passing
 case. `EVAL_PREVIOUS_RESULTS` can select the prior report. Each invocation writes a dated
-`run-*.json` and the `latest-run.json` alias. Capture is deliberate; never put these commands
+`run-*.json`, the `latest-run.json` alias, and recordings archived by the run start date.
+Completed model failures are successful captures with negative verdicts; incomplete/transport
+stops still fail the live command. Capture is deliberate; never put these commands
 in a loop. The owner-authorized full run and one failing-only rerun have already completed.
 No more local model calls are planned for this session.
 
@@ -83,4 +97,6 @@ EVAL_LIVE_READY=1 EVAL_BASE_URL=https://cf-billing-copilot.anna-hester.workers.d
 ```
 
 A new target permits its own full run. The public README's pass rate comes from that deployment,
-not this local run. The release lane must respect the same caps and label target/date/usage.
+not this local run. Then run the explicit all-recordings regrade command above to update replay's
+committed verdicts and provenance. The release lane must respect the same caps and label
+target/date/usage.
