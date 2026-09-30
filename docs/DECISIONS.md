@@ -739,3 +739,13 @@ Decided by: Anna.
 ## ui: Preview chat simulates a plan only when a seeded plan is named
 
 Reason: gate review round 1 found substring matching sent words such as "problem" to plan simulation or an error, so the preview now matches seeded plan names as whole words and otherwise answers with the invoice. Decided by: Frontend engineer under standing orders.
+
+## ui: Rebase onto the agent merge keeps both sides of the logs
+
+Rebasing PR #5 onto main after PR #4 merged conflicted only in the append-only PROMPTS.md and
+docs/DECISIONS.md. Each conflict was resolved mechanically by keeping the main-side agent records
+first and the UI-side records after them, closing the open prompt fence between them, with no text
+removed or rewritten on either side. Reason: both logs are append-only and Anna asked for both
+sides to be kept.
+
+Decided by: Frontend engineer under standing orders.

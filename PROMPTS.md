@@ -2123,6 +2123,7 @@ Before finishing, copy this exact file from /tmp/ui-seed-gate-test-setup-final.m
 - Harness: Codex CLI
 - Source: prompt-history/prompts/04o-ui-agent-merge-rebase.md
 - Outcome: request recorded; rebase and final validation will be reported in PR #5. No merge or deployment authorized.
+- Rebase outcome (gate run 01M3T02ME2Y028MRVA849KW9KN): all 14 UI commits replayed onto main 2af8f1d; conflicts only in PROMPTS.md (first commit) and docs/DECISIONS.md (chat-views commit), resolved by keeping the main-side agent records first and the UI-side records after them, with no line removed from either side. Range-diff: 12 commits identical, 2 differ only in conflict context. src/ui, tests/ui and index.html equal the pre-rebase head 1041474; every other difference is the merged main change. Typecheck, tests and CI had not yet run at this point.
 
 ````text
 PR #4 has merged. Rebase PR #5 onto main; the conflicts are only in PROMPTS.md and
@@ -2139,4 +2140,20 @@ docs/DECISIONS.md, resolve them by keeping both sides. Rerun the checks and tell
 
 ````text
 Anna requests: PR #4 has merged. Rebase PR #5 onto main; the conflicts are only in PROMPTS.md and docs/DECISIONS.md, resolve them by keeping both sides. Rerun the checks and tell her when ready. Preserve every main-side agent record and every UI-side prompt and decision record, including this kickoff and all prior gate-fix commits. Resolve append-only logs by concatenating both sides in sensible order, without rewriting raw prompt text. No UI feature change is requested; src/engine, src/contracts and frozen configuration/dependencies must remain identical to current main. Never merge or deploy. The previous monitor used its single automatic conflict fix for D-20, so this new task starts a fresh gate on the logged request. Rebase deterministically, review only the rebase/logging delta relative to previously reviewed UI 44b4dac83345fdd8dc4407e86679e95edff18b73 and merged main, then validate npm ci, npm run typecheck, npm test, and env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test. Compare npx vitest list on current main and final head and account for all retained or removed tests. Preserve the shared-engine seeded preview and existing ten screenshots; repeat browser evidence if the rebase changes UI behavior, without any live model call. Scope is rebase and validation only. Keep all evidence under tests/ui/evidence and paths scrubbed; no skipped tests, schema weakening, global formatting or dependency changes. The exact kickoff and this supplied review intent are logged in PROMPTS.md and prompt-history/prompts/04o-ui-agent-merge-rebase.md and 04p-ui-agent-merge-gate-intent.md. Record truthful outcomes and available review provenance, clearly distinguish generated prompt text unavailable in step logs. Required commands may need npm ci in the isolated checkout before vitest exists. Implementation/logging choices and reversible fixes within this scope are authorized under standing orders; the owner explicitly authorizes this rebase. Report the final head and CI result in PR #5.
+````
+
+## 29. UI agent-merge rebase conflict fix instruction
+
+- Timestamp: 2026-09-30T20:31:20+00:00
+- Role: automated cross-review instruction
+- Harness: no-mistakes v1.41.2 (Claude), run 01M3T02ME2Y028MRVA849KW9KN
+- Source: prompt-history/prompts/04q-ui-agent-merge-rebase-fix.md
+- Outcome: rebase completed as recorded in the 04o entry; both sides of every conflict retained; `npm ci` installed the unchanged package-lock.json for the later gate steps. Typecheck, tests, review and CI are left to the outer gate.
+
+````text
+Resolve rebase-1 as Anna explicitly requested: continue the rebase of PR #5 onto current origin/main (agent PR #4 merged), resolving PROMPTS.md and docs/DECISIONS.md by retaining BOTH sides of every conflict. Preserve all raw prompt text, all main agent records, all UI records and every prior gate-fix commit. Do not use ours/theirs to discard a side. Keep the owner D-20/D-21 decisions and all ui: entries. No application, engine, contracts, configuration, dependency or test changes are authorized. Complete every replayed commit; only the two append-only log files may need conflict resolution. Verify there are no conflict markers, current main is an ancestor, and the final UI source/browser script/tests equal the submitted head apart from the imported main changes. Record the range-diff and conflict preservation result for the driver.
+
+After completing the rebase, copy this exact file from /tmp/ui-agent-merge-rebase-fix.md with a tool to prompt-history/prompts/04q-ui-agent-merge-rebase-fix.md and append its verbatim text in PROMPTS.md as automated cross-review instruction, no-mistakes v1.41.2 (Claude), run 01M3T02ME2Y028MRVA849KW9KN. Update the kickoff outcome for 04o-ui-agent-merge-rebase.md with the actual rebase result, without claiming checks or CI that have not yet run. Append the mechanical conflict-resolution reason in docs/DECISIONS.md, ending 'Decided by: Frontend engineer under standing orders'. Keep append-only log records and raw historical prompts intact. These instruction and decision records are part of the rebase fix.
+
+Prepare the isolated checkout's pinned dependencies with npm ci from the unchanged lockfile so later validation steps can run. No lockfile hand edits or global formatting. Return control to the outer executor to perform review/test/document/push/CI. No new UI behavior, live model calls, merge or deploy. The subsequent review should check the rebase/logging delta only; the full UI was already reviewed twice plus a delta round in the previous completed work.
 ````
