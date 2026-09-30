@@ -72,8 +72,21 @@ Gate review round 1 fix (F1 natural dates, F2 source count), 2026-09-29 Pacific:
   rejects invented numbers and money beside natural date wording`, and `reports recording
   sources: 0 live, 15 synthetic-engine of 15 cases`. No existing assertion was removed or weakened.
 
+Gate review round 2 fix (R2-F1 timestamp dates), 2026-09-29 Pacific:
+
+- Reproduced first: appending "The approval deadline is October 4, 2026." to the
+  `remember-credit` follow-up answer (tool deadline `2026-10-04T00:00:00Z`) returned
+  `["Turn 1: ungrounded number 2026-10-04"]` before the fix.
+- `npx vitest run --project unit evals/`: exit 0; Test Files 3 passed (3), Tests 60 passed (60).
+  The typecheck of the changed eval files and `npx oxfmt` on them also passed.
+- `npx vitest list --json`: 174 tests collected (169 after round 1, 5 added, none removed).
+  The full `npm test` for this head is run by the gate's test step, not recorded here.
+- Added: three `accepts a deadline date taken from a UTC timestamp` variants, `rejects a
+  fabricated deadline date beside a grounded timestamp`, and `grounds only the UTC calendar date
+  of a non-midnight timestamp`. No existing assertion was removed or weakened.
+
 Decisions appended: synthetic early-start provenance; memory requests/credit confirmation;
-bounded live capture with honest capacity results; natural calendar dates in replay grounding.
+bounded live capture with honest capacity results; natural calendar dates in replay grounding; calendar dates from tool timestamps.
 Each ends with the QA standing-orders role.
 
 Live Workers AI calls: None (0 calls, 0 input tokens, 0 output tokens, 0 neurons).
@@ -81,5 +94,5 @@ Offline injected response usage is synthetic and is not counted as a real model 
 
 Cross-review and CI: pending no-mistakes gate. Owner merge remains separate.
 
-VERIFIED: 15/15 synthetic replay cases (0 live, 15 synthetic-engine); 160 offline tests with and without credentials before the round 1 fix, 55/55 eval tests and 169 collected after it; natural calendar dates grounded as whole ISO dates; nested contracts, expected engine displays and numeric provenance, planted recording defect red, fresh-case and memory request construction, confirmation flags, cap stop and partial accounting via injected transport, live readiness guard, no coverage loss, no application or frozen-file changes.
+VERIFIED: 15/15 synthetic replay cases (0 live, 15 synthetic-engine); 160 offline tests with and without credentials before the round 1 fix, 55/55 eval tests and 169 collected after it, 60/60 eval tests and 174 collected after the round 2 fix; natural calendar dates, including UTC timestamp dates, grounded as whole ISO dates; nested contracts, expected engine displays and numeric provenance, planted recording defect red, fresh-case and memory request construction, confirmation flags, cap stop and partial accounting via injected transport, live readiness guard, no coverage loss, no application or frozen-file changes.
 NOT VERIFIED: Live agent/model performance, deployed endpoint compatibility, live pass rate/date and real model usage (waiting for Anna's PR #4 merge notice, main pull and deployment); full live-run capacity under D-7's five-sandbox-per-IP cap (owner resolution needed); actual cross-session DO persistence (offline tests prove request construction only); Claude gate review and CI (pending); exact gate review prompt (not captured yet).

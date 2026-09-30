@@ -799,3 +799,11 @@ the expected ISO anomaly date, which would count correct live answers as failure
 matching keeps a fabricated date from passing on separately present parts, and the source count
 keeps a capped mixed snapshot from reading as live coverage (F2).
 Decided by: QA engineer under standing orders.
+
+## evals: calendar dates from tool timestamps
+
+Replay's numeric pattern also reads the UTC calendar date that begins an ISO timestamp (for
+example `2026-10-04` from `2026-10-04T00:00:00Z`), so credit deadlines and creation dates quoted
+in prose ground as whole dates. Reason: gate review round 2 (R2-F1) showed the `T` separator
+dropped the day, so a correct "approval deadline October 4, 2026" failed as ungrounded; any
+other day is still rejected. Decided by: QA engineer under standing orders.

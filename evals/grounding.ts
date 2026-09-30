@@ -6,7 +6,7 @@ import { parseRecording } from "./recording";
 const moneyPattern =
   /(?:[-+]?\$\s*[\d,]+(?:\.\d+)?|\bUSD\s*[-+]?[\d,]+(?:\.\d+)?|[-+]?[\d,]+(?:\.\d+)?\s*(?:USD|dollars|cents)\b)/gi;
 const numberPattern =
-  /(?<![\w])\d{4}-\d{2}(?:-\d{2})?(?![\w])|(?<![\w])\d[\d,]*(?:\.\d+)?(?:%|x)?(?![\w])/g;
+  /(?<![\w])\d{4}-\d{2}-\d{2}(?=T\d{2}:\d{2})|(?<![\w])\d{4}-\d{2}(?:-\d{2})?(?![\w])|(?<![\w])\d[\d,]*(?:\.\d+)?(?:%|x)?(?![\w])/g;
 const numbers = (text: string) =>
   [...text.matchAll(numberPattern)].map((match) =>
     match[0].replaceAll(",", "")

@@ -24,7 +24,8 @@ quantities/ratios, and key meanings such as pending approval or a proactive usag
 Each money-looking string must trace to a validated tool output from the same or an earlier
 turn in the recording. Numeric tokens outside money must also trace to tool output.
 Named calendar dates ("September 2026", "September 18, 2026", "September 18") are normalized
-to ISO before checking, so the whole date must match a tool date or period; a bare year is
+to ISO before checking, so the whole date must match a tool date, period or the UTC calendar
+date of a tool timestamp such as `2026-10-04T00:00:00Z`; a bare year is
 grounded by any tool date in that year, and a yearless day takes its year only from a single
 grounded period for that month. Future responses cannot ground an earlier answer.
 

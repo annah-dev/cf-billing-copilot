@@ -156,6 +156,44 @@ describe("eval defect guards", () => {
     expect(issues).toContain("Turn 0: ungrounded money $7.00");
   });
 
+  const creditAnswer = (id: string, turn: number, text: string) => {
+    const testCase = cases.find((item) => item.id === id)!;
+    const recording = fixture(id);
+    recording.turns[turn].response.text += ` ${text}`;
+    return checkReplay(testCase, recording);
+  };
+
+  test.each([
+    "The approval deadline is October 4, 2026.",
+    "The approval deadline is October 4.",
+    "It was created on 2026-10-03 and is due by 2026-10-04."
+  ])("accepts a deadline date taken from a UTC timestamp: %s", (text) => {
+    expect(creditAnswer("remember-credit", 1, text)).toEqual([]);
+  });
+
+  test("rejects a fabricated deadline date beside a grounded timestamp", () => {
+    expect(
+      creditAnswer(
+        "remember-credit",
+        1,
+        "The approval deadline is October 5, 2026."
+      )
+    ).toContain("Turn 1: ungrounded number 2026-10-05");
+  });
+
+  test("grounds only the UTC calendar date of a non-midnight timestamp", () => {
+    expect(
+      creditAnswer(
+        "expired-credit-history",
+        0,
+        "It expired on October 2, 2026."
+      )
+    ).toEqual([]);
+    expect(
+      creditAnswer("expired-credit-history", 0, "It expired on October 9.")
+    ).toContain("Turn 0: ungrounded number 2026-10-09");
+  });
+
   test("accepts amounts quoted from engine-written tool narratives", () => {
     const testCase = cases.find(
       (item) => item.id === "august-september-change"
