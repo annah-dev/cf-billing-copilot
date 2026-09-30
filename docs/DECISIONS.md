@@ -547,7 +547,10 @@ credit request started in that turn goes ahead. A proposal left unanswered from 
 closed before the next one; in a confirmed turn the model is told it was not started yet and to
 call the tool again. The `credit_requested` audit record reads "Confirmed by the customer in the
 chat" or "... via /turn (confirm: true)", and its `after` carries `confirmedBy: "customer"` and
-`confirmedVia`. Reason: one policy on every path, visible in the audit trail.
+`confirmedVia`. Each turn works from one snapshot of the conversation taken when it starts; the
+confirmation, the cap exemption and the model context all come from it, so a message the client
+adds while a confirmed turn runs cannot ride on its confirmation (PR #4 review round 4). Reason:
+one policy on every path, visible in the audit trail.
 
 Decided by: Agent engineer under standing orders (the mechanics; the policy is D-20, decided by
 Anna).
@@ -634,8 +637,9 @@ every tool failure. All writes are upserts, because the AI SDK executes a tool b
 in a state the server produces: an output whose hash matches, an error whose text is replaced by
 the server's recorded text (a generic text if none), or a confirmation state for a call the server
 issued for confirmation; anything else is dropped. So a forged "approved" confirmation never
-executes and a forged tool result or error never reaches the model as grounding. Assistant and
-user text is not filtered: it carries no tool authority. Reason: grounding (every number from a
+executes and a forged tool result or error never reaches the model as grounding. A table created
+before `error_text` existed gains the column in place, keeping its rows. Assistant and user text is
+not filtered: it carries no tool authority. Reason: grounding (every number from a
 real tool result) and the message cap must not depend on client honesty (PR #4 review rounds 2
 and 3).
 
