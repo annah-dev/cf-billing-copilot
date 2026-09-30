@@ -1628,7 +1628,7 @@ you suggest. End with:
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/03h-agent-review-r4-delta.md
-- Outcome: (pending)
+- Outcome: CHANGES REQUESTED; round-3 fixes and D-20 behaviour confirmed on fresh state; 2 majors (a concurrent chat message could ride on a confirmed /turn; no error_text migration) reproduced and fixed; not re-reviewed.
 
 ````text
 You are the cross-reviewer for PR #4 on annah-dev/cf-billing-copilot (the agent lane): one extra
