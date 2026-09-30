@@ -747,7 +747,7 @@ by a test; a test that fails if `src/engine/` imports anything forbidden. `npm r
 - Role: Agent/Workflow engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/03-agent.md
-- Outcome: (pending)
+- Outcome: PR #4 ready for the owner: BillingAgent, Ledger, CreditRequestWorkflow, Quota and the HTTP surface; 190 tests passing offline; five Codex rounds plus one on contract PR #6; D-20 (confirm on /turn) and server-run anomaly checks added at the owner's request; live evidence in local dev with 9 Llama 3.3 calls.
 
 ````text
 # 03 - Agent lane kickoff
@@ -1673,7 +1673,7 @@ line, what is wrong, and the fix you suggest. End with:
 - Role: Agent/Workflow engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/03i-agent-owner-anomaly-and-final-review.md
-- Outcome: (pending)
+- Outcome: rebased onto 49a7edd; server-run anomaly check (4490419, fixed in 619ffa2) with tests that fail if the mention depends on the model; live September turn re-run twice (2 model calls each); final Codex round run and its findings fixed; PR #4 marked ready.
 
 ````text
 A1: I merged contract PR #6. Rebase PR #4 onto main now. Rebasing your own feature branch with
@@ -1697,7 +1697,7 @@ change together, fix what it finds, and mark PR #4 ready.
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/03j-agent-review-r5-delta.md
-- Outcome: (pending)
+- Outcome: CHANGES REQUESTED; round-4 fixes approved; 2 findings in the anomaly change (last-step invoice unchecked; failed checks hidden and marked done) fixed in 619ffa2 with tests shown red on the prior code; not re-reviewed.
 
 ````text
 You are the cross-reviewer for PR #4 on annah-dev/cf-billing-copilot (the agent lane): the final
