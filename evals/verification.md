@@ -44,8 +44,17 @@ Each failure's category, raw evidence and proposed agent/prompt/grader fix is in
   Tests never write recordings or regenerate verdicts. No per-answer override exists.
 - Every correction is listed with its reason and unit evidence in results/README.md: natural
   date wording, calendar days from timestamps, month/year from timestamps, every-number/count
-  coverage, ISO-period count false positives, rejected-tool recovery and the credit receipt guard.
-  The first four were established before capture; the last two explain the raw/corrected gap.
+  coverage, ISO-period count false positives, rejected-tool recovery and the credit receipt guard,
+  and Anna's per-turn grounding rule (05l). The first four were established before capture;
+  ISO-period and rejected-tool fixes explain the raw/corrected gap.
+- Anna's grounding rule: money, percentages, counts and other numbers need this turn's successful
+  tool outputs; dates and billing periods may also echo the customer's message after format
+  normalization. Two new tests were observed red first (echoed `September 2026`/`2026-09` flagged
+  `ungrounded number 2026-09`; prior-turn-only amounts accepted). The explicit all-recordings
+  regrade removed only `ungrounded number 2026-09`: pro-simulation (full 1, rerun 1),
+  request-tiers (rerun 2) and tax-line (rerun 2). No verdict changed: corrected full 9/15, rerun
+  2/9, latest 8/15; raw 4/15, 1/9, 5/15. Prior corrected grades were appended to
+  `gradingHistory`; every recording byte and each run's `initialGrading` equal submitted 9fa01a8.
 - Natural-date, timestamp and month regressions were observed red before their fixes. The ISO
   count false positive was observed in the first live grade (4/15, then 6/15). Rejected-tool
   strictness was observed in the recovered live answers (then 9/15 full and 2/9 rerun). Corrected
@@ -72,12 +81,13 @@ Each failure's category, raw evidence and proposed agent/prompt/grader fix is in
 
 - `npm ci`: exit 0; added 571 packages, audited 572 packages; pinned lock unchanged.
 - `npm run typecheck`: exit 0; `tsc --noEmit && tsc --noEmit -p tests/agent`.
-- `npm test`: exit 0; Test Files 19 passed (19); Tests 309 passed (309), no skips.
+- `npm test` after the grounding rule: exit 0; Test Files 22 passed (22); Tests 353 passed (353),
+  no skips. Pre-rule gate head d702da6 passed 342 in 22 files.
 - Credential-free command: `env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test`.
-  Exit 0; Test Files 19 passed (19); Tests 309 passed (309), no skips.
-- `npx vitest list --json`: main at 2af8f1d collects 190 tests, head 309. Compared project,
-  relative file and full name: zero disappeared, 119 added. The baseline used an archive of
-  main with identical installed pins. Existing 15 replay case names remain, with owner-authorized
+  Exit 0; Test Files 22 passed (22); Tests 353 passed (353), no skips.
+- `npx vitest list --json`: UI-merged main at 21a8069 collects 223 tests, head 353. Compared
+  project, relative file and full name: zero disappeared, 130 added. The baseline used an archive
+  of main with identical installed pins. Existing 15 replay case names remain, with owner-authorized
   verdict-comparison assertions; known-good and known-bad grading assertions stay independent.
 - Formatting and whitespace checks cover lane-owned files only. No global formatter touched
   old prompt/decision text; no frozen files or dependencies changed.
@@ -93,11 +103,14 @@ its old head, and retrying gated push/PR creation. The new intent is logged in 0
 
 New-scope gate review round 1 (run 01M3T67AVMBTC9CJV9A0HGDQYH) is logged in PROMPTS.md and
 05g-evals-harness-review-r1.md: F2 (run filename timestamp) fixed in `run.live.ts` (05k), F1
-(echoed-period grounding) pending Anna, F3 left as a documented proposal. Later review rounds,
-gated delivery, PR and CI evidence will be added after they execute.
+(echoed-period grounding) resolved by Anna's rule (05l, fixed under 05m), F3 left as a
+documented proposal. Round 2 (05g-evals-harness-review-r2.md, exact prompt unavailable) ran after
+the F2 fix and before the grounding rule. The changed grader has not yet been source-reviewed;
+any final review is a third round on the grounding delta only. Gated delivery, PR and CI evidence
+will be added after they execute.
 No merge or deployment is authorized. Release owns the deployed run after UI/deploy and must use
 that result for the public README. The standalone live/regrade tools are excluded from npm test,
 and both test projects prohibit global fetch.
 
-VERIFIED: Local-dev real model captures and reported usage; unchanged response evidence; raw/corrected grades and shared all-recordings regrade; exact verdict/digest/provenance replay; seven failures reported without making tests fail; known-good/bad grader guards including seven lines for six; planted grader change observed red; 309 passing offline tests with and without credentials; typecheck/npm ci; 119 added tests with no coverage loss; unchanged frozen/application source.
-NOT VERIFIED: New-scope cross-review/gated PR/CI until executed; deployed run/public README pass rate (release lane after deploy); exact historical generated review prompts (not exposed); Cloudflare-metered neurons (estimate only); human approval of new live credit (intentionally not performed); proposed agent/prompt/grader fixes in failure analysis (not implemented).
+VERIFIED: Local-dev real model captures and reported usage; unchanged response evidence; raw/corrected grades and shared all-recordings regrade; exact verdict/digest/provenance replay; seven failures reported without making tests fail; known-good/bad grader guards including seven lines for six; planted grader change observed red; owner grounding rule with red-first regressions and all-recordings regrade (no verdict change); 353 passing offline tests with and without credentials; typecheck/npm ci; 130 added tests versus main with no coverage loss; unchanged frozen/application source.
+NOT VERIFIED: Source review of the grounding-rule delta, gated PR/CI until executed; deployed run/public README pass rate (release lane after deploy); exact historical generated review prompts (not exposed); Cloudflare-metered neurons (estimate only); human approval of new live credit (intentionally not performed); proposed agent/prompt/grader fixes in failure analysis (not implemented).

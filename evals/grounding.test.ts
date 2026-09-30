@@ -326,6 +326,119 @@ describe("eval defect guards", () => {
     expect(checkReplay(testCase, recording)).toEqual([]);
   });
 
+  // Owner rule: dates may echo the customer's own message; money, percentages and counts
+  // need this turn's successful tool outputs.
+  const asked = (
+    id: string,
+    message: string,
+    text: string,
+    toolCalls?: Recording["turns"][number]["response"]["toolCalls"]
+  ) => {
+    const original = cases.find((item) => item.id === id)!;
+    const testCase = {
+      ...original,
+      turns: original.turns.map((turn, index) =>
+        index === 0 ? { ...turn, request: { ...turn.request, message } } : turn
+      )
+    };
+    const recording = fixture(id);
+    recording.turns[0].request.message = message;
+    recording.turns[0].response.text = text;
+    if (toolCalls) recording.turns[0].response.toolCalls = toolCalls;
+    return checkReplay(testCase, recording).filter((issue) =>
+      /ungrounded/.test(issue)
+    );
+  };
+  const tiersMessage = cases.find((item) => item.id === "request-tiers")!
+    .turns[0].request.message;
+
+  test.each([
+    "I need the invoice id for your September 2026 invoice.",
+    "I need the invoice id for your 2026-09 invoice."
+  ])(
+    "accepts a billing period echoed from the question without tool evidence: %s",
+    (text) => {
+      expect(asked("request-tiers", tiersMessage, text, [])).toEqual([]);
+    }
+  );
+
+  test.each([
+    ["What happened on 2026-09-18?", "The spike was on September 18."],
+    ["What happened on September 18, 2026?", "The spike was on 2026-09-18."],
+    [
+      "What happened in September 2026 on September 18?",
+      "The spike was on 2026-09-18."
+    ],
+    ["What happened on September 18?", "Nothing is recorded for September 18."]
+  ])(
+    "accepts an echoed date after format normalization: %s",
+    (message, text) => {
+      expect(asked("request-tiers", message, text, [])).toEqual([]);
+    }
+  );
+
+  test("rejects a money amount echoed from the question", () => {
+    expect(
+      asked(
+        "request-tiers",
+        "Why is my September 2026 bill $500.00?",
+        "Your September 2026 bill is $500.00.",
+        []
+      )
+    ).toContain("Turn 0: ungrounded money $500.00");
+  });
+
+  test("rejects a customer-supplied percentage and count", () => {
+    const issues = asked(
+      "request-tiers",
+      "My bill rose 37% and has 9 lines.",
+      "Yes, it rose 37% and has 9 lines.",
+      []
+    );
+    expect(issues).toContain("Turn 0: ungrounded number 37%");
+    expect(issues).toContain("Turn 0: ungrounded count 9 lines");
+  });
+
+  test("a question's date parts cannot ground a count or number", () => {
+    const issues = asked(
+      "request-tiers",
+      "What happened on September 18, 2026?",
+      "There were 18 lines and 2026 requests.",
+      []
+    );
+    expect(issues).toContain("Turn 0: ungrounded count 18 lines");
+    expect(issues).toContain("Turn 0: ungrounded number 18");
+    expect(issues).toContain("Turn 0: ungrounded number 2026");
+  });
+
+  test("rejects a wrong or fabricated date beside an echoed period", () => {
+    expect(
+      asked(
+        "request-tiers",
+        "What happened in September 2026?",
+        "The spike was on September 19.",
+        []
+      )
+    ).toContain("Turn 0: ungrounded number 2026-09-19");
+    expect(
+      asked(
+        "request-tiers",
+        "What happened on September 18?",
+        "The spike was on September 19.",
+        []
+      )
+    ).toContain("Turn 0: ungrounded date September 19");
+  });
+
+  test("prior-turn financial results cannot ground a later answer", () => {
+    const testCase = cases.find((item) => item.id === "remember-plan")!;
+    const recording = fixture(testCase.id);
+    recording.turns[1].response.toolCalls = [];
+    const issues = checkReplay(testCase, recording);
+    for (const amount of testCase.turns[1].expected)
+      expect(issues).toContain(`Turn 1: ungrounded money ${amount}`);
+  });
+
   test("cannot ground an earlier answer using a future response", () => {
     const testCase = cases.find((item) => item.id === "remember-plan")!;
     const recording = fixture(testCase.id);

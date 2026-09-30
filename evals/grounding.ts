@@ -186,11 +186,14 @@ const namedDates: [RegExp, (m: string[]) => [string, string, string?]][] = [
   ]
 ];
 
+const dateToken = /^\d{4}-\d{2}(?:-\d{2})?$/;
+
 // Rewrite named calendar dates as ISO so the whole date, not its parts, must be grounded.
-// A yearless day takes its year only from a single grounded period for that month.
+// A yearless day takes its year only from a single grounded period for that month; without
+// one it is grounded only by the same yearless date in the customer's message (--MM-DD).
 function normalizeDates(
   text: string,
-  numeric: Set<string>
+  dates: Set<string>
 ): { text: string; unresolved: string[] } {
   const unresolved: string[] = [];
   let result = text;
@@ -200,31 +203,52 @@ function normalizeDates(
       if (year)
         return ` ${[year, monthPart, dayPart].filter(Boolean).join("-")} `;
       const years = new Set(
-        [...numeric]
-          .filter((token) => token.slice(4, 7) === `-${monthPart}`)
+        [...dates]
+          .filter(
+            (token) =>
+              dateToken.test(token) && token.slice(4, 7) === `-${monthPart}`
+          )
           .map((token) => token.slice(0, 4))
       );
       if (years.size === 1) return ` ${[...years][0]}-${monthPart}-${dayPart} `;
-      unresolved.push(match[0]);
+      unresolved.push(`--${monthPart}-${dayPart}\t${match[0]}`);
       return " ";
     });
   }
   return { text: result, unresolved };
 }
 
+const dateLike = (token: string) =>
+  dateToken.test(token) || /^\d{4}$/.test(token);
+function addDate(dates: Set<string>, token: string, year = true): void {
+  dates.add(token);
+  dates.add(token.slice(0, 7));
+  if (year) dates.add(token.slice(0, 4));
+}
+// Dates and billing periods the customer wrote ground only date-shaped answer tokens, never
+// money, percentages, counts, bare years or bare day numbers.
+function messageDates(message: string, dates: Set<string>): void {
+  for (let pass = 0; pass < 2; pass++) {
+    const normalized = normalizeDates(message, dates);
+    numbers(normalized.text)
+      .filter((token) => dateToken.test(token))
+      .forEach((token) => addDate(dates, token, false));
+    if (pass === 1)
+      normalized.unresolved.forEach((entry) => dates.add(entry.split("\t")[0]));
+  }
+}
+
 function evidence(
   value: unknown,
   amounts: Set<string>,
-  numeric: Set<string>
+  numeric: Set<string>,
+  dates: Set<string>
 ): void {
   if (typeof value === "string") {
     moneyStrings(value).forEach((amount) => amounts.add(amount));
     numbers(stripMoney(value)).forEach((token) => {
-      numeric.add(token);
-      if (/^\d{4}-\d{2}/.test(token)) {
-        numeric.add(token.slice(0, 4));
-        numeric.add(token.slice(0, 7));
-      }
+      if (/^\d{4}-\d{2}/.test(token)) addDate(dates, token);
+      else numeric.add(token);
     });
   } else if (typeof value === "number") {
     numeric.add(String(value));
@@ -232,7 +256,7 @@ function evidence(
     numeric.add(String(value.length));
     // Ordered entries ground ordinal references in numbered invoice explanations.
     value.forEach((_, index) => numeric.add(String(index + 1)));
-    value.forEach((item) => evidence(item, amounts, numeric));
+    value.forEach((item) => evidence(item, amounts, numeric, dates));
   } else if (value && typeof value === "object") {
     const money = MoneySchema.safeParse(value);
     if (money.success) {
@@ -241,7 +265,7 @@ function evidence(
     }
     for (const [key, child] of Object.entries(value)) {
       if (key !== "basisPoints" && key !== "hundredths")
-        evidence(child, amounts, numeric);
+        evidence(child, amounts, numeric, dates);
     }
   }
 }
@@ -258,9 +282,6 @@ export function checkReplay(testCase: EvalCase, value: unknown): string[] {
     issues.push("Recording case id mismatch");
   if (recording.turns.length !== testCase.turns.length)
     issues.push("Recording turn count mismatch");
-  const amounts = new Set<string>();
-  const numeric = new Set<string>();
-  const counts: Counts = new Map();
   recording.turns.forEach((recorded, index) => {
     const planned = testCase.turns[index];
     if (!planned) return;
@@ -271,12 +292,18 @@ export function checkReplay(testCase: EvalCase, value: unknown): string[] {
       recorded.request.confirm !== planned.request.confirm
     )
       issues.push(`Turn ${index}: request mismatch`);
-    // Only this and earlier responses ground an answer; future turns cannot excuse a fabrication.
+    // Evidence resets every turn: only this turn's successful tool outputs ground money,
+    // percentages, counts and other numbers; dates may also come from this turn's message.
+    const amounts = new Set<string>();
+    const numeric = new Set<string>();
+    const dates = new Set<string>();
+    const counts: Counts = new Map();
     recorded.response.toolCalls.forEach((call) => {
-      evidence(call.output, amounts, numeric);
+      evidence(call.output, amounts, numeric, dates);
       countEvidence(call.output, counts);
     });
-    const dated = normalizeDates(recorded.response.text, numeric);
+    messageDates(recorded.request.message, dates);
+    const dated = normalizeDates(recorded.response.text, dates);
     if (
       planned.request.confirm &&
       !recorded.response.toolCalls.some(
@@ -308,21 +335,24 @@ export function checkReplay(testCase: EvalCase, value: unknown): string[] {
       if (!amounts.has(amount))
         issues.push(`Turn ${index}: ungrounded money ${amount}`);
     }
-    for (const date of dated.unresolved)
-      issues.push(`Turn ${index}: ungrounded date ${date}`);
+    for (const entry of dated.unresolved) {
+      const [echo, date] = entry.split("\t");
+      if (!dates.has(echo))
+        issues.push(`Turn ${index}: ungrounded date ${date}`);
+    }
     for (const match of normalized.matchAll(countPattern)) {
       const name = countName(match[2]);
       if (
         match[2].toLowerCase() === "invoice" &&
         /^\d{4}$/.test(match[1]) &&
-        numeric.has(match[1])
+        dates.has(match[1])
       )
         continue;
       if (!counts.get(name)?.has(match[1]))
         issues.push(`Turn ${index}: ungrounded count ${match[1]} ${name}`);
     }
     for (const token of numbers(stripMoney(normalized))) {
-      if (!numeric.has(token))
+      if (!numeric.has(token) && !(dateLike(token) && dates.has(token)))
         issues.push(`Turn ${index}: ungrounded number ${token}`);
     }
   });

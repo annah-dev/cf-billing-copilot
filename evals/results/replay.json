@@ -4,7 +4,7 @@
   "baseUrl": "http://127.0.0.1:5173",
   "environment": "local dev",
   "runDate": "2026-09-30T20:47:12.096Z",
-  "regradedAt": "2026-09-30T22:12:52.165Z",
+  "regradedAt": "2026-09-30T23:48:40.658Z",
   "modelCallCount": 79,
   "estimatedNeurons": 6686,
   "usageScope": "all captured attempts at this target",
@@ -177,9 +177,7 @@
         "Turn 0: missing expected $0.80",
         "Turn 0: missing expected $1.60",
         "Turn 0: missing expected 102000",
-        "Turn 0: missing meaning /tier/i",
-        "Turn 0: ungrounded number 2026-09",
-        "Turn 0: ungrounded number 2026-09"
+        "Turn 0: missing meaning /tier/i"
       ]
     },
     {
@@ -187,9 +185,7 @@
       "passed": false,
       "issues": [
         "Turn 0: missing expected $31.47",
-        "Turn 0: missing expected $381.40",
-        "Turn 0: ungrounded number 2026-09",
-        "Turn 0: ungrounded number 2026-09"
+        "Turn 0: missing expected $381.40"
       ]
     },
     {
@@ -222,8 +218,7 @@
       "issues": [
         "Turn 0: missing expected $412.87",
         "Turn 0: missing expected $359.17",
-        "Turn 0: missing expected -$53.70",
-        "Turn 0: ungrounded number 2026-09"
+        "Turn 0: missing expected -$53.70"
       ]
     },
     {

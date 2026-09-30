@@ -2466,3 +2466,36 @@ Harness: no-mistakes v1.41.2 (Claude)
 Run: 01M3T67AVMBTC9CJV9A0HGDQYH
 Source: prompt-history/prompts/05k-evals-gate-F2-fix.md (fix context copied verbatim with a tool)
 Outcome: evals/run.live.ts now builds the future run result path inside saveResult from result.runDate, so the report filename, runDate and archive directory share the run start timestamp. Existing committed run filenames, all 39 recordings, grader source and raw/corrected verdicts unchanged. Zero Workers AI calls. F1 still pending Anna; F3 left as documented proposal.
+
+## 2026-09-30T16:46:29-07:00 - Evals owner grounding rule
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05l-evals-owner-grounding-rule.md
+Outcome: Implemented in evals/grounding.ts under 05m: per-turn tool-only evidence for money, percentages, counts and numbers; dates and billing periods also from the customer's message after normalization, kept apart from numeric evidence. Red-first regressions plus echoed-date passes and echoed-$500/percentage/count/wrong-date/prior-turn rejections. All 39 recordings regraded offline: only `ungrounded number 2026-09` removed (pro-simulation, request-tiers, tax-line); pass rates unchanged at 9/15, 2/9, 8/15 corrected (raw 4/15, 1/9, 5/15). Recorded in docs/DECISIONS.md, decided by Anna. Zero Workers AI calls.
+
+Decision on the grounding finding: neither option as stated. Use this rule, because the runtime
+grounding guard we add next will enforce the same one:
+- Money amounts, percentages and counts must come from the turn's tool results. An amount the
+  customer typed is not evidence, so a wrong premise ("why is my bill $500?") repeated back fails.
+- Dates and billing periods may come from the tool results or from the customer's own message,
+  compared after normalizing formats (for example "September 18" and 2026-09-18).
+Add grader tests for both sides (an echoed date passes; an echoed dollar amount from the question
+fails), apply the rule to every recording, report raw and re-graded totals as before, record it in
+DECISIONS.md as decided by me, then continue the gated push and open the PR.
+
+## 2026-09-30T16:52:08-07:00 - Evals harness gate review round 2
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Source: prompt-history/prompts/05g-evals-harness-review-r2.md (identifying log lines copied with a tool; exact generated review prompt unavailable, axi logs exposed only run/step/version, fix-round and completion lines)
+Outcome: Round 2 reviewed the F2 fix and completed with status success; no generated prompt or findings text was exposed in the log. It ran before Anna's grounding rule, so it did not review the changed grader.
+
+## 2026-09-30T16:52:08-07:00 - Evals gate grounding fix
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Source: prompt-history/prompts/05m-evals-gate-grounding-fix.md (fix context copied verbatim with a tool)
+Outcome: Grader, regressions, all-recordings regrade, evals/README.md policy, results README corrections/failure analysis and verification evidence updated. Normal and credential-free npm test: 22 files, 353 tests passed; typecheck exit 0; main 21a8069 collects 223, head 353, zero disappeared, 130 added. Recordings and initialGrading identical to 9fa01a8. src/agent, contracts, configs and pins unchanged; zero Workers AI calls. Any source review of this delta must be a third, delta-only round.

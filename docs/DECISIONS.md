@@ -872,3 +872,13 @@ Decided by: QA engineer under standing orders.
 Update only the stale local gate branch ref, retaining its old head, and retry gated delivery
 after npm test is green. Reason: Anna explicitly authorized this ref update and PR creation
 with the results labeled local dev; no merge or deployment is authorized. Decided by: Anna.
+
+## evals: per-turn grounding with echoed dates
+
+Money amounts, percentages, counts and other numbers in an answer must come from that turn's
+successful tool outputs; an amount the customer typed or an earlier turn's result is not
+evidence. Dates and billing periods may come from that turn's tool outputs or the customer's own
+message, compared after normalizing formats, and message dates never ground numbers. Reason:
+the runtime grounding guard will enforce the same rule, and a wrong premise repeated back must
+fail while an echoed period must not. Applied to every recording by explicit offline regrade.
+Decided by: Anna.

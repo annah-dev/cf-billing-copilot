@@ -20,9 +20,15 @@ confirmation flag, engine display strings and required meanings. Every numeric c
 checked: currency, scalar numbers, percentages, multipliers, written integer words, natural
 calendar dates and counts. Array lengths ground counts and ordered entries ground list
 positions. An invoice count must match its actual line array; an unrelated scalar seven does
-not excuse "seven lines". Only current and earlier tool outputs in that case can ground an
-answer. Rejected calls must have null output and provide no evidence; a later valid call can
-recover. Confirmed credit turns require a successful request receipt. The report explicitly
+not excuse "seven lines". Money amounts, percentages, counts and other numbers need the
+current turn's successful tool outputs; evidence resets every turn, so an amount the customer
+typed or an earlier turn's result cannot ground them. Dates and billing periods may come from
+the current turn's tool outputs or the customer's own message, compared after normalizing
+formats ("September 18" and 2026-09-18). Message dates ground only whole date-shaped tokens,
+never a count, percentage, bare year or day number, and a day is never assembled from separate
+parts. A yearless date takes its year only from one matching period; otherwise it must echo the
+same yearless date from the message. Rejected calls must have null output and provide no
+evidence; a later valid call can recover. Confirmed credit turns require a successful request receipt. The report explicitly
 counts live versus synthetic recordings.
 
 Recordings are immutable model evidence. The active snapshot contains the latest captured
