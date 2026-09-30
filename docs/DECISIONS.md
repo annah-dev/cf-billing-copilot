@@ -319,3 +319,59 @@ Decided by: Architect under standing orders.
   silently checked nothing (round 2). A planted type error in the Workers test now fails typecheck.
 
 Decided by: Architect under standing orders.
+
+## engine: Exact rational rating and line rounding
+
+Accumulate tier charges with BigInt fractions and round once per line to the
+nearest cent, ties away from zero; allocate tier residuals by cumulative
+differences so displayed tiers reconcile. Reject unsafe integer results. Reason:
+intermediate multiplication and independently rounded tiers must not lose cents.
+
+Decided by: Engine engineer under standing orders.
+
+## engine: Calendar proration and graduated segment tiers
+
+Require exactly one subscription for every UTC calendar day; exclusive end dates
+split plan segments. Prorate each fee by active days over calendar days, restart
+graduated usage tiers per segment, and leave thresholds unprorated. Posted credits
+in the rated month reduce the taxable subtotal, floored at zero for tax; pending
+and void memos move no money. Reason: this gives an explicit reproducible rule
+for first-day and last-day plan changes without inventing contract fields.
+
+Decided by: Engine engineer under standing orders.
+
+## engine: Issued comparisons and full-month simulation
+
+Compare immutable issued invoices, expose meter deltas and signed non-usage
+changes, and aggregate products in the engine-written summary. Simulate the
+selected plan for the full month with the same usage and posted period credits;
+actualPlanId names the issued invoice's closing plan after a change. Percent
+displays round integer basis points to whole percentages; ratios use the absolute
+prior amount, with a null percentage at zero. Multiples display hundredths with
+trailing zeros removed. Reason: callers can copy grounded numbers without money
+math and the frozen single-plan simulation field remains unambiguous.
+
+Decided by: Engine engineer under standing orders.
+
+## engine: Robust daily anomaly baseline and marginal usage cost
+
+Use the leave-one-day-out monthly median for each meter, including missing days
+as zero, with half-away rounding for an even median; score only positive
+baselines, at 3x info, 4x warning, 5x critical. Estimate excess cost by re-rating
+after removing only that day's excess, excluding fees, tax and credits. Reason:
+a spike should not inflate its own baseline or be priced at the wrong tier.
+
+Decided by: Engine engineer under standing orders.
+
+## engine: Duplicate debit reservations and deterministic seed history
+
+Match later charge postings by customer, invoice, amount and billing-run reference
+ordered by timestamp then id. Merge dataset and caller memo snapshots by id,
+reject conflicts or nonpositive amounts, and subtract pending plus applied
+reservations; void memos release them. Seed one retried September debit, one 5x
+spike, and a request that expires after 24 hours on October 2 with a void memo
+and five ordered audit records. Derive internal invoice and line ids with 64-bit
+FNV-1a to fit frozen slug lengths. Reason: seed history is clock-independent and
+the demo debit remains available for a new credit request without double credit.
+
+Decided by: Engine engineer under standing orders.
