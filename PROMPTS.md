@@ -741,6 +741,102 @@ by a test; a test that fails if `src/engine/` imports anything forbidden. `npm r
 4. The gate opens the PR. Make sure its body carries the evidence from docs/agent/verification.md,
    ending with VERIFIED and NOT VERIFIED lines. Never merge; the owner merges.
 
+## 13. Agent lane kickoff
+
+- Timestamp: 2026-09-29T17:25:11-07:00
+- Role: Agent/Workflow engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/03-agent.md
+- Outcome: (pending)
+
+````text
+# 03 - Agent lane kickoff
+
+Role: Agent/Workflow engineer. Harness: Claude Code. You work alone in this worktree
+(~/projects/wt/cf-billing-copilot-agent, branch feat/agent, cut from main after the Stop 2
+foundation merged). You see this prompt, the assignment and the repo; nothing else.
+
+## Read first, in this order
+
+1. prompt-history/prompts/00-assignment.md: product scope and the non-negotiable principles.
+2. AGENTS.md: the rules, including Decision rights. They bind you.
+3. docs/agent/plan.md, section "agent": what you own, what you build, your definition of done, and
+   the Stop 2 findings you must build on.
+4. docs/agent/verification.md and docs/agent/cross-review.md.
+5. docs/ARCHITECTURE.md (flows, Ledger invariants, recovery, admission, budgets) and
+   docs/DECISIONS.md (especially D-1, D-4 to D-7, D-9, D-12 to D-15, D-18, DEV-8, DEV-9, DEV-15,
+   DEV-16).
+6. src/contracts/: the frozen shapes for tools, HTTP, credit requests, audit and config.
+
+At session start, append this prompt to PROMPTS.md by copying this file with a tool (not by
+retyping), with an ISO-8601 timestamp with offset, role, harness "Claude Code", source path and
+outcome "(pending)". Fill in the outcome at the end.
+
+## Scope
+
+You own `src/server.ts`, `src/agent/`, `src/ledger/`, `src/workflows/`, `src/http/`, `src/quota/`
+and `tests/agent/` (not its tsconfig.json), plus the append-only files. You read `src/engine/`
+but never edit it. Replace the foundation stubs; keep `tests/agent/foundation.test.ts` passing.
+
+Build what docs/agent/plan.md "agent / Builds" lists: `BillingAgent` with the 8 typed tools on
+`MODEL_ID`, history trimming and memory; the `Ledger` with its schema, seeding from `engine.seed()`,
+state machine, invariants, audit log, single-alarm `timers` queue and idle deletion; the
+`CreditRequestWorkflow` (validate, pending memo, `step.waitForEvent` with an explicit timeout,
+decision from the Ledger, apply or reject, expire); `Quota` (sandbox caps and the neuron
+reservation); every HTTP endpoint in src/contracts/http.ts with admission, the approver token check
+(constant-time hash comparison) and the caps; the per-IP `RATE_LIMITER` before any Durable Object
+call.
+
+Stop 2 facts you build on, measured in local dev:
+
+- Native streaming with tools garbles Llama 3.3's tool arguments on these package versions. Wrap
+  the model: `wrapLanguageModel({ model: workersai(MODEL_ID), middleware:
+  simulateStreamingMiddleware() })` (D-14). It worked end to end in the round trip.
+- The model converted cents to dollars itself when given raw cents. Tools return contract outputs
+  whose amounts are `Money` (D-15); the system prompt tells the model to copy `display` strings.
+- The model repeated an identical `getAccount` call before answering. Serve identical calls within
+  a turn from a per-turn cache and keep the step limit small.
+- One tool round trip cost about 945 input and 69 output tokens (about 40 neurons).
+- `routeAgentRequest` maps every Durable Object binding by name; only `/agents/billing-agent/` may
+  reach it (the foundation test enforces this).
+
+The Workers AI binding is always remote. Tests stub it; they never reach the model.
+
+## Definition of done
+
+As in docs/agent/plan.md "agent / Done", every listed test present and able to fail (plant at
+least the double-credit and decision-race defects and show them going red). Evidence also includes
+one local-dev chat turn against real Llama 3.3 (a handful of calls, never a loop; a readiness probe
+must hit a path that does not call the model) with its tool calls and token usage, and the credit
+flow driven by curl in local dev with the transcript. Report every live model call you made.
+
+## Rules that are easy to miss
+
+- When web docs and the installed type definitions disagree, the installed types win; record the
+  disagreement in docs/DECISIONS.md.
+- Contracts and wrangler.jsonc are frozen. If one is wrong, stop, explain, and wait: the fix is its
+  own PR to main.
+- Decide implementation details yourself; record each non-obvious one at the end of
+  docs/DECISIONS.md headed `## agent: <decision>`, with a one-line reason and "Decided by: Agent
+  engineer under standing orders". Owner questions (AGENTS.md, Decision rights item 3; the security
+  and auth model is one) go in one batched message with a recommendation each; keep working on
+  anything they do not block.
+- Plain ASCII in docs and comments. Small conventional commits, no co-author footers.
+
+## Review loop and finishing
+
+1. Rebase on origin/main (after the engine lane merges, rebase onto it), run the done-contract
+   commands, push `feat/agent` to origin and open the PR with the evidence from
+   docs/agent/verification.md, ending with VERIFIED and NOT VERIFIED lines.
+2. Codex reviews it headless (docs/agent/cross-review.md): write the review prompt to
+   `prompt-history/prompts/03b-agent-review-r1.md` (then `03c-...-r2`, `03d-...-r3`), log it in
+   PROMPTS.md with role "automated cross-review", and run
+   `codex exec -c model_reasoning_effort=high -o <scratch>/review-r1.md "$(cat <prompt-file>)"`.
+3. Fix or rebut each finding, push, post the round summary on the PR. Two full rounds, a third on
+   the delta only, then stop. Anything still disputed goes to the owner as a FOR ANNA list with
+   both positions.
+4. Never merge; the owner merges.
+````
 
 ## 2026-09-29T17:49:03-07:00 - Engine gate review round 1
 
@@ -827,6 +923,139 @@ claude exited pid=65730 status=success
 
 Source: prompt-history/prompts/02-engine.md (entry "2026-09-29T17:25:01-07:00 - Engine lane kickoff"; appended here because PROMPTS.md is append-only for this lane)
 Outcome: Engine lane implemented in src/engine/ and tests/engine/ (110 offline tests green, seed $412.87 September, 38% displayed August change, 0 Workers AI calls). Three Claude gate review rounds completed: round 1 requested four changes, round 2 one, round 3 (delta only) none. CI and owner merge pending.
+
+## 14. Agent PR #4 cross-review, round 1
+
+- Timestamp: 2026-09-29T18:08:39-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/03b-agent-review-r1.md
+- Outcome: CHANGES REQUESTED, 6 findings; 5 fixed with reproducing tests (commits 67dade2..772bf28), the /turn confirmation question moved to the owner (8af8327); summary on PR #4.
+
+````text
+You are the cross-reviewer for PR #4 on annah-dev/cf-billing-copilot (the agent lane), round 1 of 2
+(full review). The PR was written by Claude Code (the Agent/Workflow engineer). You are Codex,
+running read-only: do not edit, commit, push or comment anywhere; your whole output is your review.
+You may run read-only commands such as `npm run typecheck` and `npm test` if the sandbox allows
+(tests are offline: workerd with a stubbed AI binding); say so if it does not.
+
+Review the full branch diff: `git diff origin/main...HEAD` and `git log origin/main..HEAD`. The lane
+owns src/server.ts, src/agent/, src/ledger/, src/workflows/, src/http/, src/quota/ and tests/agent/
+(except its tsconfig.json), plus appends to PROMPTS.md and docs/DECISIONS.md. The PR is a draft: the
+live Llama 3.3 turn and the curl credit flow in local dev are not run yet (they need the owner's
+wrangler login and the engine lane's merge); do not report that absence as a finding, but do check
+that the PR body says so accurately.
+
+Check it against:
+1. prompt-history/prompts/03-agent.md (the lane's kickoff prompt) and docs/agent/plan.md,
+   "agent" (Builds, Done, the Stop 2 findings).
+2. prompt-history/prompts/00-assignment.md (design principles: no LLM money math, typed tools
+   validated with zod, append-only audit with timestamp, actor and reason, idempotency, grounding,
+   security of the approver endpoint).
+3. AGENTS.md (hard rules, decision rights), docs/ARCHITECTURE.md (Ledger invariants, recovery,
+   admission, budgets, flows), docs/DECISIONS.md (D-1, D-4 to D-7, D-9, D-12 to D-15, D-18, DEV-8,
+   DEV-9, DEV-15, DEV-16, and the new "agent:" entries at the end).
+4. docs/agent/verification.md and docs/agent/cross-review.md (use its "What the reviewer checks").
+5. src/contracts/ (frozen): the code must conform to it, not change it.
+
+Look for, most important first:
+- Money and credit-flow correctness: any way to credit a charge twice (across idempotency keys,
+  replays, recovery, concurrent decisions, the sweeper racing the Workflow), money moving against
+  the recorded decision, a transition without exactly one audit record, a refusal that writes more
+  than once, a non-terminal state that can strand, arithmetic on money outside src/engine/ and
+  formatUsd.
+- Security: admission before every sandbox-scoped route including the agent route, fabricated ids
+  causing writes, the approver token check (constant time, hash only, every admin route), any
+  model-reachable write beyond creating a `requested` credit request, secrets or tokens in code or
+  tests, error text leaking internals.
+- Budget and caps: every model call reserving neurons first, caps answered without a model call,
+  the rate limiter running before any Durable Object call, the per-sandbox API cap writing nothing
+  on refusal.
+- Workflow semantics against the installed `agents` and workerd types (installed types win over
+  web docs): `waitForEvent` handling, `AgentWorkflow` params, restart and re-create paths, step
+  results being serialisable and idempotent.
+- Tests that cannot fail or check less than the PR claims; the plan's "agent / Done" items that are
+  missing or only claimed; the skipped test and its re-enable condition.
+- Decisions made that belong to the owner (AGENTS.md, Decision rights item 3), in particular
+  anything in the security and auth model.
+- Scope: files outside the lane, and changes to frozen files.
+- Plain-ASCII violations in docs and code comments.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. Do not report style preferences. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 15. Agent PR #4 cross-review, round 2
+
+- Timestamp: 2026-09-29T18:29:46-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/03c-agent-review-r2.md
+- Outcome: CHANGES REQUESTED; round 1 items accepted except the cap exemption; 2 new majors (forged client history, missing usage) reproduced and fixed (8b87113, 7353674, b5cf47a); summary on PR #4.
+
+````text
+You are the cross-reviewer for PR #4 on annah-dev/cf-billing-copilot (the agent lane), round 2 of 2
+(full review). The PR was written by Claude Code (the Agent/Workflow engineer). You are Codex,
+running read-only: do not edit, commit, push or comment anywhere; your whole output is your review.
+You may run read-only commands such as `npm run typecheck` and `npm test` if the sandbox allows
+(tests are offline: workerd with a stubbed AI binding); say so if it does not.
+
+Review the full branch diff again: `git diff origin/main...HEAD` and `git log origin/main..HEAD`.
+Round 1 (prompt-history/prompts/03b-agent-review-r1.md) found six issues; the author's dispositions
+are in the PR #4 comment "Cross-review round 1" (`gh pr view 4 --comments`) and in commits 67dade2
+to 8af8327. First, for each round-1 finding, say whether the fix is complete and correct, or
+whether the disposition is acceptable: finding 1 was moved to the owner as a question rather than
+fixed (the DECISIONS entry "agent: /turn runs the chat path headless" states it). Then review the
+whole diff afresh with the same scope as round 1.
+
+The lane owns src/server.ts, src/agent/, src/ledger/, src/workflows/, src/http/, src/quota/ and
+tests/agent/ (except its tsconfig.json), plus appends to PROMPTS.md and docs/DECISIONS.md. The PR is
+a draft: the live Llama 3.3 turn and the curl credit flow in local dev are not run yet (they need
+the owner's wrangler login and the engine lane's merge); do not report that absence as a finding,
+but do check that the PR body and comments say so accurately.
+
+Check it against:
+1. prompt-history/prompts/03-agent.md (the lane's kickoff prompt) and docs/agent/plan.md,
+   "agent" (Builds, Done, the Stop 2 findings).
+2. prompt-history/prompts/00-assignment.md (design principles: no LLM money math, typed tools
+   validated with zod, append-only audit with timestamp, actor and reason, idempotency, grounding,
+   security of the approver endpoint).
+3. AGENTS.md (hard rules, decision rights), docs/ARCHITECTURE.md (Ledger invariants, recovery,
+   admission, budgets, flows), docs/DECISIONS.md (D-1, D-4 to D-7, D-9, D-12 to D-15, D-18, DEV-8,
+   DEV-9, DEV-15, DEV-16, and the "agent:" entries at the end).
+4. docs/agent/verification.md and docs/agent/cross-review.md (use its "What the reviewer checks").
+5. src/contracts/ (frozen): the code must conform to it, not change it.
+
+Look for, most important first:
+- Money and credit-flow correctness: any way to credit a charge twice (across idempotency keys,
+  replays, recovery including the new stuck-request paths, concurrent decisions, the sweeper racing
+  the Workflow), money moving against the recorded decision, a transition without exactly one audit
+  record, a refusal that writes more than once, a non-terminal state that can strand, arithmetic
+  on money outside src/engine/ and formatUsd.
+- Security: admission before every sandbox-scoped route including the agent route, fabricated ids
+  causing writes, the approver token check, any model-reachable write beyond creating a
+  `requested` credit request, any client-controlled input that changes server policy (the round-1
+  metadata issue is the pattern), error text leaking internals.
+- Budget and caps: every model call reserving a true upper bound first, caps answered without a
+  model call, continuations and other SDK paths that reach onChatMessage, the rate limiter before
+  any Durable Object call.
+- Workflow semantics against the installed `agents` and workerd types (installed types win).
+- Tests that cannot fail or check less than the PR claims; plan "agent / Done" items missing or
+  only claimed.
+- Decisions that belong to the owner; scope; frozen files; plain ASCII in docs and comments.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then a "Round 1 findings" section
+(one line each: fixed, acceptable, or not fixed, with the reason), then numbered new findings, most
+severe first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and
+the fix you suggest. Do not report style preferences. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
 
 ## 2026-09-29T18:44:47-07:00 - Engine seed realism and gate prompt recovery
 
@@ -1152,6 +1381,48 @@ Intent conformance (required): the User intent above is authoritative acceptance
 
 Pipeline phase (review is pre-push): this same run owns push, pull-request creation or update, and CI monitoring in later pipeline steps. Do NOT emit findings solely because the remote branch, push, pull request, or CI for this run's change is missing or not yet present - those are outputs this pipeline produces later. Continue reviewing the implementation and every source-verifiable acceptance criterion. Requirements about a pre-existing external PR, a specific third-party artifact, or lifecycle state not owned by the current run remain fully enforceable.
 
+## 16. Agent PR #4 cross-review, round 3 (delta only)
+
+- Timestamp: 2026-09-29T18:47:33-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/03d-agent-review-r3.md
+- Outcome: CHANGES REQUESTED; usage fix confirmed; 2 majors in the round-2 provenance fix (forged error text, execution order) reproduced and fixed in 9aa8b9c, not re-reviewed (last round); summary on PR #4.
+
+````text
+You are the cross-reviewer for PR #4 on annah-dev/cf-billing-copilot (the agent lane), round 3: a
+delta-only review, the last round. The PR was written by Claude Code (the Agent/Workflow engineer).
+You are Codex, running read-only: do not edit, commit, push or comment anywhere; your whole output
+is your review. You may run read-only commands such as `npm run typecheck` and `npm test` if the
+sandbox allows; say so if it does not.
+
+Review only the delta since round 2: `git diff dfb4e0a HEAD` and `git log dfb4e0a..HEAD`. Round 2
+(prompt-history/prompts/03c-agent-review-r2.md) raised two findings; the author's dispositions are
+in the PR #4 comment "Cross-review round 2" (`gh pr view 4 --comments`):
+1. Client-controlled history (cf_agent_chat_messages) could fabricate an answered credit
+   confirmation to bypass the message cap, and could plant tool results in the model's context.
+   The fix is src/agent/provenance.ts and its use in src/agent/billing-agent.ts and
+   src/agent/tools.ts.
+2. A model response without usage settled its neuron reservation as zero (src/agent/model.ts).
+
+For each, say whether the fix is complete and correct against the installed `agents`,
+`@cloudflare/ai-chat` and `ai` sources (installed types and code win over web docs). In particular
+check: every SDK path by which client-supplied messages or tool parts can reach the model or
+trigger a tool execution; whether a genuine confirmation, a denial, the headless /turn path and
+repeated identical tool calls (the per-turn cache) still work; whether the input and output hashes
+can differ for genuine parts (serialisation, key order, undefined fields) and silently drop real
+history; and whether any usage shape still settles below the reserved bound. Then report any new
+defect the delta introduces, including in the new tests (can they fail?) and docs/DECISIONS.md.
+Report only defects in or caused by the delta. Mark anything you cannot verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), the two finding verdicts, then
+numbered new findings, most severe first, each with severity (blocker, major, minor, nit), file and
+line, what is wrong, and the fix you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
 ## 2026-09-29T18:55:18-07:00 - Engine gate review round 4 (seed realism follow-up)
 
 Role: automated cross-review
@@ -1258,3 +1529,58 @@ Pipeline phase (review is pre-push): this same run owns push, pull-request creat
 
 Source: prompt-history/prompts/02c-engine-seed-realism-followup.md (entry "2026-09-29T18:44:47-07:00 - Engine seed realism and gate prompt recovery"; appended here because PROMPTS.md is append-only for this lane)
 Outcome: Seed engine-v2 gives every customer and meter deterministic daily variation with quieter UTC weekends; July quantities and invoices differ from August; all August/September quantities and invoices are unchanged ($299.18, $412.87, 38%); only the September 18 5x spike is detected. 113 offline tests green, 0 Workers AI calls. Exact review prompts for rounds 1-3 recovered into the 02g archives. Gate review round 4 returned no findings. CI and owner merge pending.
+
+## 17. Misdirected paste (engine lane text, typed mid-session)
+
+- Timestamp: 2026-09-29T19:26:38-07:00 (logged; pasted into this session during PR #4 review round 2, about 18:30 to 18:45 -07:00)
+- Role: Agent/Workflow engineer (addressed to the Engine engineer)
+- Harness: Claude Code
+- Source: prompt-history/prompts/03e-agent-misdirected-engine-paste.md
+- Outcome: not acted on (engine lane scope); the owner confirmed it was meant for the engine session.
+
+````text
+Before I merge PR #3, one more round, then the usual gate review:
+
+1. Seed realism. Every customer's July and August invoices are identical to the cent because
+   daily usage is constant (3,000 requests every day except the spike). Give usage a
+   deterministic day-to-day shape (for example weekday and weekend) on every meter and customer.
+   Keep each customer's August and September monthly quantities exactly as they are, so those
+   invoices, $412.87 and the 38% change do not move; make July's quantities differ from
+   August's. The anomaly detector must still flag only the September 18 spike, so keep normal
+   daily variation well under 3x the baseline. Update the seed tests and src/engine/README.md.
+2. Gate prompt text. The gate runs Claude Code (claude pid=54062 in round 1), and Claude Code
+   normally saves each session, including its prompt, under ~/.claude/projects. Look there
+   read-only for the gate sessions of this PR's review rounds, match them by time and content,
+   and put the exact prompt text into the 02g files. If you cannot find them, keep the current
+   note and say where you looked. Copy nothing else from those logs.
+````
+
+## 18. /turn confirmation answer (A3) and live evidence (typed mid-session)
+
+- Timestamp: 2026-09-29T19:26:38-07:00
+- Role: Agent/Workflow engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/03f-agent-owner-turn-confirm-and-live.md
+- Outcome: (pending)
+
+````text
+A3, and B: see below. Engine PR #3 is merged (main is at 9883215), so rebase now.
+
+Why A3 and not A1: a state-changing action needs the customer's explicit confirmation on every
+path, and the eval path should exercise the same policy as the product, not a bypass. Open a small
+contract PR to main that adds confirm (boolean, default false) to the /turn request body: without
+it /turn only proposes the credit request; with it the request starts, and the audit record shows
+the customer confirmed. I will merge that PR first; then rebase this branch onto it.
+
+B: my wrangler credentials had stopped working and I have logged in again. Run npx wrangler whoami
+in this worktree and show me the output; if it works, go ahead with the live chat turn and the curl
+credit flow (5 to 8 model calls is fine). Also check your transcript: when you ran the tests
+"without credentials", did anything move, delete or overwrite ~/.config/.wrangler? Tell me either
+way, and in future hide credentials only through environment variables in the command itself.
+
+After the rebase and the A3 change, run one more delta-only Codex review covering the round-3
+fixes (not yet re-reviewed) and the A3 change.
+
+The engine message I pasted here earlier was meant for the engine session. You were right not to
+act on it; log it in PROMPTS.md as a misdirected paste.
+````

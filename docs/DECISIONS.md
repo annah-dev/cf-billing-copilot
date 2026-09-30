@@ -441,3 +441,198 @@ Not chosen: skipping confirmation on `/turn` (the agent lane's first proposal) a
 confirmation everywhere with no way to give it over `/turn`.
 
 Decided by: Anna.
+
+## agent: the engine runs inside the Ledger
+
+Tool reads, the panel and credit validation call the engine inside the `Ledger` Durable Object,
+next to the data, and return contract outputs; the agent validates each output against its tool
+schema. The immutable seed tables are cached per instance; ledger entries, requests and memos are
+read fresh. Reason: one source of truth, and no dataset shipped over RPC per tool call.
+
+Decided by: Agent engineer under standing orders.
+
+## agent: admission without writes
+
+`seed()` is the only code that creates the Ledger schema. Admission is a read of `sqlite_master`
+plus the `meta`, `customers` and `counters` rows; a refusal (404, 401, 429) writes nothing, and an
+admitted request increments the daily API counter and the last-activity time. Every
+sandbox-scoped route counts, including the agent WebSocket upgrade and agent HTTP requests
+(`onBeforeConnect`, `onBeforeRequest`); chat messages after connect are capped by the message cap
+instead. The approver token is checked in the Ledger by comparing SHA-256 digests with
+`crypto.subtle.timingSafeEqual`. Reason: fabricated ids must cost no storage (D-12).
+
+Decided by: Agent engineer under standing orders.
+
+## agent: credit request ids and duplicate handling
+
+- The request id is `cr_` plus the first 24 hex characters of the idempotency key, and the
+  Workflow instance id is the request id. Reason: a retried claim maps to the same request and the
+  same instance; recovery and tests can compute the id.
+- A retried key returns the recorded request whatever its status, including a terminal one. A
+  customer cannot re-file the identical claim after it expired or was rejected. Reason: idempotency
+  first; the demo never needs a second attempt on the same charge.
+- "A second open request for the same charge returns the first": an open request on the same
+  invoice matches when either side names no disputed entry, because the charge is only known after
+  validation. Reason: the conservative reading; the reservation in `createPendingMemo` remains the
+  hard guarantee.
+- `validate` records the validated amount and the resolved disputed entry (audit
+  `credit_validated`) without changing status; `createPendingMemo` re-runs
+  `engine.validateCreditClaim` against every pending and applied memo inside its transaction and
+  either reserves (memo `pending`, status `pending_approval`, audit `memo_pending`) or rejects
+  (`credit_validation_failed`). Reason: the reservation check and the write must be one
+  transaction.
+- A replayed approve after the credit was applied is "already", not a refused transition.
+
+Decided by: Agent engineer under standing orders.
+
+## agent: Workflow behaviour and the waitForEvent timeout error
+
+- Each step returns the Ledger's current state, so a restarted instance resumes wherever the
+  request is (validate, memo, wait, or straight to settling a recorded decision).
+- The approval event is only a wake-up: after the wait the Workflow reads the recorded decision
+  (`read-decision`), and on timeout the `expire` step expires only when no decision is recorded.
+  A wake-up without a recorded decision leaves the request pending for the sweeper.
+- Measured in local dev (vitest-pool-workers, `forceEventTimeout`): `waitForEvent` throws
+  `WorkflowTimeoutError: Execution timed out after 86400000ms`. The Workflow still catches any
+  error from that one call; the name is reported in the instance output (`waitError`). Settles
+  the open question in the DEV table for local dev; production is not verified.
+- Progress goes to the agent with `reportProgress`, which broadcasts
+  `{ type: "credit-request-update", requestId, status }` to connected chat clients (best effort,
+  outside the contracts; the UI may refresh the panel on it).
+
+Decided by: Agent engineer under standing orders.
+
+## agent: recovery details
+
+- An instance blocked in `waitForEvent` reports `running` in local dev, although `InstanceStatus`
+  in the installed types includes `waiting`. The sweeper therefore resends the approval event to
+  any live instance (`queued`, `running`, `waiting`, `paused`, `waitingForPause`); an instance not
+  yet waiting buffers it. A request whose instance is gone, complete or failed is finished through
+  the Ledger transitions.
+- A missing instance for a `requested` request is created with the same params `runWorkflow`
+  builds (`__agentName` and the rest, which `AgentWorkflow` requires); `errored` or `terminated`
+  instances are restarted. Both write `workflow_restarted` (the audit enum has no separate "started"
+  action). The agent's own restart on "already exists" (D-9) is audited the same way.
+- A request still `requested` an hour after creation, or decided but unfinished 30 minutes after
+  the decision, is driven through the Ledger transitions directly even if its instance reports a
+  live state (for example paused). Reason: a stuck instance must not strand a request or keep the
+  sweeper re-driving it forever; racing a live instance is safe because every transition is
+  idempotent.
+- Recovery actor is `system:sweeper`; Workflow-timeout expiry is `system`.
+
+Decided by: Agent engineer under standing orders.
+
+## agent: approver identity
+
+Decisions are recorded with actor `approver:<sandboxId>`: `ActorSchema` requires 32 hex
+characters, and a sandbox has exactly one approver token (D-4). Reason: stable and meaningful
+without exposing any part of the token or its hash.
+
+Decided by: Agent engineer under standing orders.
+
+## agent: /turn runs the chat path headless
+
+`POST .../turn` submits the user message through `saveMessages`, so it runs the same
+`onChatMessage` (caps, budget, tools, history) and lands in the same persisted conversation. The
+agent marks the message as headless in server memory (a set of message ids filled only by
+`headlessTurn`); message metadata is client-controlled and is never trusted for this. Refusals
+before any model call return the contract error (429 `cap_reached` or `budget_exhausted`); a turn
+whose later step hit the budget returns 200 with the fixed text.
+
+Whether a headless turn may skip the customer confirmation of `startCreditRequest` is an owner
+question (security model, AGENTS.md Decision rights item 3), asked in PR #4. Until the owner
+answers, the code implements the recommended option (no confirmation step on `/turn`, so the eval
+harness and the curl evidence can drive user story 5; the chat keeps `needsApproval`), and the PR
+stays in draft. The owner's answer will be recorded as its own entry.
+
+Decided by: Agent engineer under standing orders (the /turn mechanics only; the confirmation
+question is the owner's).
+
+## agent: model settings, budget estimate and history
+
+- `temperature: 0`, `maxOutputTokens` from `MAX_OUTPUT_TOKENS`, `stopWhen: stepCountIs(4)`.
+- The budget middleware sits inside `simulateStreamingMiddleware` (the simulated stream calls
+  `doGenerate`, which it wraps). Input tokens are bounded by the UTF-8 byte length of the
+  serialised prompt and tool definitions plus 8 template tokens per message (Llama 3's tokenizer
+  is byte-level BPE: a text token covers at least one byte), output by `maxOutputTokens`; a failed
+  call is settled at its estimate, and actual usage above the estimate is recorded, never clamped,
+  and logged. Reason: the reservation must be a true upper bound for the stop to hold (PR #4 review
+  round 1); it over-reserves about 3 to 4 times and is settled right after the call.
+- A call whose usage is missing or zero (the provider reports absent usage as 0) is settled at
+  its bound for the missing part, never as free. Reason: an unreported call must not release its
+  reservation (PR #4 review round 2).
+- Only a continuation that resumes a server-issued credit confirmation the customer just answered
+  is exempt from the message cap, once. Any other continuation, such as an approval frame for an
+  unknown, forged or already-answered tool call (which the SDK still continues), is charged as a
+  message. Reason: fabricated frames must not buy model calls past the cap.
+- History sent to the model: tool calls older than the last two messages pruned, then oldest
+  messages dropped until an estimated 12,000 tokens remain, starting at a user message. A credit
+  confirmation left unanswered when the customer types something else is closed as denied.
+- Memory, in the agent's SQLite: customer name and plan name (from `getAccount`), the last 8
+  questions (160 characters each) and credit request ids started in the chat. No amounts are
+  stored; the prompt says memory is context only and numbers are fetched again.
+- Tool failures reach the UI stream as message strings. Every tool turns unexpected errors into a
+  generic `ToolError` (logged), so the text shown is either an input-validation message or the
+  tool's own refusal.
+
+Decided by: Agent engineer under standing orders.
+
+## agent: storage sizing and deletion
+
+`usage_daily` and the other composite-key tables are `WITHOUT ROWID`, so each insert is one
+b-tree write. Seeding and deletion sum SQLite's `rowsWritten` per statement; idle deletion runs a
+`DELETE` per table (measured), then `deleteAlarm` and `deleteAll`. The agent deletes itself with
+`Agent.destroy()` from an SDK schedule after `SANDBOX_IDLE_DAYS` without a message; `onStart`
+keeps exactly one pending `idleSweep`, so an agent that is only connected to, or whose first
+message is refused, is deleted too. Reason: D-7 asks for measured rows written for both phases,
+and no agent storage may outlive its idle period.
+
+Decided by: Agent engineer under standing orders.
+
+## agent: HTTP details
+
+- `POST /api/sandboxes` answers 201 with `Cache-Control: no-store` (the approver token is in the
+  body). The per-IP sandbox counter is keyed by SHA-256 of the UTC day and the IP, so stored
+  hashes do not link across days.
+- The rate limiter keys on `CF-Connecting-IP` (`unknown` when absent, as in local dev) and runs on
+  every `/api/*` and `/agents/*` request except `/api/health`, the readiness probe, which touches
+  no Durable Object and never calls the model.
+- A known path with the wrong method answers the contract 404 (`ErrorCodeSchema` has no 405).
+
+Decided by: Agent engineer under standing orders.
+
+## agent: installed types versus the DOM lib for timingSafeEqual
+
+`crypto.subtle.timingSafeEqual` is declared in the installed workerd types (env.d.ts), but the
+root tsconfig also loads the DOM lib, whose `SubtleCrypto` hides it. The code calls it through a
+narrow typed view. Reason: installed types win; no config change needed.
+
+Decided by: Agent engineer under standing orders.
+
+## agent: test design
+
+Workers tests replace `src/engine` with a schema-valid fake through `vi.mock` (it reaches code
+inside Durable Objects, checked), so the agent lane's tests do not depend on the engine lane's
+numbers. The AI binding is stubbed by replacing `env.AI.run` with scripted Workers AI replies,
+which exercises `workers-ai-provider` and the middleware stack. The one test that needs the real
+seed (rows written for seeding and deletion under 2,500) skips while `engine.seed()` is the stub.
+
+Decided by: Agent engineer under standing orders.
+
+## agent: the server owns tool history
+
+The Agents SDK accepts conversation history from the client (`cf_agent_chat_messages` and the
+messages in each chat request). The agent records, in its own SQLite (`issued_tool_calls`, newest
+1,000 rows), every tool call it issues (id, tool name, SHA-256 of the canonical input, and whether
+it awaits the customer's confirmation), every output its tools return (SHA-256) and the text of
+every tool failure. All writes are upserts, because the AI SDK executes a tool before the step's
+`onStepFinish` runs. Before each model call, the history sent to the model keeps a tool part only
+in a state the server produces: an output whose hash matches, an error whose text is replaced by
+the server's recorded text (a generic text if none), or a confirmation state for a call the server
+issued for confirmation; anything else is dropped. So a forged "approved" confirmation never
+executes and a forged tool result or error never reaches the model as grounding. Assistant and
+user text is not filtered: it carries no tool authority. Reason: grounding (every number from a
+real tool result) and the message cap must not depend on client honesty (PR #4 review rounds 2
+and 3).
+
+Decided by: Agent engineer under standing orders.
