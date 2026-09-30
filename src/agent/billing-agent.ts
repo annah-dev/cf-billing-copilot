@@ -26,6 +26,7 @@ import { CREDIT_WORKFLOW } from "../workflows/params";
 import { historyForModel } from "./history";
 import { billingModel, newTurnStats, type TurnStats } from "./model";
 import { EMPTY_MEMORY, systemPrompt, type Memory } from "./prompt";
+import { ToolProvenance } from "./provenance";
 import { ToolError, buildTools } from "./tools";
 
 /** Model calls per turn: tool round trips plus the answer. Small on purpose (Stop 2 finding). */
@@ -93,6 +94,14 @@ export class BillingAgent extends AIChatAgent<Env> {
    * cannot mark its own message headless (message metadata is client-controlled).
    */
   private headlessMessageIds = new Set<string>();
+
+  private provenanceStore: ToolProvenance | undefined;
+
+  /** Server-issued tool calls and outputs; the model only sees tool parts that match them. */
+  private get provenance(): ToolProvenance {
+    this.provenanceStore ??= new ToolProvenance(this.ctx.storage.sql);
+    return this.provenanceStore;
+  }
 
   async onStart(): Promise<void> {
     this
@@ -214,23 +223,6 @@ export class BillingAgent extends AIChatAgent<Env> {
     await this.destroy();
   }
 
-  /**
-   * True when this continuation resumes a credit confirmation the customer just answered: the
-   * newest assistant message has a tool part in `approval-responded`. Any other continuation (for
-   * example an approval frame for an unknown or already-answered tool call, which the SDK still
-   * continues) is charged against the message cap like a new message.
-   */
-  private answeredConfirmationPending(): boolean {
-    const assistant = [...this.messages]
-      .reverse()
-      .find((m) => m.role === "assistant");
-    return (
-      assistant?.parts.some(
-        (p) => "state" in p && p.state === "approval-responded"
-      ) ?? false
-    );
-  }
-
   // ---- Credit requests ------------------------------------------------------------------------
 
   private async startCreditRequest(input: {
@@ -325,7 +317,13 @@ export class BillingAgent extends AIChatAgent<Env> {
       : false;
     const continuation = options?.continuation ?? false;
 
-    if (!continuation || !this.answeredConfirmationPending()) {
+    // Only a continuation that resumes a server-issued credit confirmation the customer just
+    // answered is exempt from the message cap; any other continuation (a stray or forged approval
+    // frame, which the SDK still continues) is charged as a message.
+    const exempt =
+      continuation &&
+      (await this.provenance.consumeAnsweredConfirmation(this.messages));
+    if (!exempt) {
       if (!continuation) {
         const text = textOf(lastUser);
         if (text.length > config.MESSAGE_MAX_CHARS) {
@@ -363,7 +361,9 @@ export class BillingAgent extends AIChatAgent<Env> {
         customerId,
         ledger: this.ledger(),
         startCreditRequest: (input) => this.startCreditRequest(input),
-        remember: (name, output) => this.remember(name, output)
+        remember: (name, output) => this.remember(name, output),
+        recordOutput: (toolCallId, output) =>
+          this.provenance.recordOutput(toolCallId, output)
       },
       cache,
       { confirmCredit: !headless }
@@ -374,10 +374,15 @@ export class BillingAgent extends AIChatAgent<Env> {
         neuronStop: config.NEURON_DAILY_STOP
       }),
       system: systemPrompt(this.memory(), utcDay(Date.now())),
-      messages: await historyForModel(this.messages, {
-        continuation
-      }),
+      messages: await historyForModel(
+        await this.provenance.verified(this.messages),
+        {
+          continuation
+        }
+      ),
       tools,
+      onStepFinish: (step) =>
+        this.provenance.recordIssued(step.toolCalls, !headless),
       stopWhen: stepCountIs(MAX_STEPS),
       maxOutputTokens: config.MAX_OUTPUT_TOKENS,
       temperature: 0,

@@ -27,6 +27,8 @@ export type ToolHost = {
   }): Promise<Result<{ request: CreditRequest; existing: boolean }>>;
   /** Called after getAccount and startCreditRequest so the agent can update its memory. */
   remember(name: ToolName, output: unknown): void;
+  /** Record the output the server produced for a tool call (provenance.ts). */
+  recordOutput(toolCallId: string, output: unknown): Promise<void>;
 };
 
 export class ToolError extends Error {
@@ -127,7 +129,7 @@ export function buildTools(
     });
   }
 
-  return {
+  const tools: ToolSet = {
     getAccount: tool({
       description: ToolSchemas.getAccount.description,
       inputSchema: ToolSchemas.getAccount.input,
@@ -224,4 +226,19 @@ export function buildTools(
       })
     })
   };
+  // Every output the server produces is recorded, so a client cannot plant a tool result.
+  type Execute = NonNullable<ToolSet[string]["execute"]>;
+  for (const t of Object.values(tools)) {
+    const execute = t.execute as Execute | undefined;
+    if (!execute) continue;
+    const recorded: Execute = async (input, options) => {
+      const output = await execute(input, options);
+      if (options?.toolCallId) {
+        await host.recordOutput(options.toolCallId, output);
+      }
+      return output;
+    };
+    t.execute = recorded;
+  }
+  return tools;
 }
