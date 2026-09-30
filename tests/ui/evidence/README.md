@@ -4,13 +4,13 @@ Fixture preview captured from the actual `npm run dev` app at 1440 x 1000 and 39
 Full-page screenshots retain content beyond the initial viewport; the panel images crop the panel
 within each layout. The fixture banner distinguishes illustrative UI values from the engine seed.
 
-| State | Desktop layout | 390 px layout |
-|---|---|---|
-| Chat and invoice tool evidence | [chat](chat-1440.png) | [chat](chat-390.png) |
-| Invoice, credits, audit panel | [panel](panel-1440.png) | [panel](panel-390.png) |
-| Customer credit confirmation | [confirmation](confirmation-1440.png) | [confirmation](confirmation-390.png) |
-| Admin pending review | [admin](admin-1440.png) | [admin](admin-390.png) |
-| Daily cap with limit and UTC reset | [cap](cap-1440.png) | [cap](cap-390.png) |
+| State                              | Desktop layout                        | 390 px layout                        |
+| ---------------------------------- | ------------------------------------- | ------------------------------------ |
+| Chat and invoice tool evidence     | [chat](chat-1440.png)                 | [chat](chat-390.png)                 |
+| Invoice, credits, audit panel      | [panel](panel-1440.png)               | [panel](panel-390.png)               |
+| Customer credit confirmation       | [confirmation](confirmation-1440.png) | [confirmation](confirmation-390.png) |
+| Admin pending review               | [admin](admin-1440.png)               | [admin](admin-390.png)               |
+| Daily cap with limit and UTC reset | [cap](cap-1440.png)                   | [cap](cap-390.png)                   |
 
 Start the existing dev server without remote bindings:
 
