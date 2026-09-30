@@ -36,8 +36,9 @@ customer isolation, sandbox reset, fragment removal, storage refusal and horizon
 No browser exception or `/api/` or `/agents/` request occurred. Screenshots were visually inspected
 for readable seeded names, meters, confirmation actions, historical audit and mobile layout.
 
-The automated suite has 146 passing tests: 113 on main after the engine merge plus 33 UI tests.
-Collection comparison in [test-collection.txt](test-collection.txt) reports no removed tests.
+The UI adds 33 tests to the suite on main. The collection comparison in
+[test-collection.txt](test-collection.txt) records the main and head counts and reports no removed
+tests.
 New tests compare every customer's fixture invoice, plan, balance, credits and historical audit
 with the seed; comparison, simulation and anomaly tool outputs with engine results; and credit
 validation and the approved balance with engine results while preserving the issued invoice.
