@@ -141,6 +141,13 @@ describe("chat channel (WebSocket)", () => {
       await countRows(sb.sandboxId, "credit_requests", `id = '${rid}'`)
     ).toBe(1);
     expect(
+      await countRows(
+        sb.sandboxId,
+        "audit_log",
+        `request_id = '${rid}' AND action = 'credit_requested' AND reason LIKE 'Confirmed by the customer in the chat:%' AND after_json LIKE '%"confirmedVia":"chat"%'`
+      )
+    ).toBe(1);
+    expect(
       (await (await env.CREDIT_WORKFLOW.get(rid)).status()).status
     ).toBeDefined();
     ws.close();

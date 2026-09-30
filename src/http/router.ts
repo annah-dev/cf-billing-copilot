@@ -215,9 +215,10 @@ async function turn(
     env.BillingAgent,
     `${sandboxId}.${customerId}`
   );
-  const result = (await agent.headlessTurn(body.data.message)) as Awaited<
-    ReturnType<BillingAgent["headlessTurn"]>
-  >;
+  const result = (await agent.headlessTurn(
+    body.data.message,
+    body.data.confirm
+  )) as Awaited<ReturnType<BillingAgent["headlessTurn"]>>;
   if (!result.ok) return errorResponse(plainRefusal(result));
   return Response.json(TurnResponseSchema.parse(result.turn));
 }

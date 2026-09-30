@@ -35,6 +35,7 @@ async function newRequest(
   disputed: string | null = DUP_ENTRY
 ): Promise<string> {
   const created = await ledgerOf(sandboxId).createCreditRequest({
+    confirmedVia: "chat",
     customerId: ACME,
     invoiceId: INV_SEP,
     disputedLedgerEntryId: disputed,
@@ -218,6 +219,7 @@ describe("credit invariants", () => {
     const ledger = ledgerOf(sb.sandboxId);
     const make = async (disputed: string | null) =>
       ledger.createCreditRequest({
+        confirmedVia: "chat",
         customerId: ACME,
         invoiceId: INV_SEP,
         disputedLedgerEntryId: disputed,

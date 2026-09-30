@@ -24,6 +24,8 @@ export type ToolHost = {
     disputedLedgerEntryId: string | null;
     reason: string;
     idempotencyKey: string;
+    /** How the customer confirmed (D-20): the chat's approval step or /turn's confirm. */
+    confirmedVia: "chat" | "turn";
   }): Promise<Result<{ request: CreditRequest; existing: boolean }>>;
   /** Called after getAccount and startCreditRequest so the agent can update its memory. */
   remember(name: ToolName, output: unknown): void;
@@ -198,6 +200,8 @@ export function buildTools(
           invoiceId: parsed.invoiceId,
           disputedLedgerEntryId: disputed,
           reason: parsed.reason,
+          // needsApproval on: execute runs only after the chat's approval step.
+          confirmedVia: options.confirmCredit ? "chat" : "turn",
           idempotencyKey: await creditIdempotencyKey(
             host.sandboxId,
             customerId,

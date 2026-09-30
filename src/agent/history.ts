@@ -20,7 +20,10 @@ export function estimateTokens(value: unknown): number {
  * A credit confirmation the customer never answered (they typed a new message instead) is closed
  * as denied, so the model sees a settled tool call rather than a dangling one.
  */
-export function settleUnansweredApprovals(messages: UIMessage[]): UIMessage[] {
+export function settleUnansweredApprovals(
+  messages: UIMessage[],
+  reason = "The customer did not confirm and moved on."
+): UIMessage[] {
   return messages.map((m) => {
     if (m.role !== "assistant") return m;
     let changed = false;
@@ -38,7 +41,7 @@ export function settleUnansweredApprovals(messages: UIMessage[]): UIMessage[] {
           approval: {
             id: p.approval.id,
             approved: false as const,
-            reason: "The customer did not confirm and moved on."
+            reason
           }
         };
       }
@@ -76,10 +79,17 @@ export function trimHistory(
 
 export async function historyForModel(
   messages: UIMessage[],
-  options: { continuation: boolean }
+  options: { continuation: boolean; confirmedTurn?: boolean }
 ): Promise<ModelMessage[]> {
+  // A proposal left unanswered is closed before the next turn. In a /turn sent with confirm: true
+  // the customer is confirming now, so the model is told to make the request again in this turn.
   const settled = options.continuation
     ? messages
-    : settleUnansweredApprovals(messages);
+    : settleUnansweredApprovals(
+        messages,
+        options.confirmedTurn
+          ? "Not started yet: the customer confirms it in the next message; call the tool again to start it."
+          : undefined
+      );
   return trimHistory(await convertToModelMessages(settled));
 }

@@ -33,6 +33,7 @@ async function errorOf(res: Response) {
 async function pendingRequest(sandboxId: string): Promise<string> {
   const ledger = ledgerOf(sandboxId);
   const created = await ledger.createCreditRequest({
+    confirmedVia: "chat",
     customerId: ACME,
     invoiceId: INV_SEP,
     disputedLedgerEntryId: DUP_ENTRY,

@@ -539,14 +539,18 @@ agent marks the message as headless in server memory (a set of message ids fille
 before any model call return the contract error (429 `cap_reached` or `budget_exhausted`); a turn
 whose later step hit the budget returns 200 with the fixed text.
 
-Whether a headless turn may skip the customer confirmation of `startCreditRequest` is an owner
-question (security model, AGENTS.md Decision rights item 3), asked in PR #4. Until the owner
-answers, the code implements the recommended option (no confirmation step on `/turn`, so the eval
-harness and the curl evidence can drive user story 5; the chat keeps `needsApproval`), and the PR
-stays in draft. The owner's answer will be recorded as its own entry.
+Credit confirmation follows D-20 (decided by the owner). The per-message record also holds the
+request's `confirm` flag. Without it the turn runs with the same `needsApproval` step as the chat,
+so the model can only propose a credit request; `/turn` reports it as a `startCreditRequest` call
+with no output and the error "Awaiting the customer's confirmation...". With `confirm: true` a
+credit request started in that turn goes ahead. A proposal left unanswered from an earlier turn is
+closed before the next one; in a confirmed turn the model is told it was not started yet and to
+call the tool again. The `credit_requested` audit record reads "Confirmed by the customer in the
+chat" or "... via /turn (confirm: true)", and its `after` carries `confirmedBy: "customer"` and
+`confirmedVia`. Reason: one policy on every path, visible in the audit trail.
 
-Decided by: Agent engineer under standing orders (the /turn mechanics only; the confirmation
-question is the owner's).
+Decided by: Agent engineer under standing orders (the mechanics; the policy is D-20, decided by
+Anna).
 
 ## agent: model settings, budget estimate and history
 

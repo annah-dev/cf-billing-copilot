@@ -13,6 +13,7 @@ import {
 import { estimateInputTokens } from "../../src/agent/model";
 import { ToolProvenance } from "../../src/agent/provenance";
 import { buildTools, type ToolHost } from "../../src/agent/tools";
+import { AWAITING_CONFIRMATION } from "../../src/agent/billing-agent";
 import { ACME, DUP_ENTRY, INV_SEP } from "./support/fake-engine";
 import {
   call,
@@ -41,8 +42,12 @@ type TurnBody = {
   usage: { inputTokens: number; outputTokens: number; modelCalls: number };
 };
 
-async function turnOk(sandboxId: string, message: string): Promise<TurnBody> {
-  const res = await turn(sandboxId, ACME, message);
+async function turnOk(
+  sandboxId: string,
+  message: string,
+  confirm?: boolean
+): Promise<TurnBody> {
+  const res = await turn(sandboxId, ACME, message, confirm);
   expect(res.status, await res.clone().text()).toBe(200);
   return (await res.json()) as TurnBody;
 }
@@ -295,7 +300,7 @@ describe("memory and history", () => {
       }),
       text("Submitted.")
     ]);
-    const credit = await turnOk(sb.sandboxId, "I was double-charged");
+    const credit = await turnOk(sb.sandboxId, "I was double-charged", true);
     const requestId = (
       credit.toolCalls[0].output as { request: { id: string } }
     ).request.id;
@@ -508,5 +513,72 @@ describe("neuron estimate", () => {
       return verified[0].parts.map((x) => x.type);
     });
     expect(kept).toEqual(["text", "tool-getInvoice"]);
+  });
+});
+
+describe("credit confirmation on /turn (D-20)", () => {
+  const CLAIM = {
+    invoiceId: INV_SEP,
+    disputedLedgerEntryId: DUP_ENTRY,
+    reason: "charged twice"
+  };
+
+  it("only proposes a credit request when the turn is not confirmed", async () => {
+    const sb = await createSandbox();
+    const ai = stubAi([toolCall("startCreditRequest", CLAIM)]);
+    const body = await turnOk(sb.sandboxId, "I was double-charged");
+    expect(ai).toHaveBeenCalledTimes(1);
+    expect(body.toolCalls).toEqual([
+      {
+        name: "startCreditRequest",
+        input: CLAIM,
+        output: null,
+        error: AWAITING_CONFIRMATION
+      }
+    ]);
+    expect(await countRows(sb.sandboxId, "credit_requests")).toBe(1); // the seeded one only
+    // An explicit confirm: false is the same as leaving it out.
+    stubAi([toolCall("startCreditRequest", CLAIM)]);
+    const again = await turnOk(sb.sandboxId, "Please do it", false);
+    expect(again.toolCalls[0].error).toBe(AWAITING_CONFIRMATION);
+    expect(await countRows(sb.sandboxId, "credit_requests")).toBe(1);
+  });
+
+  it("starts the request when the turn is confirmed, and the audit shows the confirmation", async () => {
+    const sb = await createSandbox();
+    stubAi([toolCall("startCreditRequest", CLAIM)]);
+    await turnOk(sb.sandboxId, "I was double-charged");
+    const ai = stubAi([
+      toolCall("startCreditRequest", CLAIM),
+      text("Started.")
+    ]);
+    const body = await turnOk(
+      sb.sandboxId,
+      "Yes, I confirm. Please start it.",
+      true
+    );
+    // The model was told the earlier proposal is not started yet and to call the tool again.
+    expect(JSON.stringify(ai.mock.calls[0][1])).toContain("Not started yet");
+    const output = body.toolCalls[0].output as {
+      request: { id: string; status: string };
+    };
+    expect(body.toolCalls[0].error).toBeNull();
+    expect(output.request.status).toBe("requested");
+    const audit = await runInDurableObject(ledgerOf(sb.sandboxId), (_i, s) =>
+      s.storage.sql
+        .exec<{ actor: string; reason: string; after_json: string }>(
+          "SELECT actor, reason, after_json FROM audit_log WHERE request_id = ? AND action = 'credit_requested'",
+          output.request.id
+        )
+        .one()
+    );
+    expect(audit.actor).toBe(`customer:${ACME}`);
+    expect(audit.reason).toBe(
+      "Confirmed by the customer via /turn (confirm: true): charged twice"
+    );
+    expect(JSON.parse(audit.after_json)).toMatchObject({
+      confirmedBy: "customer",
+      confirmedVia: "turn"
+    });
   });
 });

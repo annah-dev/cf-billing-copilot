@@ -114,11 +114,14 @@ export function stubAi(replies: AiReply[]) {
 export async function turn(
   sandboxId: string,
   customerId: string,
-  message: string
+  message: string,
+  confirm?: boolean
 ): Promise<Response> {
   return call(`/api/sandboxes/${sandboxId}/customers/${customerId}/turn`, {
     method: "POST",
-    body: JSON.stringify({ message })
+    body: JSON.stringify(
+      confirm === undefined ? { message } : { message, confirm }
+    )
   });
 }
 

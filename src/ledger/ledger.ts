@@ -938,6 +938,8 @@ export class Ledger extends DurableObject<Env> {
     disputedLedgerEntryId: string | null;
     reason: string;
     idempotencyKey: string;
+    /** How the customer confirmed the request (D-20): the chat's approval step or /turn confirm. */
+    confirmedVia: "chat" | "turn";
   }): Promise<Result<{ request: CreditRequest; existing: boolean }>> {
     if (!this.isSeeded()) return refusal(404, "not_found", "Not found");
     const nowMs = Date.now();
@@ -1008,9 +1010,13 @@ export class Ledger extends DurableObject<Env> {
             row,
             `customer:${input.customerId}`,
             "credit_requested",
-            input.reason,
+            `Confirmed by the customer ${input.confirmedVia === "chat" ? "in the chat" : "via /turn (confirm: true)"}: ${input.reason}`,
             null,
-            requestSnapshot(row)
+            {
+              ...requestSnapshot(row),
+              confirmedBy: "customer",
+              confirmedVia: input.confirmedVia
+            }
           ),
           nowMs
         );

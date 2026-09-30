@@ -50,7 +50,12 @@ async function withInstance(
 /** Ask for the credit through the chat path (stubbed model calls startCreditRequest). */
 async function requestCredit(sandboxId: string) {
   stubAi([toolCall("startCreditRequest", CLAIM), text("Request submitted.")]);
-  const res = await turn(sandboxId, ACME, "I was double-charged in September");
+  const res = await turn(
+    sandboxId,
+    ACME,
+    "I was double-charged in September; please start a credit request",
+    true
+  );
   expect(res.status).toBe(200);
   return (await res.json()) as {
     toolCalls: {
@@ -206,6 +211,7 @@ describe("credit request workflow", () => {
 
       // The same key through the Ledger directly, after completion: still the one request.
       const again = await ledgerOf(sb.sandboxId).createCreditRequest({
+        confirmedVia: "chat",
         customerId: ACME,
         ...CLAIM,
         idempotencyKey: await idempotencyKey(
@@ -289,6 +295,7 @@ describe("credit request workflow", () => {
     // decision (pending, no decision); then its wait times out and the expire step runs for real.
     const ledger = ledgerOf(sb.sandboxId);
     await ledger.createCreditRequest({
+      confirmedVia: "chat",
       customerId: ACME,
       ...CLAIM,
       idempotencyKey: await idempotencyKey(
@@ -339,6 +346,7 @@ describe("failure injection and recovery", () => {
     await withInstance(rid, async (wf) => {
       // Recorded in the Ledger, but the agent died before runWorkflow.
       const created = await ledgerOf(sb.sandboxId).createCreditRequest({
+        confirmedVia: "chat",
         customerId: ACME,
         ...CLAIM,
         idempotencyKey: await idempotencyKey(

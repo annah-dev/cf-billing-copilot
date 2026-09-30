@@ -35,6 +35,10 @@ const MAX_REMEMBERED_QUESTIONS = 8;
 const QUESTION_CHARS = 160;
 const MAX_TRACKED_TURNS = 16;
 
+/** /turn's report for a credit request the model proposed without `confirm: true` (D-20). */
+export const AWAITING_CONFIRMATION =
+  "Awaiting the customer's confirmation: nothing was recorded. Send the turn with confirm: true to start the credit request.";
+
 /** Broadcast to connected chat clients when a credit request changes state. */
 export type CreditUpdateMessage = {
   type: "credit-request-update";
@@ -90,10 +94,11 @@ export class BillingAgent extends AIChatAgent<Env> {
   private turns = new Map<string, TurnRecord>();
 
   /**
-   * User message ids submitted by headlessTurn (POST .../turn). Server-side only: a chat client
-   * cannot mark its own message headless (message metadata is client-controlled).
+   * User message ids submitted by headlessTurn (POST .../turn), with the request's `confirm` flag
+   * (D-20). Server-side only: a chat client cannot mark its own message headless or confirmed
+   * (message metadata is client-controlled).
    */
-  private headlessMessageIds = new Set<string>();
+  private headlessTurns = new Map<string, { confirm: boolean }>();
 
   private provenanceStore: ToolProvenance | undefined;
 
@@ -230,6 +235,7 @@ export class BillingAgent extends AIChatAgent<Env> {
     disputedLedgerEntryId: string | null;
     reason: string;
     idempotencyKey: string;
+    confirmedVia: "chat" | "turn";
   }): Promise<Result<{ request: CreditRequest; existing: boolean }>> {
     const { customerId } = this.identity();
     const created = await this.ledger().createCreditRequest({
@@ -312,9 +318,11 @@ export class BillingAgent extends AIChatAgent<Env> {
       if (this.turns.size <= MAX_TRACKED_TURNS) break;
       this.turns.delete(key);
     }
-    const headless = lastUser
-      ? this.headlessMessageIds.has(lastUser.id)
-      : false;
+    const turn = lastUser ? this.headlessTurns.get(lastUser.id) : undefined;
+    // D-20: a credit request needs the customer's explicit confirmation on every path. In the chat
+    // it comes through the needsApproval step; a /turn gives it up front with `confirm: true`,
+    // otherwise the turn can only propose the request.
+    const preConfirmed = turn?.confirm === true;
     const continuation = options?.continuation ?? false;
 
     // Only a continuation that resumes a server-issued credit confirmation the customer just
@@ -366,7 +374,7 @@ export class BillingAgent extends AIChatAgent<Env> {
           this.provenance.recordResult(call, result)
       },
       cache,
-      { confirmCredit: !headless }
+      { confirmCredit: !preConfirmed }
     );
     const result = streamText({
       model: billingModel(this.env, record, {
@@ -376,9 +384,7 @@ export class BillingAgent extends AIChatAgent<Env> {
       system: systemPrompt(this.memory(), utcDay(Date.now())),
       messages: await historyForModel(
         await this.provenance.verified(this.messages),
-        {
-          continuation
-        }
+        { continuation, confirmedTurn: preConfirmed }
       ),
       tools,
       onStepFinish: (step) =>
@@ -397,7 +403,7 @@ export class BillingAgent extends AIChatAgent<Env> {
                 ]
               : []
           ),
-          !headless
+          !preConfirmed
         ),
       stopWhen: stepCountIs(MAX_STEPS),
       maxOutputTokens: config.MAX_OUTPUT_TOKENS,
@@ -409,20 +415,24 @@ export class BillingAgent extends AIChatAgent<Env> {
 
   /**
    * One non-streaming turn for the eval harness and scripted clients (POST .../turn). It runs the
-   * same onChatMessage path as the chat, persisted in the same history, with the credit
-   * confirmation step off: the request itself is the customer's explicit instruction.
+   * same onChatMessage path as the chat, persisted in the same history. A credit request needs
+   * `confirm: true` (D-20); without it the turn can only propose one, and the proposal is reported
+   * as a tool call awaiting confirmation.
    */
-  async headlessTurn(message: string): Promise<Result<{ turn: TurnResponse }>> {
+  async headlessTurn(
+    message: string,
+    confirm = false
+  ): Promise<Result<{ turn: TurnResponse }>> {
     const userMessage: UIMessage = {
       id: crypto.randomUUID(),
       role: "user",
       parts: [{ type: "text", text: message }]
     };
-    this.headlessMessageIds.add(userMessage.id);
+    this.headlessTurns.set(userMessage.id, { confirm });
     try {
       await this.saveMessages((messages) => [...messages, userMessage]);
     } finally {
-      this.headlessMessageIds.delete(userMessage.id);
+      this.headlessTurns.delete(userMessage.id);
     }
     const record = this.turns.get(userMessage.id);
     this.turns.delete(userMessage.id);
@@ -460,7 +470,9 @@ export class BillingAgent extends AIChatAgent<Env> {
             ? (p.errorText ?? "tool error")
             : p.state === "output-available"
               ? null
-              : `tool call ${p.state}`
+              : p.state === "approval-requested"
+                ? AWAITING_CONFIRMATION
+                : `tool call ${p.state}`
       });
     }
     return {
