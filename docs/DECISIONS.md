@@ -427,3 +427,17 @@ Reason: the CLI review logs omitted prompt text, but the matched Claude sessions
 contain it, as Anna requested for the PR follow-up.
 
 Decided by: Engine engineer under standing orders.
+
+## D-20 Credit confirmation on every path, including /turn
+
+A credit request is a state-changing action, so it needs the customer's explicit confirmation on
+every path. The chat confirms through the AI SDK `needsApproval` step. The non-streaming `/turn`
+endpoint gets `confirm` (boolean, default `false`) in its request body (`TurnRequestSchema`): without
+it a turn can only propose a credit request; with it a credit request started in that turn goes
+ahead, and its `credit_requested` audit record shows that the customer confirmed and how. Reason:
+the eval harness must exercise the same policy as the product, not a bypass. This changes a
+contract frozen at Stop 2, so it lands on main as its own PR before the agent lane rebases onto it.
+Not chosen: skipping confirmation on `/turn` (the agent lane's first proposal) and requiring
+confirmation everywhere with no way to give it over `/turn`.
+
+Decided by: Anna.

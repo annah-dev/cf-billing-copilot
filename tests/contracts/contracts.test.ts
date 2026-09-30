@@ -142,6 +142,16 @@ describe("config", () => {
     ).toBe(false);
   });
 
+  it("defaults the turn confirmation to false and accepts only a boolean (D-20)", () => {
+    expect(TurnRequestSchema.parse({ message: "hi" }).confirm).toBe(false);
+    expect(
+      TurnRequestSchema.parse({ message: "hi", confirm: true }).confirm
+    ).toBe(true);
+    expect(
+      TurnRequestSchema.safeParse({ message: "hi", confirm: "yes" }).success
+    ).toBe(false);
+  });
+
   it("estimates neurons with integer math, rounding up", () => {
     // Measured in the Stop 2 round trip: 945 input and 69 output tokens.
     expect(estimateNeurons(945, 69)).toBe(40);
