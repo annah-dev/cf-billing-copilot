@@ -1,0 +1,20 @@
++   },
++   "customerId": "cus_nimbus",
++   "customerName": "Nimbus Studio",
++   "plan": {
++     "name": "Standard",
++     "planId": "plan_standard",
++   },
++   "sandboxId": "8c28f0518a42588ac2915ddec1450acc",
+  }
+
+ ❯ tests/ui/api.test.ts:25:6
+     23|     await expect(
+     24|       api.panel(session.sandboxId, panel.customerId)
+     25|     ).rejects.toBeInstanceOf(z.ZodError);
+       |      ^
+     26|   });
+     27|   it("rejects a valid panel for a different sandbox or customer", asyn…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

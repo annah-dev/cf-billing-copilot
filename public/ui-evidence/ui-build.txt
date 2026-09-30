@@ -1,0 +1,12 @@
+dist/client/.assetsignore                0.02 kB
+dist/client/index.html                   0.69 kB │ gzip:   0.40 kB
+dist/client/assets/index-ChYBDiKC.css  152.54 kB │ gzip:  25.06 kB
+dist/client/assets/index-DSEp0Igp.js   566.80 kB │ gzip: 169.59 kB
+
+✓ built in 1.69s
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+🪵  Logs were written to "/home/annah-dev/.config/.wrangler/logs/wrangler-2026-09-30_01-34-59_660.log"

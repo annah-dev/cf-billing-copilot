@@ -667,3 +667,37 @@ contract changes. Reason: the check must not depend on the model's choice (PR #4
 found the last-step and failure gaps in the first version).
 
 Decided by: Anna (the requirement); Agent engineer under standing orders (the mechanism).
+
+## ui: Fixture transport and live handoff
+
+The UI defaults to a clearly labelled fixture preview until the agent HTTP surface merges; set
+`VITE_BILLING_API_MODE=live` for the real fetch client and `useAgentChat`. Both transports pass
+through the frozen response schemas. Fixture and live sessions use separate storage keys so a
+preview sandbox can never be sent to the live API. Fixtures illustrate the interface rather than
+claim to be the engine's seed; they never calculate amounts. Reason: the UI lane can be exercised
+without server changes or model calls while the agent lane is still being built.
+
+Decided by: Frontend engineer under standing orders.
+
+## ui: Approval links and refresh boundaries
+
+Approval links carry both sandbox id and token in the fragment, which the admin page removes on
+entry. Requests send the token only in the Authorization header. A saved session restores access
+on reload; an invalid fragment fails explicitly. Both admin decisions require a reason, matching
+the frozen DecisionRequest schema. Customer changes and resets remount the workspace; generation
+counters discard stale responses. Panels refresh on chat completion, window focus, or an explicit
+Refresh action instead of polling against the 200-request daily cap. Reason: keep customer state
+isolated, keep credentials out of request URLs, and conserve the sandbox's request budget.
+
+Decided by: Frontend engineer under standing orders.
+
+## ui: Local fixture evidence without remote bindings
+
+Run the existing dev command with `CLOUDFLARE_VITE_FORCE_LOCAL=true` to disable remote bindings
+using the installed Cloudflare Vite plugin's supported environment override. In a restricted
+workspace, also set `XDG_CONFIG_HOME` to a temporary writable directory for Wrangler's local
+registry. No frozen configuration changes or credentials are required. The browser evidence
+script uses the already installed external Playwright runtime and is excluded from the offline
+vitest patterns. Reason: capture the actual app through npm run dev without contacting the model.
+
+Decided by: Frontend engineer under standing orders.
