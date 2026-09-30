@@ -2115,3 +2115,28 @@ The isolated checkout has no installed vitest; test-1 is an environment setup fa
 
 Before finishing, copy this exact file from /tmp/ui-seed-gate-test-setup-final.md with a tool to prompt-history/prompts/04n-ui-seed-gate-test-setup-final.md and append its verbatim text in PROMPTS.md as automated cross-review instruction, no-mistakes v1.41.2 (Claude), run 01M3R5XQG8RXG4F1HVZZSJ3CHV. Record the actual install/typecheck/full and credential-free test result. This mandatory instruction log is part of the fix; no other repository edits are needed. Also append the available round-3 provenance to the existing 04m-ui-seed-delta-review.md entry in PROMPTS.md (without changing its prompt text): the generated review prompt is unavailable in the step log, delta review completed, observed lines are reviewing changes..., blank line, claude started pid=145129, blank line, claude exited pid=145129 status=success. Keep the original supplied intent intact. This was the third, delta-only review; do not launch a fourth full code review. Resume the existing gate's test/document/push/CI steps and keep PR #5 open, held until agent PR #4 merges. Never merge or deploy.
 ````
+
+## 27. UI rebase after agent merge
+
+- Timestamp: 2026-09-30T20:28:30.411156+00:00
+- Role: Frontend engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/04o-ui-agent-merge-rebase.md
+- Outcome: request recorded; rebase and final validation will be reported in PR #5. No merge or deployment authorized.
+
+````text
+PR #4 has merged. Rebase PR #5 onto main; the conflicts are only in PROMPTS.md and
+docs/DECISIONS.md, resolve them by keeping both sides. Rerun the checks and tell me when it is ready.
+````
+
+## 28. UI agent-merge gate intent
+
+- Timestamp: 2026-09-30T20:28:30.411748+00:00
+- Role: automated cross-review
+- Harness: no-mistakes v1.41.2 (Claude)
+- Source: prompt-history/prompts/04p-ui-agent-merge-gate-intent.md
+- Outcome: exact supplied intent recorded; final gate delivery is reported in PR #5. Generated review prompt text is separate and unavailable in step logs.
+
+````text
+Anna requests: PR #4 has merged. Rebase PR #5 onto main; the conflicts are only in PROMPTS.md and docs/DECISIONS.md, resolve them by keeping both sides. Rerun the checks and tell her when ready. Preserve every main-side agent record and every UI-side prompt and decision record, including this kickoff and all prior gate-fix commits. Resolve append-only logs by concatenating both sides in sensible order, without rewriting raw prompt text. No UI feature change is requested; src/engine, src/contracts and frozen configuration/dependencies must remain identical to current main. Never merge or deploy. The previous monitor used its single automatic conflict fix for D-20, so this new task starts a fresh gate on the logged request. Rebase deterministically, review only the rebase/logging delta relative to previously reviewed UI 44b4dac83345fdd8dc4407e86679e95edff18b73 and merged main, then validate npm ci, npm run typecheck, npm test, and env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test. Compare npx vitest list on current main and final head and account for all retained or removed tests. Preserve the shared-engine seeded preview and existing ten screenshots; repeat browser evidence if the rebase changes UI behavior, without any live model call. Scope is rebase and validation only. Keep all evidence under tests/ui/evidence and paths scrubbed; no skipped tests, schema weakening, global formatting or dependency changes. The exact kickoff and this supplied review intent are logged in PROMPTS.md and prompt-history/prompts/04o-ui-agent-merge-rebase.md and 04p-ui-agent-merge-gate-intent.md. Record truthful outcomes and available review provenance, clearly distinguish generated prompt text unavailable in step logs. Required commands may need npm ci in the isolated checkout before vitest exists. Implementation/logging choices and reversible fixes within this scope are authorized under standing orders; the owner explicitly authorizes this rebase. Report the final head and CI result in PR #5.
+````
