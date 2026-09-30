@@ -8,7 +8,6 @@ import {
   NoSuchToolError,
   createUIMessageStream,
   createUIMessageStreamResponse,
-  stepCountIs,
   streamText,
   type UIMessage
 } from "ai";
@@ -26,7 +25,7 @@ import { CREDIT_WORKFLOW } from "../workflows/params";
 import { historyForModel } from "./history";
 import { billingModel, newTurnStats, type TurnStats } from "./model";
 import { EMPTY_MEMORY, systemPrompt, type Memory } from "./prompt";
-import { serverAnomalyChecks } from "./anomalies";
+import { AnomalyChecks } from "./anomalies";
 import { ToolProvenance } from "./provenance";
 import { ToolError, buildTools } from "./tools";
 
@@ -388,6 +387,18 @@ export class BillingAgent extends AIChatAgent<Env> {
     const stream = createUIMessageStream({
       onError: toolErrorText,
       execute: ({ writer }) => {
+        // User story 4: the spike is checked and shown whether or not the model asks (anomalies.ts).
+        const checks = new AnomalyChecks({
+          detectAnomalies: tools.detectAnomalies.execute as NonNullable<
+            (typeof tools)[string]["execute"]
+          >,
+          periodOfInvoice: async (invoiceId) => {
+            const found = await ledger.invoice(customerId, { invoiceId });
+            return found.ok ? found.value.period : null;
+          },
+          writer
+        });
+        checks.wrap(tools);
         const result = streamText({
           model: billingModel(this.env, record, {
             maxOutputTokens: config.MAX_OUTPUT_TOKENS,
@@ -396,17 +407,7 @@ export class BillingAgent extends AIChatAgent<Env> {
           system,
           messages,
           tools,
-          // User story 4: the spike is mentioned whether or not the model asks for it (anomalies.ts).
-          prepareStep: serverAnomalyChecks({
-            detectAnomalies: tools.detectAnomalies.execute as NonNullable<
-              (typeof tools)[string]["execute"]
-            >,
-            periodOfInvoice: async (invoiceId) => {
-              const found = await ledger.invoice(customerId, { invoiceId });
-              return found.ok ? found.value.period : null;
-            },
-            writer
-          }),
+          prepareStep: checks.prepareStep,
           onStepFinish: (step) =>
             this.provenance.recordStep(
               step.toolCalls,
@@ -425,7 +426,10 @@ export class BillingAgent extends AIChatAgent<Env> {
               ),
               !preConfirmed
             ),
-          stopWhen: stepCountIs(MAX_STEPS),
+          // One extra answer step only while a server-issued anomaly result is unseen by the model.
+          stopWhen: ({ steps }) =>
+            steps.length >= MAX_STEPS + 1 ||
+            (steps.length >= MAX_STEPS && !checks.hasUnseen),
           maxOutputTokens: config.MAX_OUTPUT_TOKENS,
           temperature: 0,
           abortSignal: options?.abortSignal

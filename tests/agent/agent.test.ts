@@ -13,8 +13,16 @@ import {
 import { estimateInputTokens } from "../../src/agent/model";
 import { ToolProvenance } from "../../src/agent/provenance";
 import { buildTools, type ToolHost } from "../../src/agent/tools";
-import { AWAITING_CONFIRMATION } from "../../src/agent/billing-agent";
-import { ACME, DUP_ENTRY, INV_SEP } from "./support/fake-engine";
+import {
+  AWAITING_CONFIRMATION,
+  MAX_STEPS
+} from "../../src/agent/billing-agent";
+import {
+  ACME,
+  DUP_ENTRY,
+  INV_SEP,
+  failNextAnomalyChecks
+} from "./support/fake-engine";
 import {
   call,
   countRows,
@@ -737,5 +745,77 @@ describe("proactive anomaly mention (user story 4)", () => {
     stubAi([toolCall("getAccount", {}), text("You are on Starter.")]);
     const body = await turnOk(sb.sandboxId, "Which plan am I on?");
     expect(anomalyCalls(body)).toHaveLength(0);
+  });
+
+  it("checks an invoice fetched on the last allowed step and gives the model one step to mention it", async () => {
+    const sb = await createSandbox();
+    const ai = stubAi([
+      toolCall("getAccount", {}),
+      toolCall("getAccount", {}),
+      toolCall("getAccount", {}),
+      toolCall("getInvoice", { period: "2026-09" }),
+      text("Note the spike on 2026-09-18.")
+    ]);
+    const body = await turnOk(sb.sandboxId, "Tell me everything");
+    expect(ai).toHaveBeenCalledTimes(MAX_STEPS + 1);
+    expect(JSON.stringify(ai.mock.calls[MAX_STEPS][1])).toContain("2026-09-18");
+    expect(anomalyCalls(body)).toHaveLength(1);
+    expect(anomalyCalls(body)[0].error).toBeNull();
+  });
+
+  it("keeps the step limit when no anomaly result is waiting", async () => {
+    const sb = await createSandbox();
+    const ai = stubAi([
+      toolCall("getAccount", {}),
+      toolCall("getAccount", {}),
+      toolCall("getAccount", {}),
+      toolCall("getAccount", {}),
+      text("unused")
+    ]);
+    await turnOk(sb.sandboxId, "Account?");
+    expect(ai).toHaveBeenCalledTimes(MAX_STEPS);
+  });
+
+  it("shows a failed server check to the model and the transcript, and retries it once", async () => {
+    const sb = await createSandbox();
+    failNextAnomalyChecks(1);
+    const ai = stubAi([
+      toolCall("getInvoice", { period: "2026-09" }),
+      toolCall("explainLineItem", {
+        invoiceId: INV_SEP,
+        lineId: "line_acme_2026_09_req"
+      }),
+      text("Done.")
+    ]);
+    const body = await turnOk(sb.sandboxId, "Explain September");
+    const seenAfterFailure = JSON.stringify(ai.mock.calls[1][1]);
+    expect(seenAfterFailure).toContain("detectAnomalies");
+    expect(seenAfterFailure).toContain("temporarily unavailable");
+    const checks = anomalyCalls(body);
+    expect(checks.map((c) => c.error === null)).toEqual([false, true]);
+    expect(checks[0].error).toMatch(/temporarily unavailable/);
+    expect(JSON.stringify(ai.mock.calls[2][1])).toContain("2026-09-18");
+  });
+
+  it("does not count a failed model check as done", async () => {
+    const sb = await createSandbox();
+    failNextAnomalyChecks(1);
+    stubAi([
+      {
+        response: "",
+        tool_calls: [
+          { name: "detectAnomalies", arguments: { period: "2026-09" } },
+          { name: "getInvoice", arguments: { period: "2026-09" } }
+        ],
+        usage: { prompt_tokens: 900, completion_tokens: 40 }
+      },
+      text("Done.")
+    ]);
+    const body = await turnOk(sb.sandboxId, "September?");
+    expect(
+      anomalyCalls(body)
+        .map((c) => c.error === null)
+        .sort()
+    ).toEqual([false, true]);
   });
 });

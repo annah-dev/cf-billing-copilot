@@ -279,6 +279,13 @@ function forPeriod(data: BillingDataset, customerId: string, period: string) {
   return inv;
 }
 
+let anomalyFailures = 0;
+
+/** Make the next n detectAnomalies calls fail (tests of the failure path). */
+export function failNextAnomalyChecks(n: number): void {
+  anomalyFailures = n;
+}
+
 export const fakeEngine: BillingEngine = {
   seed: fakeSeed,
   buildInvoice: (data, customerId, period) =>
@@ -329,6 +336,13 @@ export const fakeEngine: BillingEngine = {
   },
   detectAnomalies: (data, customerId, period) => {
     forPeriod(data, customerId, period);
+    if (anomalyFailures > 0) {
+      anomalyFailures -= 1;
+      throw new EngineError(
+        "unsupported",
+        "Anomaly data is temporarily unavailable"
+      );
+    }
     const spike =
       customerId === ACME && period === "2026-09"
         ? [

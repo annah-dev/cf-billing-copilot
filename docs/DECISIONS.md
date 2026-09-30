@@ -648,14 +648,22 @@ Decided by: Agent engineer under standing orders.
 ## agent: the server runs the anomaly check for every invoice a turn touches
 
 User story 4 asks the copilot to mention the September spike proactively; in the live run Llama 3.3
-did not call `detectAnomalies` although the prompt asked it to. Whenever a turn's tool results
-include `getInvoice` or `explainLineItem` for a period that neither the model nor the server has
-checked in that turn, the server runs `detectAnomalies` for the period itself before the next model
-step (`prepareStep`, src/agent/anomalies.ts). The result goes to the model as a server-issued
-`detectAnomalies` tool call and result, and the same pair is written to the chat stream, so it is
-stored, shown in the UI and in `/turn`, and recorded in provenance. It costs no extra model call,
-and the prompt tells the model to mention any spike it reports. The tool already exists, so no
-contract changes. Reason: the mention must not depend on the model's choice. Limit: if the
-invoice fetch is the turn's last allowed step, no further model step can mention it.
+did not call `detectAnomalies` although the prompt asked it to. Now, when a `getInvoice` or
+`explainLineItem` result is produced for a period with no successful check yet in the turn, the
+server runs `detectAnomalies` for that period at once (src/agent/anomalies.ts):
+- The server-issued call and its result are written to the chat stream immediately, so they are
+  stored, shown in the UI and in `/turn`, and recorded in provenance.
+- The pair is given to the model before its next step (`prepareStep`, re-inserted at the same
+  position on every later step).
+- If the invoice came on the turn's last allowed step, the stop condition allows one extra answer
+  step, and only then; the hard cap is `MAX_STEPS + 1` model calls, each still budget-reserved.
+- A model-issued check of the same period (in flight or earlier) suppresses the server check only
+  if it succeeded.
+- A failed server check is shown to the model and in the transcript as an error result, and is
+  retried once on the next trigger in the turn (at most two attempts per period).
+
+The prompt tells the model to mention any spike the result reports. The tool already exists, so no
+contract changes. Reason: the check must not depend on the model's choice (PR #4 review round 5
+found the last-step and failure gaps in the first version).
 
 Decided by: Anna (the requirement); Agent engineer under standing orders (the mechanism).

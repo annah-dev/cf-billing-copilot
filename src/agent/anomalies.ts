@@ -1,10 +1,12 @@
 // User story 4: the copilot mentions an unusual usage spike proactively. That must not depend on
-// Llama 3.3 choosing to call detectAnomalies (in the live run it did not). So whenever a turn's
-// tool results include an invoice (getInvoice) or a line explanation (explainLineItem) for a
-// period, the server runs detectAnomalies for that period itself, before the next model step, and
-// hands the result to the model as a server-issued tool call and result. The same pair is written
-// to the chat stream, so it is persisted, shown in the UI and /turn, and recorded in provenance
-// like any other tool call.
+// Llama 3.3 choosing to call detectAnomalies (in the live run it did not). So whenever a tool
+// result in a turn is an invoice (getInvoice) or a line explanation (explainLineItem) for a period
+// that has not been checked successfully in that turn, the server runs detectAnomalies for the
+// period itself, at the moment the result is produced. The call and its result (or its error) are
+// written to the chat stream at once, so they are stored, shown in the UI and /turn and recorded in
+// provenance, and they are handed to the model as a server-issued tool call and result before its
+// next step. If the invoice came on the turn's last allowed step, one extra answer step is allowed
+// so the model sees the result (hard cap: MAX_STEPS + 1 model calls, each still budget-reserved).
 import type {
   ModelMessage,
   PrepareStepFunction,
@@ -14,119 +16,147 @@ import type {
 
 type Execute = NonNullable<ToolSet[string]["execute"]>;
 
-type StepView = {
-  toolCalls: readonly { toolName: string; input: unknown }[];
-  toolResults: readonly { toolName: string; input: unknown; output: unknown }[];
-};
+/** Server attempts per period and turn; a failed check is retried once on the next trigger. */
+const MAX_ATTEMPTS = 2;
 
-/** Periods whose invoice the model fetched or explained in these steps. */
-async function invoicePeriods(
-  steps: readonly StepView[],
-  periodOfInvoice: (invoiceId: string) => Promise<string | null>
-): Promise<string[]> {
-  const periods: string[] = [];
-  for (const step of steps) {
-    for (const r of step.toolResults) {
-      if (r.toolName === "getInvoice") {
-        const period = (r.output as { period?: string } | undefined)?.period;
-        if (period) periods.push(period);
-      }
-      if (r.toolName === "explainLineItem") {
-        const invoiceId = (r.output as { invoiceId?: string } | undefined)
-          ?.invoiceId;
-        const period = invoiceId ? await periodOfInvoice(invoiceId) : null;
-        if (period) periods.push(period);
-      }
+export class AnomalyChecks {
+  /** Periods with a successful check (by the model or the server) in this turn. */
+  private readonly checked = new Set<string>();
+  private readonly attempts = new Map<string, number>();
+  /** Model-issued checks still running, by period, resolving to whether they succeeded. */
+  private readonly inFlight = new Map<string, Promise<boolean>>();
+  /** Server-issued pairs not yet shown to the model, and those already placed in its context. */
+  private pending: ModelMessage[][] = [];
+  private readonly injections: { at: number; messages: ModelMessage[] }[] = [];
+
+  constructor(
+    private readonly options: {
+      /** The recorded (provenance) detectAnomalies execute, not the model-facing wrapper. */
+      detectAnomalies: Execute;
+      periodOfInvoice: (invoiceId: string) => Promise<string | null>;
+      writer: UIMessageStreamWriter;
     }
-  }
-  return [...new Set(periods)];
-}
+  ) {}
 
-/** Periods the model already asked detectAnomalies about itself in these steps. */
-function modelCheckedPeriods(steps: readonly StepView[]): Set<string> {
-  const periods = new Set<string>();
-  for (const step of steps) {
-    for (const c of step.toolCalls) {
-      if (c.toolName !== "detectAnomalies") continue;
-      const period = (c.input as { period?: string } | undefined)?.period;
-      if (period) periods.add(period);
-    }
+  /** True while a server-issued result exists that the model has not seen in any step. */
+  get hasUnseen(): boolean {
+    return this.pending.length > 0;
   }
-  return periods;
-}
 
-/**
- * A prepareStep that adds a server-issued detectAnomalies call and result for every period whose
- * invoice was fetched or explained and not yet checked. `prepareStep` messages apply to one step
- * only, so each injected pair is re-inserted at the position where it was first added.
- */
-export function serverAnomalyChecks(options: {
-  detectAnomalies: Execute;
-  periodOfInvoice: (invoiceId: string) => Promise<string | null>;
-  writer: UIMessageStreamWriter;
-}): PrepareStepFunction {
-  const injections: { at: number; messages: ModelMessage[] }[] = [];
-  const done = new Set<string>();
-  return async ({ steps, messages }) => {
-    const checked = modelCheckedPeriods(steps);
-    for (const period of await invoicePeriods(steps, options.periodOfInvoice)) {
-      if (done.has(period) || checked.has(period)) continue;
-      done.add(period);
-      const toolCallId = `srv_anomalies_${period.replace("-", "_")}_${crypto.randomUUID().slice(0, 8)}`;
-      const input = { period };
-      let output: unknown;
-      try {
-        output = await options.detectAnomalies(input, {
-          toolCallId,
-          messages: []
+  /** Wrap the model-facing tools: invoice results trigger the check; model checks are tracked. */
+  wrap(tools: ToolSet): void {
+    const invoice = tools.getInvoice.execute as Execute;
+    tools.getInvoice.execute = async (input, opts) => {
+      const output = await invoice(input, opts);
+      await this.afterInvoice((output as { period?: string }).period ?? null);
+      return output;
+    };
+    const explain = tools.explainLineItem.execute as Execute;
+    tools.explainLineItem.execute = async (input, opts) => {
+      const output = await explain(input, opts);
+      const invoiceId = (output as { invoiceId?: string }).invoiceId;
+      await this.afterInvoice(
+        invoiceId ? await this.options.periodOfInvoice(invoiceId) : null
+      );
+      return output;
+    };
+    const detect = tools.detectAnomalies.execute as Execute;
+    tools.detectAnomalies.execute = async (input, opts) => {
+      const period = (input as { period?: string }).period;
+      const run = detect(input, opts);
+      if (period) {
+        const ok = Promise.resolve(run).then(
+          () => true,
+          () => false
+        );
+        this.inFlight.set(period, ok);
+        void ok.then((succeeded) => {
+          if (succeeded) this.checked.add(period);
+          if (this.inFlight.get(period) === ok) this.inFlight.delete(period);
         });
-      } catch (err) {
-        console.error("server anomaly check failed", period, err);
-        continue;
       }
-      options.writer.write({
-        type: "tool-input-available",
+      return run;
+    };
+  }
+
+  private async afterInvoice(period: string | null): Promise<void> {
+    if (!period || this.checked.has(period)) return;
+    const running = this.inFlight.get(period);
+    if (running && (await running)) return;
+    const attempt = (this.attempts.get(period) ?? 0) + 1;
+    if (attempt > MAX_ATTEMPTS) return;
+    this.attempts.set(period, attempt);
+
+    const toolCallId = `srv_anomalies_${period.replace("-", "_")}_${crypto.randomUUID().slice(0, 8)}`;
+    const input = { period };
+    const { writer } = this.options;
+    writer.write({
+      type: "tool-input-available",
+      toolCallId,
+      toolName: "detectAnomalies",
+      input
+    });
+    let result: ModelMessage;
+    try {
+      const output = await this.options.detectAnomalies(input, {
         toolCallId,
-        toolName: "detectAnomalies",
-        input
+        messages: []
       });
-      options.writer.write({
-        type: "tool-output-available",
-        toolCallId,
-        output
-      });
-      injections.push({
-        at: messages.length,
-        messages: [
+      this.checked.add(period);
+      writer.write({ type: "tool-output-available", toolCallId, output });
+      result = {
+        role: "tool",
+        content: [
           {
-            role: "assistant",
-            content: [
-              {
-                type: "tool-call",
-                toolCallId,
-                toolName: "detectAnomalies",
-                input
-              }
-            ]
-          },
-          {
-            role: "tool",
-            content: [
-              {
-                type: "tool-result",
-                toolCallId,
-                toolName: "detectAnomalies",
-                output: { type: "json", value: output as never }
-              }
-            ]
+            type: "tool-result",
+            toolCallId,
+            toolName: "detectAnomalies",
+            output: { type: "json", value: output as never }
           }
         ]
-      });
+      };
+    } catch (err) {
+      // Shown to the model and the customer, like any failed tool call (the recorded execute
+      // stored the same text for provenance).
+      const errorText = err instanceof Error ? err.message : String(err);
+      console.error("server anomaly check failed", period, errorText);
+      writer.write({ type: "tool-output-error", toolCallId, errorText });
+      result = {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId,
+            toolName: "detectAnomalies",
+            output: { type: "error-text", value: errorText }
+          }
+        ]
+      };
     }
-    if (injections.length === 0) return undefined;
+    this.pending.push([
+      {
+        role: "assistant",
+        content: [
+          { type: "tool-call", toolCallId, toolName: "detectAnomalies", input }
+        ]
+      },
+      result
+    ]);
+  }
+
+  /**
+   * Place pending pairs in the model's context. `prepareStep` messages apply to one step only, so
+   * every pair is re-inserted, each time, at the position where it was first added.
+   */
+  readonly prepareStep: PrepareStepFunction = ({ messages }) => {
+    for (const pair of this.pending) {
+      this.injections.push({ at: messages.length, messages: pair });
+    }
+    this.pending = [];
+    if (this.injections.length === 0) return undefined;
     const out = [...messages];
     let offset = 0;
-    for (const injection of injections) {
+    for (const injection of this.injections) {
       out.splice(injection.at + offset, 0, ...injection.messages);
       offset += injection.messages.length;
     }
