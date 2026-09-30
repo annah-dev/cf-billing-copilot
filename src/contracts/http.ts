@@ -96,9 +96,17 @@ export const DecisionResponseSchema = z.object({
 export type DecisionResponse = z.infer<typeof DecisionResponseSchema>;
 
 export const TurnRequestSchema = z.object({
-  message: z.string().trim().min(1).max(2000)
+  message: z.string().trim().min(1).max(2000),
+  /**
+   * The customer's explicit confirmation for a credit request started in this turn (DECISIONS.md
+   * D-20). Without it (the default) the turn can only propose a credit request; with it the
+   * request starts and its audit record shows the customer confirmed.
+   */
+  confirm: z.boolean().default(false)
 });
 export type TurnRequest = z.infer<typeof TurnRequestSchema>;
+/** What a client sends: `confirm` may be omitted (it defaults to false). */
+export type TurnRequestInput = z.input<typeof TurnRequestSchema>;
 
 export const ToolCallRecordSchema = z.object({
   name: z.enum(

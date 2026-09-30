@@ -169,6 +169,8 @@ own idle deletion uses the Agents SDK scheduler, which multiplexes onto that obj
 Tools: `getAccount`, `getInvoice`, `explainLineItem`, `compareInvoices`, `simulatePlan`,
 `detectAnomalies`, `startCreditRequest`, `getCreditRequestStatus`. `startCreditRequest` uses the AI
 SDK `needsApproval` hook, so the customer confirms the request in the UI before a Workflow starts.
+The non-streaming `/turn` endpoint follows the same policy: without `confirm: true` in its request
+body it can only propose a credit request (D-20).
 
 ### Credit request
 
@@ -226,7 +228,7 @@ honoured. Tests cover competing decisions and a lost event.
 | `GET /api/sandboxes/:sid/customers/:cid/panel` | chat UI | sandbox id | invoice, credit requests, audit trail |
 | `GET /api/sandboxes/:sid/admin/credit-requests` | /admin | approver token | list credit requests, pending first |
 | `POST /api/sandboxes/:sid/admin/credit-requests/:rid/decision` | /admin | approver token | approve or reject with reason |
-| `POST /api/sandboxes/:sid/customers/:cid/turn` | eval harness | sandbox id, caps | one non-streaming turn, returns text and tool calls with inputs and outputs |
+| `POST /api/sandboxes/:sid/customers/:cid/turn` | eval harness | sandbox id, caps | one non-streaming turn, returns text and tool calls with inputs and outputs; `confirm: true` confirms a credit request started in the turn (D-20) |
 
 Admission: a sandbox exists only if `POST /api/sandboxes` created it (the Ledger's `meta` row marks
 it admitted). Before routing, every sandbox-scoped route, including the agent route through
