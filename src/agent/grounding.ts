@@ -201,14 +201,17 @@ const namedDates: [RegExp, (m: string[]) => [string, string, string?]][] = [
   ]
 ];
 
+const dateToken = /^\d{4}-\d{2}(?:-\d{2})?$/;
+
 /**
  * Rewrite named calendar dates as ISO so the whole date, not its parts, must be grounded. A
  * yearless day takes its year only from a single grounded period for that month; otherwise it is
- * reported as unresolved.
+ * reported as unresolved (`--MM-DD`, tab, the original words), and only the same yearless date in
+ * the customer's message grounds it.
  */
 function normalizeDates(
   text: string,
-  periods: Set<string>
+  dates: Set<string>
 ): { text: string; unresolved: string[] } {
   const unresolved: string[] = [];
   let result = text;
@@ -219,47 +222,65 @@ function normalizeDates(
         return ` ${[year, monthPart, dayPart].filter(Boolean).join("-")} `;
       }
       const years = new Set(
-        [...periods]
-          .filter((token) => token.slice(4, 7) === `-${monthPart}`)
+        [...dates]
+          .filter(
+            (token) =>
+              dateToken.test(token) && token.slice(4, 7) === `-${monthPart}`
+          )
           .map((token) => token.slice(0, 4))
       );
       if (years.size === 1) return ` ${[...years][0]}-${monthPart}-${dayPart} `;
-      unresolved.push(match[0]);
+      unresolved.push(`--${monthPart}-${dayPart}\t${match[0]}`);
       return " ";
     });
   }
   return { text: result, unresolved };
 }
 
-/** Numeric tokens that name a calendar date, a billing period or a year. */
-const isDateToken = (token: string) =>
-  /^\d{4}-\d{2}(?:-\d{2})?$/.test(token) || /^(?:19|20)\d{2}$/.test(token);
+const dateLike = (token: string) =>
+  dateToken.test(token) || /^\d{4}$/.test(token);
 
-function addNumericToken(numeric: Set<string>, token: string): void {
-  numeric.add(token);
-  if (/^\d{4}-\d{2}/.test(token)) {
-    numeric.add(token.slice(0, 4));
-    numeric.add(token.slice(0, 7));
+function addDate(dates: Set<string>, token: string, year = true): void {
+  dates.add(token);
+  dates.add(token.slice(0, 7));
+  if (year) dates.add(token.slice(0, 4));
+}
+
+/**
+ * Dates and billing periods the customer wrote ground only date-shaped tokens of the reply, never
+ * money, percentages, counts, bare years or bare day numbers.
+ */
+function messageDates(message: string, dates: Set<string>): void {
+  for (let pass = 0; pass < 2; pass++) {
+    const normalized = normalizeDates(message, dates);
+    numbers(normalized.text)
+      .filter((token) => dateToken.test(token))
+      .forEach((token) => addDate(dates, token, false));
+    if (pass === 1) {
+      normalized.unresolved.forEach((entry) => dates.add(entry.split("\t")[0]));
+    }
   }
 }
 
 function collect(
   value: unknown,
   amounts: Set<string>,
-  numeric: Set<string>
+  numeric: Set<string>,
+  dates: Set<string>
 ): void {
   if (typeof value === "string") {
     moneyStrings(value).forEach((amount) => amounts.add(amount));
-    numbers(stripMoney(value)).forEach((token) =>
-      addNumericToken(numeric, token)
-    );
+    numbers(stripMoney(value)).forEach((token) => {
+      if (/^\d{4}-\d{2}/.test(token)) addDate(dates, token);
+      else numeric.add(token);
+    });
   } else if (typeof value === "number") {
     numeric.add(String(value));
   } else if (Array.isArray(value)) {
     numeric.add(String(value.length));
     // Ordered entries ground ordinal references ("the 2nd line") and numbered lists.
     value.forEach((_, index) => numeric.add(String(index + 1)));
-    value.forEach((item) => collect(item, amounts, numeric));
+    value.forEach((item) => collect(item, amounts, numeric, dates));
   } else if (value && typeof value === "object") {
     const money = MoneySchema.safeParse(value);
     if (money.success) {
@@ -269,7 +290,7 @@ function collect(
     for (const [key, child] of Object.entries(value)) {
       // Raw basis points and hundredths are machine fields; only their display strings ground.
       if (key !== "basisPoints" && key !== "hundredths") {
-        collect(child, amounts, numeric);
+        collect(child, amounts, numeric, dates);
       }
     }
   }
@@ -279,9 +300,9 @@ function collect(
 export type Evidence = {
   amounts: Set<string>;
   numeric: Set<string>;
+  /** Dates and periods from the tool outputs and the customer's message. */
+  dates: Set<string>;
   counts: Counts;
-  /** Dates, periods and years named in the customer's message (they may be echoed back). */
-  customerDates: Set<string>;
 };
 
 /** Evidence from the turn's successful tool outputs and the customer's message. */
@@ -291,17 +312,14 @@ export function collectEvidence(
 ): Evidence {
   const amounts = new Set<string>();
   const numeric = new Set<string>();
+  const dates = new Set<string>();
   const counts: Counts = new Map();
   for (const output of toolOutputs) {
-    collect(output, amounts, numeric);
+    collect(output, amounts, numeric, dates);
     countEvidence(output, counts);
   }
-  const customerDates = new Set<string>();
-  const dated = normalizeDates(customerMessage, numeric);
-  for (const token of numbers(stripMoney(dated.text))) {
-    if (isDateToken(token)) addNumericToken(customerDates, token);
-  }
-  return { amounts, numeric, counts, customerDates };
+  messageDates(customerMessage, dates);
+  return { amounts, numeric, dates, counts };
 }
 
 /**
@@ -313,22 +331,24 @@ export function unsupportedFigures(text: string, evidence: Evidence): string[] {
   const add = (figure: string) => {
     if (!found.includes(figure)) found.push(figure);
   };
-  const periods = new Set([...evidence.numeric, ...evidence.customerDates]);
-  const dated = normalizeDates(text, periods);
+  const dated = normalizeDates(text, evidence.dates);
   const normalized = normalizeNumberWords(dated.text);
   for (const amount of new Set([
     ...moneyStrings(text),
     ...moneyStrings(normalized)
   ])) {
-    if (!evidence.amounts.has(amount)) add(amount.trim());
+    if (!evidence.amounts.has(amount)) add(amount);
   }
-  for (const date of dated.unresolved) add(date);
+  for (const entry of dated.unresolved) {
+    const [echo, date] = entry.split("\t");
+    if (!evidence.dates.has(echo)) add(date);
+  }
   for (const match of normalized.matchAll(countPattern)) {
     const name = countName(match[2]);
     if (
       match[2].toLowerCase() === "invoice" &&
       /^\d{4}$/.test(match[1]) &&
-      periods.has(match[1])
+      evidence.dates.has(match[1])
     ) {
       continue; // "2026 invoice" names a year, not a count
     }
@@ -336,7 +356,7 @@ export function unsupportedFigures(text: string, evidence: Evidence): string[] {
   }
   for (const token of numbers(stripMoney(normalized))) {
     if (evidence.numeric.has(token)) continue;
-    if (isDateToken(token) && evidence.customerDates.has(token)) continue;
+    if (dateLike(token) && evidence.dates.has(token)) continue;
     add(token);
   }
   return found;

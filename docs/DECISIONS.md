@@ -985,3 +985,16 @@ on tool calls, including four identical `getCreditRequestStatus` calls. Now:
 Reason: a turn must end with an answer the customer can read, inside the same model-call cap.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: the guard follows the grader's final per-turn rule exactly
+
+After rebasing onto the evals PR, `src/agent/grounding.ts` mirrors the grader's final rule
+("evals: per-turn grounding with echoed dates"): tool dates and periods are kept apart from other
+numbers and ground only date-shaped tokens; the customer's message grounds ISO dates, periods and
+an echoed yearless date, never a bare year, money, percentage or count.
+`tests/agent/grounding-parity.test.ts` runs the guard and `evals/grounding.ts` over every committed
+recording (active and archived) and requires the same flagged figures on every turn; removing
+message dates from the guard turns seven of them red. Reason: "using the same rule as the grader"
+must be checked, not assumed, while the code exists in two copies.
+
+Decided by: Agent fixes engineer under standing orders.
