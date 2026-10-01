@@ -70,7 +70,8 @@ not change the story for the next. Each visitor gets a sandbox (docs/DECISIONS.m
 - "Reset demo" creates a new sandbox and the browser switches to it (D-5). The old sandbox is
   abandoned untouched; a Durable Object alarm deletes a sandbox's storage after 7 days without
   activity, and a Workflow still waiting there simply expires its request in the old Ledger.
-- New sandboxes are capped per IP and globally per UTC day in `Quota` (D-7).
+- New sandboxes are capped per IP (20) and globally (200) per UTC day in `Quota` (D-7 and its
+  amendment).
 - A production system would key the agent by authenticated account and shard the ledger per billing
   account; the sandbox is a demo construct and is labelled as such in the UI.
 
@@ -260,14 +261,17 @@ same status without writing.
 - Durable Objects: 1M requests and 50M rows written per month included, then $0.15 per million
   requests and $1.00 per million rows.
 - Cost estimate for accepted traffic, not a ceiling. Assume every cap is saturated all month and
-  about 1,400 live sandboxes (200 new per day, each deleted 7 days after its last activity; a
-  visitor who keeps sandboxes active can exceed this, because idle deletion does not bound the live
-  count). Each live sandbox writes about 800 rows a day under its caps (200 API requests at about 2
+  about 1,400 live sandboxes (200 new per day, the global cap, each deleted 7 days after its last
+  activity; a visitor who keeps sandboxes active can exceed this, because idle deletion does not
+  bound the live count). Each live sandbox writes about 800 rows a day under its caps (200 API requests at about 2
   writes, 30 chat messages at about 10, 5 credit requests at about 15), plus about 5,000 per new
   sandbox: about 2.1M rows per day, or 63M per month, about $13 over the included amount. Accepted
   requests add about $2. Workflows: 500,000 steps per month included; 1,400 x 5 x 6 x 30 = 1.26M
   steps, about $6 over. Workers AI: at most about $13 (the neuron stop is a hard daily limit). Total
   about $34 over the $5 plan. Normal demo traffic stays inside the included amounts.
+- The per-IP cap of 20 new sandboxes a day does not change this estimate, because the global cap of
+  200 already binds; it only means 10 addresses can use up a day's sandboxes (40 at the earlier
+  cap of 5).
 - Not covered by that estimate: refused traffic. The per-sandbox caps are counted inside the
   Ledger, so a call refused with 429 or 404 still costs one Durable Object request (no write).
   The per-IP `RATE_LIMITER` (60 requests a minute) runs in the Worker before any Durable Object is

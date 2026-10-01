@@ -135,7 +135,8 @@ Decided by: Anna.
 ## D-7 Abuse of the public chat URL
 
 - Per sandbox: 30 user messages per UTC day, 2,000 characters per message, 5 credit requests per day.
-- Per IP (`CF-Connecting-IP`, stored hashed in `Quota`): 5 new sandboxes per UTC day.
+- Per IP (`CF-Connecting-IP`, stored hashed in `Quota`): 20 new sandboxes per UTC day (5 until
+  2026-10-01; see "D-7 amendment" below).
 - Global, in `Quota`: 200 new sandboxes per UTC day. With deletion 7 days after last activity that
   gives about 1,400 live sandboxes in normal use; it is not a hard bound, since a visitor can keep
   sandboxes active.
@@ -1064,6 +1065,20 @@ production; a bounded follow-up shows the outcome without polling against the 20
 cap ("ui: Approval links and refresh boundaries").
 
 Decided by: Anna (the fix); bounds by Release engineer under standing orders.
+
+## D-7 amendment: 20 new sandboxes per IP per UTC day
+
+The per-IP cap on new sandboxes rises from 5 to 20 per UTC day (`SANDBOXES_PER_DAY_PER_IP`). The
+global cap of 200 new sandboxes per UTC day and every per-sandbox cap (30 messages, 5 credit
+requests, 200 API requests) stay as they are. Reason: several reviewers behind one office or VPN
+address would lock each other out after five sandboxes, and one full eval run needs about five on
+its own (the agent-fixes lane's live runs hit the cap on 2026-10-01). The cost estimate does not
+change: it already assumes the global cap saturated every day, and the global cap still binds. What
+changes is how fast one address can use it up: 10 addresses can now take the day's 200 sandboxes,
+against 40 before. Earlier entries that cite five sandboxes per IP (for example "evals: bounded
+live capture with honest capacity results") describe the cap as it was when they were written.
+
+Decided by: Anna.
 
 ## evals: follow-up figure and simulation rules
 
