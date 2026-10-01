@@ -1058,3 +1058,12 @@ refs/no-mistakes/recover/evals-owner-sync-post-pr7 before moving feat/evals to p
 then created fix/evals-figures-simulation from merged main 8c943bd. The merged remote branch
 was deleted, so the confirmed PR head was used. No published history was rewritten.
 Decided by: Anna.
+
+## evals: cardinal before an ordinal label
+
+A spelled-out cardinal followed by whitespace and an ordinal used as a label (`first-time`,
+`second-hand`, or spaced `first time`/`second hand`) stays a checked figure; hyphenated
+compound ordinals such as twenty-first and one hundred and second remain excluded. Ambiguous
+prose such as "twenty first time" is therefore checked as 20. Reason: conservative handling
+keeps real quantities under the every-number rule rather than erasing them. Decided by: QA
+engineer under standing orders.

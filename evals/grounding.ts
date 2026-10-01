@@ -116,18 +116,23 @@ function normalizeNumberWords(text: string): string {
   // Ordinal words (including compound phrases) are labels, not figures. Numeral ordinals
   // still go through the numeric matcher; cardinal words still normalize to figures.
   const ordinalWords = new RegExp(
-    `\\b((?:(?:${cardinal})(?:[ -]+(?:and[ -]+)?(?:${cardinal}))*[ -]+(?:and[ -]+)?)?)(${ordinals.join("|")})\\b`,
+    `\\b((?:(?:${cardinal})(?:[ -]+(?:and[ -]+)?(?:${cardinal}))*[ -]+(?:and[ -]+)?)?)(${ordinals.join("|")})\\b(?=(-[a-z]|[ ]+(?:time|hand)\\b)?)`,
     "gi"
   );
   return text
-    .replace(ordinalWords, (_, prefix: string, ordinal: string) => {
-      // Preserve a cardinal before an independent ordinal word, such as "one second".
-      const compound =
-        /\b(hundred|thousand|million|billion)\b/i.test(prefix) ||
-        tens.some((word) => prefix.toLowerCase().startsWith(word)) ||
-        /^(hundredth|thousandth|millionth|billionth)$/i.test(ordinal);
-      return !prefix || compound ? " " : prefix;
-    })
+    .replace(
+      ordinalWords,
+      (_, prefix: string, ordinal: string, label: string | undefined) => {
+        // Preserve a cardinal before an independent ordinal word, such as "one second",
+        // or before a spaced ordinal label, such as "forty first-time".
+        const compound =
+          !(label && /\s$/.test(prefix)) &&
+          (/\b(hundred|thousand|million|billion)\b/i.test(prefix) ||
+            tens.some((word) => prefix.toLowerCase().startsWith(word)) ||
+            /^(hundredth|thousandth|millionth|billionth)$/i.test(ordinal));
+        return !prefix || compound ? " " : prefix;
+      }
+    )
     .replace(numberWords, (words) => wordValue(words))
     .replace(/(\d+(?:\.\d+)?)\s+percent\b/gi, "$1%")
     .replace(/(\d+(?:\.\d+)?)\s+times\b/gi, "$1x");

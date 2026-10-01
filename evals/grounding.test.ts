@@ -330,6 +330,21 @@ describe("eval defect guards", () => {
     }
   );
 
+  test.each([
+    ["We saw forty first-time invoices.", "40"],
+    ["We saw one hundred first-time customers.", "100"],
+    ["We sold twenty second-hand items.", "20"],
+    ["We saw forty first time invoices.", "40"],
+    ["We sold twenty second hand items.", "20"]
+  ])("keeps the cardinal before an ordinal label in %s", (text, figure) => {
+    const recording = fixture(countCase.id);
+    recording.turns[0].response.toolCalls = [];
+    recording.turns[0].response.text = text;
+    expect(checkReplay(countCase, recording)).toContain(
+      `Turn 0: ungrounded number ${figure}`
+    );
+  });
+
   test("a coincidental current-invoice match cannot pass a Scale simulation", () => {
     const testCase = cases.find((item) => item.id === "scale-simulation")!;
     const recording = fixture(testCase.id);

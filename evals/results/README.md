@@ -96,7 +96,10 @@ Anna requested two shared corrections after merging PR #7:
 - Ordinal words (first, second, twentieth, twenty-first, one hundred and second) are labels,
   not figures. Numerals, including numeral ordinals, and spelled-out cardinal numbers are still
   checked. Regression: `ordinal words are not figures even without tool evidence`; six
-  numeral/cardinal negative cases remain rejected. This correction changes no recorded issue.
+  numeral/cardinal negative cases remain rejected. A cardinal before an ordinal label stays a
+  figure: `keeps the cardinal before an ordinal label in We saw forty first-time invoices.` and
+  four sibling cases (one hundred first-time, twenty second-hand, spaced first time/second
+  hand). This correction changes no recorded issue.
 - Simulation turns require a successful simulatePlan receipt for the requested plan and period,
   with matching input/output and customer identity. Requirements come from the engine-backed
   case scaffold, including both plan-memory turns. Regression: `a coincidental current-invoice
@@ -111,6 +114,8 @@ scale-simulation in both captures and the active snapshot. No issue was removed.
 already failed; **no pass/fail verdict changed**. Corrected totals stay full 9/15, rerun 2/9,
 latest 8/15. Original capture-time totals remain 4/15, 1/9, 5/15. Previous corrected issues are
 preserved in gradingHistory. Ordinal-word exclusion changes no committed recording's grade.
+After the review-round-1 cardinal-label fix, a second full regrade of all 39 recordings changed
+only `regradedAt`: no issue added or removed and no verdict changed.
 All response bytes, raw grades, target/date and usage are unchanged. This follow-up made zero
 model calls and did not modify src/agent. Capture totals remain 79 calls and estimated 6,686
 neurons; results still describe local dev, not deployment.

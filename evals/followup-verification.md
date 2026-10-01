@@ -55,6 +55,26 @@ previous gradingHistory, rawGrading and target/date/usage equal main; previous c
 issues were appended to history by the shared generator. All expectations remain engine-backed.
 Model failures stay reported data, with exact verdicts/issues compared in npm test.
 
+## Review round 1: cardinal before an ordinal label
+
+Claude review round 1 (run 01M3TJ4KE1N1TBVAW6THCD3NZT) found that a tens/hundreds cardinal
+before an ordinal label was erased as a compound ordinal, so "forty first-time invoices"
+hid 40. Five regressions with no numeric evidence were added first and observed red:
+
+```text
+Test Files 1 failed (1)
+Tests 5 failed | 85 passed (90)
+```
+
+The fix keeps a whitespace-separated cardinal when the ordinal is used as a label
+(`first-time`, `second-hand`, spaced `first time`/`second hand`); hyphenated compound ordinals
+such as twenty-first and one hundred and second stay excluded, and "one second" still counts 1.
+After the fix `npx vitest run evals/grounding.test.ts` reports `Tests 90 passed (90)`. The
+explicit EVAL_REGRADE_ALL=1 shared regrade then reprocessed all 39 recordings: the only diff is
+`regradedAt` in the four report files. No issue added or removed, no verdict changed; totals
+stay corrected 9/15, 2/9, 8/15 and raw 4/15, 1/9, 5/15. Recordings, initialGrading and
+gradingHistory are byte-identical. Zero model calls.
+
 Historical planted $999,999.99 and grader-only extra-issue red evidence is retained in
 verification.md; their negative unit guards are still executed here. New ordinal and
 simulation regressions were independently watched fail before fixing, as shown above.
@@ -75,12 +95,18 @@ Tests 367 passed (367)
 ```
 
 No skips. Both projects prohibit global fetch and require no Cloudflare credentials.
-`npx vitest list --json`: main 8c943bd 353, head 367; zero disappeared, 14 added,
-comparing project/relative path/full name. The exact added test names are:
+The npm test tails above predate review round 1 (367 tests); the full-suite and credential-free
+reruns at the final head belong to the gate's test step. After round 1, `npx vitest list --json`:
+main 8c943bd 353, head 372; zero disappeared, 19 added, comparing project/relative path/full name. The exact added test names are:
 
 ```text
 unit | evals/grounding.test.ts | eval defect guards > a coincidental current-invoice match cannot pass a Scale simulation
 unit | evals/grounding.test.ts | eval defect guards > a rejected simulation cannot supply a simulation receipt
+unit | evals/grounding.test.ts | eval defect guards > keeps the cardinal before an ordinal label in We saw forty first time invoices.
+unit | evals/grounding.test.ts | eval defect guards > keeps the cardinal before an ordinal label in We saw forty first-time invoices.
+unit | evals/grounding.test.ts | eval defect guards > keeps the cardinal before an ordinal label in We saw one hundred first-time customers.
+unit | evals/grounding.test.ts | eval defect guards > keeps the cardinal before an ordinal label in We sold twenty second hand items.
+unit | evals/grounding.test.ts | eval defect guards > keeps the cardinal before an ordinal label in We sold twenty second-hand items.
 unit | evals/grounding.test.ts | eval defect guards > ordinal words are not figures even without tool evidence
 unit | evals/grounding.test.ts | eval defect guards > simulation evidence must match the requested customer
 unit | evals/grounding.test.ts | eval defect guards > simulation evidence must match the requested output period
@@ -103,5 +129,5 @@ Zero new live model calls or neurons. Historical local-dev run remains dated 202
 for every correction, raw/corrected totals and failure analysis. Owner policy and safety-ref
 synchronization are recorded in DECISIONS.md; receipt identity is a lane implementation choice.
 
-VERIFIED: Red-first ordinal/receipt regressions; all 39-recording shared regrade with immutable raw evidence and no changed verdict; independent grader guards; exact-verdict replay; 367 passing offline and credential-free tests; npm ci/typecheck; zero coverage disappeared, 14 added; scope/prefix checks; no new model calls.
-NOT VERIFIED: Claude gate source review, PR and CI until executed; deployed/public evaluation, Cloudflare meter usage and proposed agent/prompt fixes inherited from the local-dev run. No merge or deployment.
+VERIFIED: Red-first ordinal/receipt and cardinal-label regressions; all 39-recording shared regrades with immutable raw evidence and no changed verdict; independent grader guards; exact-verdict replay; 367 passing offline and credential-free tests before review round 1; 90 passing grader tests after it; npm ci/typecheck; zero coverage disappeared, 19 added (372 collected); scope/prefix checks; no new model calls.
+NOT VERIFIED: Exact Claude review round 1 prompt (not exposed by axi logs); full and credential-free npm test at the final head until the gate test step runs; later review rounds, PR and CI until executed; deployed/public evaluation, Cloudflare meter usage and proposed agent/prompt fixes inherited from the local-dev run. No merge or deployment.
