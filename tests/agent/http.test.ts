@@ -68,6 +68,11 @@ describe("sandboxes", () => {
     expect(stored).not.toContain(body.approverToken);
   });
 
+  it("configures the D-7 sandbox caps: 20 per IP and 200 in total per UTC day", () => {
+    expect(env.SANDBOXES_PER_DAY_PER_IP).toBe("20");
+    expect(env.SANDBOXES_PER_DAY_GLOBAL).toBe("200");
+  });
+
   it("holds the per-IP cap of new sandboxes per UTC day", async () => {
     const ip = freshIp();
     const limit = Number(env.SANDBOXES_PER_DAY_PER_IP);
@@ -79,7 +84,8 @@ describe("sandboxes", () => {
     expect(error.cap).toMatchObject({ name: "sandboxes_per_ip", limit });
     expect(error.cap?.resetsAt).toMatch(/T00:00:00.000Z$/);
     expect((await call("/api/sandboxes", { method: "POST" })).status).toBe(201);
-  });
+    // 20 seeded sandboxes (D-7 amendment) take longer than the 5 s default under load.
+  }, 30_000);
 
   it("holds the global cap of new sandboxes per UTC day", async () => {
     const limit = Number(env.SANDBOXES_PER_DAY_GLOBAL);
