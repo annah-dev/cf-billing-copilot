@@ -565,9 +565,12 @@ Anna).
 - `temperature: 0`, `maxOutputTokens` from `MAX_OUTPUT_TOKENS` (512), `stopWhen:
   stepCountIs(MAX_STEPS)` with `MAX_STEPS = 4`. Updated 2026-10-01 to match the code: the last
   step, and any step after one that only repeated earlier calls, gets no tools (`mustAnswer`); the
-  grounding guard may add one retry call without tools; so a turn makes at most `MAX_STEPS + 1`
-  model calls. `maxRetries` is the AI SDK default (2): a failed call can be retried twice, each
-  attempt reserved and settled by the budget middleware, so the neuron stop still holds.
+  grounding guard may add one retry call without tools; so one `onChatMessage` run makes at most
+  `MAX_STEPS + 1` logical model calls. `maxRetries` is the AI SDK default (2): each logical call
+  that fails can be attempted up to three times, so a run can reach `3 x (MAX_STEPS + 1)` = 15
+  inference attempts. Every attempt is reserved and settled by the budget middleware and counted
+  in `TurnStats.modelCalls`, so the neuron stop still holds. A credit confirmation's continuation
+  is its own `onChatMessage` run with the same bounds.
 - The budget middleware sits inside `simulateStreamingMiddleware` (the simulated stream calls
   `doGenerate`, which it wraps). Input tokens are bounded by the UTF-8 byte length of the
   serialised prompt and tool definitions plus 8 template tokens per message (Llama 3's tokenizer
@@ -1154,5 +1157,21 @@ naming the tool, before any Ledger read or write. Reason: AGENTS.md hard rule 2 
 the caller; a direct call to `execute` (tests, recovery code, a future path) gets the same check.
 The D-14 and model-settings entries were updated in place to match the code (middleware list,
 held reply text, `mustAnswer`, at most `MAX_STEPS + 1` calls, `maxRetries` default).
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: frame gate review fixes (PR review round 1)
+
+- `cf_agent_state` frames are gated like other writes: the SDK persists client-sent agent state.
+- A chat request is measured after the SDK's own `autoTransformMessages`, so the older `content`
+  string and array shapes cannot slip past the length limit and then skip it as prepaid.
+- A refused chat request ends its response stream with `error: true` and the contract
+  ErrorResponse as the body; the chat hook raises it and the UI shows the cap and its reset. A
+  refused non-chat frame (for example a confirmation over the API cap) gets the stored
+  conversation back plus a `billing-refusal` message (the ErrorResponse), which the live chat UI
+  shows, because the hook surfaces no error on that path. The hook's pending continuation
+  settles on its own: its resume request gets no stream.
+- The model-settings entry distinguishes logical model calls (`MAX_STEPS + 1` per
+  `onChatMessage` run) from inference attempts (up to three each with the SDK's default retries).
 
 Decided by: Agent fixes engineer under standing orders.

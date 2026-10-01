@@ -22,12 +22,14 @@ import {
   type CreditRequest,
   type ToolCallRecord,
   type ToolName,
+  type ErrorResponse,
   type TurnResponse
 } from "../contracts";
 import { DAY_MS, getConfig, utcDay } from "../http/config";
 import {
   BUDGET_MESSAGE,
   capMessage,
+  errorBody,
   refusal,
   type Refusal,
   type Result
@@ -80,6 +82,9 @@ export const AWAITING_CONFIRMATION =
   "Awaiting the customer's confirmation: nothing was recorded. Send the turn with confirm: true to start the credit request.";
 
 /** Broadcast to connected chat clients when a credit request changes state. */
+/** Sent on the chat connection when a non-chat frame is refused (the contract ErrorResponse). */
+export type BillingRefusalMessage = { type: "billing-refusal" } & ErrorResponse;
+
 export type CreditUpdateMessage = {
   type: "credit-request-update";
   requestId: string;
@@ -246,13 +251,21 @@ export class BillingAgent extends AIChatAgent<Env> {
     const ip = (connection.state as { ip?: string } | null)?.ip ?? "unknown";
     const { success } = await this.env.RATE_LIMITER.limit({ key: ip });
     if (!success) {
-      this.refuseFrame(connection, frame, "Too many requests; slow down.");
+      this.refuseFrame(
+        connection,
+        frame,
+        refusal(429, "rate_limited", "Too many requests; slow down.")
+      );
       return false;
     }
     const { customerId } = this.identity();
     const admitted = await this.ledger().gate({ customerId });
     if (!admitted.ok) {
-      this.refuseFrame(connection, frame, admitted.message);
+      this.refuseFrame(
+        connection,
+        frame,
+        refusal(admitted.status, admitted.code, admitted.message, admitted.cap)
+      );
       return false;
     }
     if (frame.kind !== "chat-request") return true;
@@ -260,7 +273,11 @@ export class BillingAgent extends AIChatAgent<Env> {
       this.refuseFrame(
         connection,
         frame,
-        `Messages are limited to ${config.MESSAGE_MAX_CHARS} characters. Please shorten your message.`
+        refusal(
+          400,
+          "invalid_request",
+          `Messages are limited to ${config.MESSAGE_MAX_CHARS} characters. Please shorten your message.`
+        )
       );
       return false;
     }
@@ -269,9 +286,7 @@ export class BillingAgent extends AIChatAgent<Env> {
       this.refuseFrame(
         connection,
         frame,
-        cap.code === "cap_reached"
-          ? capMessage("chat messages", config.MESSAGES_PER_SANDBOX_DAY)
-          : cap.message
+        refusal(cap.status, cap.code, cap.message, cap.cap)
       );
       return false;
     }
@@ -280,38 +295,21 @@ export class BillingAgent extends AIChatAgent<Env> {
   }
 
   /**
-   * Answer a refused frame on its own connection without storing anything: a chat request gets
-   * the refusal as a one-off reply; any other frame gets the stored conversation back, so the
-   * client drops its unsaved change.
+   * Answer a refused frame on its own connection without storing anything. A chat request's
+   * response stream ends in an error whose text is the contract ErrorResponse, which the chat hook
+   * raises and the UI shows with the cap and its reset (src/ui/errors.ts). Any other frame gets the
+   * stored conversation back, so the client drops its unsaved change, plus a `billing-refusal`
+   * message the UI shows, because the hook does not surface errors on that path (PR review r1).
    */
-  private refuseFrame(
-    connection: Connection,
-    frame: Frame,
-    text: string
-  ): void {
+  private refuseFrame(connection: Connection, frame: Frame, r: Refusal): void {
+    const body = JSON.stringify(errorBody(r));
     if (frame.kind === "chat-request") {
-      const id = crypto.randomUUID();
-      for (const chunk of [
-        { type: "start" },
-        { type: "text-start", id },
-        { type: "text-delta", id, delta: text },
-        { type: "text-end", id },
-        { type: "finish" }
-      ]) {
-        connection.send(
-          JSON.stringify({
-            type: "cf_agent_use_chat_response",
-            id: frame.id,
-            body: JSON.stringify(chunk),
-            done: false
-          })
-        );
-      }
       connection.send(
         JSON.stringify({
           type: "cf_agent_use_chat_response",
           id: frame.id,
-          body: "",
+          body,
+          error: true,
           done: true
         })
       );
@@ -323,6 +321,11 @@ export class BillingAgent extends AIChatAgent<Env> {
         messages: this.messages
       })
     );
+    const message: BillingRefusalMessage = {
+      type: "billing-refusal",
+      ...errorBody(r)
+    };
+    connection.send(JSON.stringify(message));
   }
 
   /** Turn accounting keyed by the user message id that started the turn (read by /turn). */

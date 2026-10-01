@@ -6,10 +6,12 @@ import { isToolUIPart, type UIMessage } from "ai";
 import {
   agentInstanceName,
   TurnRequestSchema,
+  type ErrorResponse,
   type PanelResponse
 } from "../contracts/http";
 import { ToolSchemas } from "../contracts/tools";
 import { browserStorage } from "./api";
+import { chatRefusal } from "./errors";
 import { type FixtureBackend } from "./fixtures";
 import { Messages, ErrorNotice } from "./components";
 import { suggestions, validatedTool } from "./messages";
@@ -157,11 +159,18 @@ export function LiveChat({
   changed: () => void;
 }) {
   const [connected, setConnected] = useState(false);
+  // A frame the agent refused (rate limit, daily cap) is answered with a billing-refusal message;
+  // the chat hook does not surface it, so it is shown here like any other error.
+  const [refused, setRefused] = useState<ErrorResponse | null>(null);
   const agent = useAgent({
     agent: "BillingAgent",
     name: agentInstanceName(panel.sandboxId, panel.customerId),
     onOpen: () => setConnected(true),
-    onClose: () => setConnected(false)
+    onClose: () => setConnected(false),
+    onMessage: (event: MessageEvent) => {
+      const response = chatRefusal(event.data);
+      if (response) setRefused(response);
+    }
   });
   // No sendAutomaticallyWhen: useAgentChat already sends cf_agent_tool_approval with
   // autoContinue, and the server continues the turn. A second, client-sent request raced that
@@ -175,11 +184,13 @@ export function LiveChat({
       messages={chat.messages}
       busy={chat.status === "streaming" || chat.status === "submitted"}
       connected={connected}
-      error={chat.error}
+      error={chat.error ?? refused}
       send={async (text) => {
+        setRefused(null);
         await chat.sendMessage({ text });
       }}
       approve={(id, approved) => {
+        setRefused(null);
         void chat.addToolApprovalResponse({ id, approved });
       }}
       stop={() => void chat.stop()}

@@ -2,6 +2,7 @@
 // messages over the WebSocket passed neither the per-IP rate limiter nor the daily caps, because
 // those run per HTTP request and the socket is upgraded once. The SDK also saves a chat request's
 // messages before onChatMessage runs, so the caps must be checked before the SDK sees the frame.
+import { autoTransformMessages } from "@cloudflare/ai-chat/ai-chat-v5-migration";
 import type { UIMessage } from "ai";
 
 export type Frame =
@@ -13,6 +14,8 @@ export type Frame =
   | { kind: "pass" };
 
 const WRITES = new Set([
+  // Agent state from the client: the SDK persists it (_setStateInternal). PR review r1.
+  "cf_agent_state",
   "cf_agent_chat_messages",
   "cf_agent_tool_result",
   "cf_agent_tool_approval",
@@ -31,9 +34,13 @@ export function classifyFrame(message: string): Frame {
     let messages: UIMessage[] = [];
     try {
       const body = JSON.parse(String(frame.init?.body ?? "{}")) as {
-        messages?: UIMessage[];
+        messages?: unknown[];
       };
-      messages = Array.isArray(body.messages) ? body.messages : [];
+      // Measure the messages as the SDK will store them: it converts the older `content` shapes
+      // (strings and arrays) into `parts` (PR review r1).
+      messages = Array.isArray(body.messages)
+        ? autoTransformMessages(body.messages)
+        : [];
     } catch {
       messages = [];
     }

@@ -3104,7 +3104,7 @@ first, each with severity, file and line, what is wrong, and the fix. End with:
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/08c-prod-chat-review-r1.md
-- Outcome: (filled in after the round)
+- Outcome: CHANGES REQUESTED: two major (cf_agent_state frames bypassed the gate; older `content` message shapes bypassed the length check) and two minor (a refused confirmation showed no reason; the model-call bound ignored SDK retries). All fixed with tests that go red without the fix.
 
 ````text
 You are the cross-reviewer for branch `fix/prod-chat` on annah-dev/cf-billing-copilot, round 1 of

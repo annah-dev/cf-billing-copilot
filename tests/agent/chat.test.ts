@@ -767,6 +767,18 @@ describe("confirmation only for a known invoice (production report)", () => {
 });
 
 describe("chat frames are counted like /turn (D-7, D-13; production report)", () => {
+  const legacyRequest = (id: string, content: unknown) =>
+    JSON.stringify({
+      type: "cf_agent_use_chat_request",
+      id,
+      init: {
+        method: "POST",
+        body: JSON.stringify({
+          messages: [{ id: `u_${id}`, role: "user", content }],
+          trigger: "submit-message"
+        })
+      }
+    });
   const today = () => new Date().toISOString().slice(0, 10);
   async function counter(sandboxId: string, name: string): Promise<number> {
     return runInDurableObject(ledgerOf(sandboxId), (_i, s) => {
@@ -823,7 +835,14 @@ describe("chat frames are counted like /turn (D-7, D-13; production report)", ()
     await until(responseDone, "refusal");
     expect(ai).not.toHaveBeenCalled();
     expect(await stored(sb.sandboxId)).toEqual([]);
-    expect(frames.map((f) => f.body ?? "").join("")).toContain("chat messages");
+    // The client raises the error and the UI reads the contract body (src/ui/errors.ts).
+    const refusalFrame = frames.find(
+      (f) => f.type === "cf_agent_use_chat_response" && f.id === "r1" && f.done
+    ) as Frame & { error?: boolean };
+    expect(refusalFrame.error).toBe(true);
+    expect(JSON.parse(refusalFrame.body ?? "")).toMatchObject({
+      error: { code: "cap_reached", cap: { name: "messages" } }
+    });
     ws.close();
   });
 
@@ -883,6 +902,78 @@ describe("chat frames are counted like /turn (D-7, D-13; production report)", ()
     } finally {
       limit.mockRestore();
     }
+    ws.close();
+  });
+
+  it("measures the older content shapes as the SDK stores them (PR review r1)", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    const ai = stubAi([text("should not be used")]);
+    const long = "x".repeat(Number(env.MESSAGE_MAX_CHARS) + 1);
+    ws.send(legacyRequest("s1", long));
+    await until((f) => responseDone(f) && f.id === "s1", "string content");
+    const before = frames.length;
+    ws.send(legacyRequest("a1", [{ type: "text", text: long }]));
+    await until(
+      (f) => responseDone(f) && f.id === "a1" && frames.indexOf(f) >= before,
+      "array content"
+    );
+    expect(ai).not.toHaveBeenCalled();
+    expect(await stored(sb.sandboxId)).toEqual([]);
+    ws.close();
+  });
+
+  it("does not store client agent state over the API request cap (PR review r1)", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    await setCounter(
+      sb.sandboxId,
+      "api",
+      Number(env.API_REQUESTS_PER_SANDBOX_DAY)
+    );
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({ type: "cf_agent_state", state: { planted: true } })
+    );
+    await until(
+      (f) => f.type === "billing-refusal" && frames.indexOf(f) >= before,
+      "refusal"
+    );
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sb.sandboxId}.${ACME}`
+    );
+    const state = await runInDurableObject(agent, (a) => a.state);
+    expect(JSON.stringify(state ?? null)).not.toContain("planted");
+    ws.close();
+  });
+
+  it("tells the client why a confirmation frame was refused (PR review r1)", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    await setCounter(
+      sb.sandboxId,
+      "api",
+      Number(env.API_REQUESTS_PER_SANDBOX_DAY)
+    );
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({
+        type: "cf_agent_tool_approval",
+        toolCallId: "call_x",
+        approved: true,
+        autoContinue: true
+      })
+    );
+    await until(
+      (f) => f.type === "billing-refusal" && frames.indexOf(f) >= before,
+      "refusal"
+    );
+    const after = frames.slice(before);
+    expect(after.some((f) => f.type === "cf_agent_chat_messages")).toBe(true);
+    expect(after.find((f) => f.type === "billing-refusal")).toMatchObject({
+      error: { code: "cap_reached", cap: { name: "api" } }
+    });
     ws.close();
   });
 });
