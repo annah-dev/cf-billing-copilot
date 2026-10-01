@@ -1039,6 +1039,33 @@ tool-result frame goes red on the round-1 code.
 
 Decided by: Agent fixes engineer under standing orders.
 
+## ui: Production builds default to the live API
+
+`apiMode` (src/ui/api.ts) picks the backend: a production build talks to the live API, the dev
+server shows the fixture preview, and `VITE_BILLING_API_MODE=live` or `=fixture` overrides either.
+This supersedes the default in "ui: Fixture transport and live handoff". Reason: the release smoke
+test found the deployed site serving the fixture preview, because the handoff to live was an
+opt-in build variable that the deploy command did not set; production must not depend on
+remembering it, while `npm run dev` stays free of model calls.
+An approval link minted by the earlier fixture build still opens /admin, but its sandbox id
+was never admitted by the live API, so it gets 404 or 401 and the page shows the error; nothing
+is read or written, so links are not tagged with their mode.
+
+Decided by: Anna.
+
+## ui: Admin re-fetches until the Workflow finishes a decision
+
+After a decision the admin page re-fetches the list up to 5 times, 1 second apart, while the
+decided request is still `approved` or `pending_approval` with a recorded decision, and stops at
+the first terminal state or when the page unmounts. Every list read (initial, focus, Refresh and
+follow-up) goes through one serial queue, and the page stays busy until no read is queued, so
+reads never overlap and Approve cannot be clicked while an earlier read is outstanding. Reason: the Workflow applies or rejects a
+moment after the decision is recorded, so the single re-fetch left the card on "approved" in
+production; a bounded follow-up shows the outcome without polling against the 200-request daily
+cap ("ui: Approval links and refresh boundaries").
+
+Decided by: Anna (the fix); bounds by Release engineer under standing orders.
+
 ## D-7 amendment: 20 new sandboxes per IP per UTC day
 
 The per-IP cap on new sandboxes rises from 5 to 20 per UTC day (`SANDBOXES_PER_DAY_PER_IP`). The
