@@ -8,8 +8,12 @@ import {
   NoSuchToolError,
   createUIMessageStream,
   createUIMessageStreamResponse,
+  generateText,
+  stepCountIs,
   streamText,
-  type UIMessage
+  type UIMessage,
+  type UIMessageChunk,
+  type UIMessageStreamWriter
 } from "ai";
 import {
   AgentInstanceNameSchema,
@@ -20,18 +24,52 @@ import {
   type TurnResponse
 } from "../contracts";
 import { DAY_MS, getConfig, utcDay } from "../http/config";
-import { capMessage, refusal, type Refusal, type Result } from "../http/errors";
+import {
+  BUDGET_MESSAGE,
+  capMessage,
+  refusal,
+  type Refusal,
+  type Result
+} from "../http/errors";
 import { CREDIT_WORKFLOW } from "../workflows/params";
 import { historyForModel } from "./history";
 import { billingModel, newTurnStats, type TurnStats } from "./model";
 import { EMPTY_MEMORY, systemPrompt, type Memory } from "./prompt";
 import { AnomalyChecks } from "./anomalies";
+import { planIdRepair } from "./repair";
+import { collectEvidence } from "./grounding";
+import { guardReply, type GroundingRecord } from "./guard";
 import { ToolProvenance } from "./provenance";
-import { ToolError, buildTools } from "./tools";
+import { ToolError, buildTools, stableKey } from "./tools";
 
 /** Model calls per turn: tool round trips plus the answer. Small on purpose (Stop 2 finding). */
 export const MAX_STEPS = 4;
 const MAX_REMEMBERED_QUESTIONS = 8;
+
+/**
+ * Whether the next step gets no tools, so the model has to answer: the last allowed step, or a
+ * step after one where the model only repeated calls it had already made this turn. In the evals
+ * Llama 3.3 spent every step on tool calls (four identical getCreditRequestStatus calls) and the
+ * turn ended with no text (remember-credit).
+ */
+export function mustAnswer(
+  stepNumber: number,
+  steps: readonly {
+    toolCalls: readonly { toolName: string; input: unknown }[];
+  }[]
+): boolean {
+  if (stepNumber >= MAX_STEPS - 1) return true;
+  const last = steps.at(-1);
+  if (!last || last.toolCalls.length === 0) return false;
+  const earlier = new Set(
+    steps
+      .slice(0, -1)
+      .flatMap((s) => s.toolCalls.map((c) => stableKey(c.toolName, c.input)))
+  );
+  return last.toolCalls.every((c) =>
+    earlier.has(stableKey(c.toolName, c.input))
+  );
+}
 const QUESTION_CHARS = 160;
 const MAX_TRACKED_TURNS = 16;
 
@@ -46,7 +84,11 @@ export type CreditUpdateMessage = {
   status: string | null;
 };
 
-type TurnRecord = TurnStats & { capRefusal: Refusal | null };
+type TurnRecord = TurnStats & {
+  capRefusal: Refusal | null;
+  /** The grounding guard's outcome for the reply (guard.ts); null when no model reply ran. */
+  grounding: GroundingRecord | null;
+};
 
 function textOf(message: UIMessage | undefined): string {
   if (!message) return "";
@@ -70,6 +112,72 @@ function toolErrorText(error: unknown): string {
   if (NoSuchToolError.isInstance(error)) return error.message;
   if (error instanceof ToolError) return error.message;
   return "An internal error occurred.";
+}
+
+/**
+ * The evidence a run that stopped at a credit proposal leaves for the continuation that resumes
+ * it: the outputs its steps produced, the proposed tool calls, and the question it answered.
+ * Stored server-side, so a client cannot move an older result into a new turn by rearranging its
+ * history (PR review r1).
+ */
+export type AwaitingEvidence = {
+  toolCallIds: string[];
+  userMessageId: string;
+  customerText: string;
+  outputs: unknown[];
+};
+
+/**
+ * The stored evidence a run may cite besides its own outputs: only when provenance consumed the
+ * customer's answer to one of the stored proposals in this run, for the same question. Any other
+ * continuation (a stray tool-result frame, a changed question, a stale proposal) gets none
+ * (PR review r2).
+ */
+export function continuationEvidence(
+  answeredCallId: string | null,
+  stored: AwaitingEvidence | null,
+  userMessageId: string | undefined
+): AwaitingEvidence | null {
+  if (!answeredCallId || !stored) return null;
+  if (!stored.toolCallIds.includes(answeredCallId)) return null;
+  return stored.userMessageId === userMessageId ? stored : null;
+}
+
+/**
+ * Forward a step stream to the client, holding back its text: the reply is only sent after the
+ * grounding guard has checked it. Returns the held text, step by step, and every tool output.
+ */
+async function forwardHoldingText(
+  stream: ReadableStream<UIMessageChunk>,
+  writer: UIMessageStreamWriter
+): Promise<{
+  text: string;
+  outputs: unknown[];
+  /** Tool calls proposed for the customer's confirmation (empty when none). */
+  awaiting: string[];
+}> {
+  const texts = new Map<string, string>();
+  const outputs: unknown[] = [];
+  const awaiting: string[] = [];
+  const reader = stream.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value.type === "text-start") texts.set(value.id, "");
+    else if (value.type === "text-delta") {
+      texts.set(value.id, (texts.get(value.id) ?? "") + value.delta);
+    } else if (value.type !== "text-end") {
+      if (value.type === "tool-output-available") outputs.push(value.output);
+      if (value.type === "tool-approval-request")
+        awaiting.push(value.toolCallId);
+      writer.write(value);
+    }
+  }
+  const text = [...texts.values()]
+    .map((t) => t.trim())
+    .filter((t) => t !== "")
+    .join("\n\n");
+  return { text, outputs, awaiting };
 }
 
 /** A reply that never reaches the model: a cap, the budget stop or an oversize message. */
@@ -313,7 +421,11 @@ export class BillingAgent extends AIChatAgent<Env> {
     // this.messages can change at any await below (PR #4 review round 4).
     const conversation = structuredClone(this.messages);
     const lastUser = [...conversation].reverse().find((m) => m.role === "user");
-    const record: TurnRecord = { ...newTurnStats(), capRefusal: null };
+    const record: TurnRecord = {
+      ...newTurnStats(),
+      capRefusal: null,
+      grounding: null
+    };
     this.turns.set(lastUser?.id ?? options?.requestId ?? "unknown", record);
     // Only /turn reads these back; keep the map small for chat turns nobody collects.
     for (const key of this.turns.keys()) {
@@ -330,9 +442,17 @@ export class BillingAgent extends AIChatAgent<Env> {
     // Only a continuation that resumes a server-issued credit confirmation the customer just
     // answered is exempt from the message cap; any other continuation (a stray or forged approval
     // frame, which the SDK still continues) is charged as a message.
-    const exempt =
-      continuation &&
-      (await this.provenance.consumeAnsweredConfirmation(conversation));
+    // Evidence a proposing run stored is read and cleared before anything else, so a refused,
+    // abandoned or unrelated run can never leave it for a later one.
+    const stored = this.readKey<AwaitingEvidence | null>(
+      "awaiting_evidence",
+      null
+    );
+    if (stored) this.writeKey("awaiting_evidence", null);
+    const answered = continuation
+      ? await this.provenance.consumeAnsweredConfirmation(conversation)
+      : null;
+    const exempt = answered !== null;
     if (!exempt) {
       if (!continuation) {
         const text = textOf(lastUser);
@@ -379,14 +499,20 @@ export class BillingAgent extends AIChatAgent<Env> {
       cache,
       { confirmCredit: !preConfirmed }
     );
-    const messages = await historyForModel(
-      await this.provenance.verified(conversation),
-      { continuation, confirmedTurn: preConfirmed }
-    );
+    const verified = await this.provenance.verified(conversation);
+    const messages = await historyForModel(verified, {
+      continuation,
+      confirmedTurn: preConfirmed
+    });
+    // Evidence comes only from this run's tool outputs, plus, for the continuation that resumes a
+    // credit proposal the customer just answered, what the proposing run stored.
+    const resumed = continuationEvidence(answered, stored, lastUser?.id);
+    const earlierOutputs = resumed?.outputs ?? [];
+    const customerText = resumed?.customerText ?? textOf(lastUser);
     const system = systemPrompt(this.memory(), utcDay(Date.now()));
     const stream = createUIMessageStream({
       onError: toolErrorText,
-      execute: ({ writer }) => {
+      execute: async ({ writer }) => {
         // User story 4: the spike is checked and shown whether or not the model asks (anomalies.ts).
         const checks = new AnomalyChecks({
           detectAnomalies: tools.detectAnomalies.execute as NonNullable<
@@ -399,15 +525,25 @@ export class BillingAgent extends AIChatAgent<Env> {
           writer
         });
         checks.wrap(tools);
+        const model = billingModel(this.env, record, {
+          maxOutputTokens: config.MAX_OUTPUT_TOKENS,
+          neuronStop: config.NEURON_DAILY_STOP
+        });
         const result = streamText({
-          model: billingModel(this.env, record, {
-            maxOutputTokens: config.MAX_OUTPUT_TOKENS,
-            neuronStop: config.NEURON_DAILY_STOP
-          }),
+          model,
           system,
           messages,
           tools,
-          prepareStep: checks.prepareStep,
+          prepareStep: async (step) => {
+            const prepared = await checks.prepareStep(step);
+            return mustAnswer(step.stepNumber, step.steps)
+              ? { ...prepared, activeTools: [] }
+              : prepared;
+          },
+          experimental_repairToolCall: planIdRepair(async () => {
+            const account = await ledger.account(customerId);
+            return account.ok ? account.value.availablePlans : [];
+          }),
           onStepFinish: (step) =>
             this.provenance.recordStep(
               step.toolCalls,
@@ -426,15 +562,96 @@ export class BillingAgent extends AIChatAgent<Env> {
               ),
               !preConfirmed
             ),
-          // One extra answer step only while a server-issued anomaly result is unseen by the model.
-          stopWhen: ({ steps }) =>
-            steps.length >= MAX_STEPS + 1 ||
-            (steps.length >= MAX_STEPS && !checks.hasUnseen),
+          // The last step has no tools (mustAnswer), so no server check can arrive after it.
+          stopWhen: stepCountIs(MAX_STEPS),
           maxOutputTokens: config.MAX_OUTPUT_TOKENS,
           temperature: 0,
           abortSignal: options?.abortSignal
         });
-        writer.merge(result.toUIMessageStream({ onError: toolErrorText }));
+        const draft = await forwardHoldingText(
+          result.toUIMessageStream({
+            onError: toolErrorText,
+            sendFinish: false
+          }),
+          writer
+        );
+        if (draft.awaiting.length > 0) {
+          const pending: AwaitingEvidence = {
+            toolCallIds: draft.awaiting,
+            userMessageId: lastUser?.id ?? "",
+            customerText,
+            outputs: [...earlierOutputs, ...draft.outputs, ...checks.outputs]
+          };
+          this.writeKey("awaiting_evidence", pending);
+        }
+        // The grounding guard (guard.ts): figures must come from this turn's tool results, dates
+        // and periods also from the customer's message. One corrective retry, then a safe answer.
+        let reply: string;
+        if (record.budgetRefusal) {
+          reply = BUDGET_MESSAGE;
+          record.grounding = {
+            outcome: "budget",
+            unsupported: [],
+            retryUnsupported: null
+          };
+        } else {
+          const guarded = await guardReply({
+            draft: draft.text,
+            awaitingConfirmation: draft.awaiting.length > 0,
+            evidence: collectEvidence(
+              [...earlierOutputs, ...draft.outputs, ...checks.outputs],
+              customerText
+            ),
+            retry: async (correction) => {
+              let response;
+              try {
+                response = await result.response;
+              } catch (_err) {
+                return null; // the turn failed; nothing to correct
+              }
+              // The context the model answered from, server checks included, then the correction.
+              // No tools: the retry restates what this turn already fetched.
+              let retried;
+              try {
+                retried = await generateText({
+                  model,
+                  system,
+                  messages: [
+                    ...checks.withServerResults([
+                      ...messages,
+                      ...response.messages
+                    ]),
+                    { role: "user", content: correction }
+                  ],
+                  maxOutputTokens: config.MAX_OUTPUT_TOKENS,
+                  temperature: 0,
+                  abortSignal: options?.abortSignal
+                });
+              } catch (err) {
+                // A failed retry falls back to the safe answer; it never sends the draft.
+                console.error("grounding retry failed", err);
+                return null;
+              }
+              return record.budgetRefusal ? null : retried.text;
+            }
+          });
+          reply = guarded.text;
+          record.grounding = guarded.grounding;
+        }
+        if (record.grounding.outcome !== "grounded") {
+          console.log("grounding guard", record.grounding);
+        }
+        if (reply !== "") {
+          const id = crypto.randomUUID();
+          writer.write({ type: "text-start", id });
+          writer.write({ type: "text-delta", id, delta: reply });
+          writer.write({ type: "text-end", id });
+        }
+        writer.write({
+          type: "message-metadata",
+          messageMetadata: { grounding: record.grounding }
+        });
+        writer.write({ type: "finish" });
       }
     });
     return createUIMessageStreamResponse({ stream });

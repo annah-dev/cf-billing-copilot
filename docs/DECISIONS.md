@@ -760,6 +760,311 @@ must describe the checkout under review, and command output must come from the c
 
 Decided by: Frontend engineer under standing orders.
 
+## evals: early-start synthetic fixtures and strict replay provenance
+
+Build fifteen cases from the current engine seed with engine-computed expected amounts,
+and label pre-agent recordings `synthetic-engine` with no timestamp or model usage. Replay
+validates each tool input/output and checks expected displays, semantic phrases, and money
+and numeric provenance using only current and earlier recorded tool outputs. Reason: the
+owner authorized offline work before PR #4 merges, and synthetic harness evidence must not
+be reported as live model performance. Decided by: QA engineer under standing orders.
+
+## evals: memory turns and credit confirmation
+
+Each memory case sends a new HTTP request without client history to the same sandbox/customer;
+only credit-start questions send `confirm: true`, and September invoice/change cases require
+the proactive anomaly without asserting that the model selected detectAnomalies. Reason:
+this exercises persisted context and D-20 while respecting the agent lane's deterministic
+anomaly behavior. Decided by: QA engineer under standing orders.
+
+## evals: bounded live capture with honest capacity results
+
+Use a separate opt-in live config, HTTPS origin from the environment, one fresh sandbox per
+case, sequential requests without retries, and immediate stop on caps or other request failures.
+Persist UTC date, pass fraction over all planned cases, completed counts and reported token/
+model-call usage; discard approver tokens. Require an explicit readiness acknowledgment after
+the owner's merge notice, pull and deployment. Reason: fresh cases avoid shared state, while
+D-7's five-sandbox-per-IP cap must stay enforced and partial results cannot claim completion.
+Full-run capacity is an owner decision, not a cap bypass in the evals lane.
+Decided by: QA engineer under standing orders.
+
+## evals: natural calendar dates in replay grounding
+
+Replay normalizes named calendar dates in answers to ISO before the expected-value and numeric
+provenance checks, grounds bare years from tool dates/periods, resolves a yearless day only from
+a single grounded period for its month, and reports unresolved named days. The replay test title
+reports live versus synthetic-engine recording counts. Reason: gate review round 1 (F1) showed
+natural wording such as "September 2026" or "September 18" failed as ungrounded numbers and missed
+the expected ISO anomaly date, which would count correct live answers as failures; whole-date
+matching keeps a fabricated date from passing on separately present parts, and the source count
+keeps a capped mixed snapshot from reading as live coverage (F2).
+Decided by: QA engineer under standing orders.
+
+## evals: calendar dates from tool timestamps
+
+Replay's numeric pattern also reads the UTC calendar date that begins an ISO timestamp (for
+example `2026-10-04` from `2026-10-04T00:00:00Z`), so credit deadlines and creation dates quoted
+in prose ground as whole dates. Reason: gate review round 2 (R2-F1) showed the `T` separator
+dropped the day, so a correct "approval deadline October 4, 2026" failed as ungrounded; any
+other day is still rejected. Decided by: QA engineer under standing orders.
+
+## evals: preserve gate fixes when starting the owner-authorized live phase
+
+Recover the cancelled offline gate's two fix commits with `no-mistakes axi sync --recover`
+before rebasing onto merged PR #4. Reason: the owner's new live-capture and count-grounding
+scope supersedes the offline-only gate intent, and the new validation must retain its fixes.
+Decided by: QA engineer under standing orders.
+
+## evals: owner-authorized local capture, sandbox grouping and bounded reruns
+
+Capture one full local-dev set, then one explicit rerun of its failing questions; share only
+read-only cases, isolate credit and memory cases, and reuse known sandboxes for the rerun.
+Default EVAL_BASE_URL to loopback dev and persist target, date, model calls and estimated
+neurons per run. Reason: Anna authorized local dev before release deployment and required
+respecting caps rather than raising them. Decided by: Anna.
+
+## evals: every numeric claim includes contextual counts and date wording
+
+Ground array lengths and numbered positions, parse written integer numbers, and require invoice
+line-count claims to match the invoice array rather than any unrelated scalar. Derive month/year
+from full tool timestamps and keep full dates coherent. Keep failed live answers as red replay
+cases; regression tests start from engine fixtures in memory. Reason: the owner reported "7
+lines" for a six-line invoice and asked for every number to be checked.
+Decided by: QA engineer under standing orders.
+
+## evals: offline correction of ISO-month count false positives
+
+Exclude ISO date components from count-claim starts. Preserve initial grading and all original
+responses, then regrade the archived full run offline. Reason: the first capture proved that
+"2026-09 invoice" was incorrectly recognized as "09 invoices"; correcting that checker defect
+changes the first-run grade from 4/15 to 6/15 without a new model call or a weakened count check.
+Decided by: QA engineer under standing orders.
+
+## evals: rejected calls can recover but cannot ground answers
+
+Validate successful tool inputs and outputs strictly. Validate rejected-call envelopes, require
+null output, and exclude rejected inputs and outputs from all grounding evidence; allow a later
+successful call to recover. Require a successful startCreditRequest receipt for confirmed credit
+turns. Reason: real plan-memory captures recover from an invalid plan id and answer correctly,
+so failing solely on the rejected call misgraded valid behavior. The credit capture also recovers
+its tools but fails because its answers are empty. Preserve all prior grades and responses when
+regrading offline. Decided by: QA engineer under standing orders.
+
+## evals: test harness stability instead of model perfection
+
+Replay regrades all active and archived recordings and compares exact verdicts/issues with
+committed results. Known-good and known-bad grader unit tests remain independent. Model failures
+are negative reported verdicts, not failing tests. Reason: Anna requires a green harness gate
+without letting its automatic test fix alter grading or recordings to improve model results.
+Decided by: Anna.
+
+## evals: explicit all-recordings grading with raw/corrected reporting
+
+An offline, opt-in generator applies one shared grader to every recording, preserves capture-time
+and intermediate grades, checks active copies are the latest attempts, and writes corrected
+results plus recording digests. Tests never regenerate results. Reason: Anna requires every
+correction to have a unit regression and a visible full-recording result diff, with no per-answer
+override. Capture archives use run start time separately from individual case timestamps.
+Decided by: QA engineer under standing orders.
+
+## evals: gate retry after the harness passes
+
+Update only the stale local gate branch ref, retaining its old head, and retry gated delivery
+after npm test is green. Reason: Anna explicitly authorized this ref update and PR creation
+with the results labeled local dev; no merge or deployment is authorized. Decided by: Anna.
+
+## evals: per-turn grounding with echoed dates
+
+Money amounts, percentages, counts and other numbers in an answer must come from that turn's
+successful tool outputs; an amount the customer typed or an earlier turn's result is not
+evidence. Dates and billing periods may come from that turn's tool outputs or the customer's own
+message, compared after normalizing formats, and message dates never ground numbers. Reason:
+the runtime grounding guard will enforce the same rule, and a wrong premise repeated back must
+fail while an echoed period must not. Applied to every recording by explicit offline regrade.
+Decided by: Anna.
+
+## evals: standing orders while Anna is away
+
+Proceed within lane decision rights and log each choice. Reserved decisions (merge, deploy,
+login, secrets, force-push to main, account and contract changes) go on a FOR ANNA list instead
+of blocking other work; do not log in if wrangler authentication fails. Finish the grading rule,
+gated push and PR, then stop. After the PR opens, preserve published feat/evals history for the
+agent-fixes lane unless the gate itself requires a rewrite, which must be reported. Reason: Anna
+is away for about five hours and merges on return. Decided by: Anna.
+
+## agent: runtime grounding guard
+
+Before a reply leaves the agent, `src/agent/guard.ts` checks it with the eval grader's rule (owner
+decision): every money amount, percentage, count and other number must appear in that turn's
+successful tool outputs (model-issued, server-issued anomaly checks, and a continuation's earlier
+steps after the last customer message); dates, billing periods and years may also come from the
+customer's message. `src/agent/grounding.ts` is a copy of the grader's tokenising
+(`evals/grounding.ts`, money, number words, counts against array lengths, named dates) because
+`src/` must not import `evals/`; it differs only in scoping evidence to the turn and in accepting
+the customer's dates.
+
+- The reply text is held back while the turn runs (tool parts still stream) and sent once checked.
+  With simulated streaming (D-14) each step's text arrived in one piece anyway.
+- An unsupported draft gets exactly one retry: the same context (server checks included), the
+  draft, and a user-role correction naming each unsupported figure, with no tools, so the retry
+  restates what the turn fetched and cannot start a new tool loop. It is one more budget-reserved
+  model call (worst case `MAX_STEPS + 2` per turn).
+- If the retry is still unsupported, empty or refused by the budget, the customer gets the reply
+  with every sentence carrying an unsupported figure removed plus a fixed note, or a fixed safe
+  answer (no figures) when nothing verifiable is left.
+- A turn that hit the neuron stop sends the fixed budget message unchecked (outcome `budget`).
+- The outcome (`grounded`, `corrected`, `safe_answer`, `budget`, with the unsupported figures of
+  the draft and the retry) is written as the assistant message's metadata, so it is stored with
+  the turn, and logged when not `grounded`. It is not in the `/turn` response: `TurnResponseSchema`
+  is a frozen contract (listed for the owner).
+
+Reason: the evals found ungrounded figures reaching customers (for example "7 lines" for a
+six-line invoice); a prompt rule alone does not stop them. Not chosen: retrying with tools (a
+second loop with its own grounding question) and silently dropping figures without a retry.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: unknown-id errors name the real ids
+
+In the evals Llama 3.3 called `explainLineItem` and `startCreditRequest` with invented ids
+(`inv_1234567890`, `inv_202609`) and then gave up. An unknown invoice id now gets an error listing
+the customer's invoice ids with their periods and pointing to `getInvoice`; an unknown line id gets
+the invoice's line ids with their descriptions. The prompt says to call `getInvoice` before
+`explainLineItem` and to retry with the listed ids. The ids are the customer's own, already
+returned by `getAccount`. Reason: give the model the exact value it needs to recover, instead of
+a dead end. Not chosen: guessing the intended invoice server-side (no reliable signal).
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: repair plan ids written in display case
+
+In the evals Llama 3.3 called `simulatePlan` with `plan_Pro` and `plan_Scale`; the contract's
+lowercase slug rejects them, and it repeated `plan_Scale` after `getAccount` had returned
+`plan_scale`. The agent now passes `experimental_repairToolCall` to `streamText`: a `simulatePlan`
+call that fails input validation is rewritten only when its `planId` names exactly one of the
+customer's available plans (from the Ledger's `account` read), ignoring case, spaces, hyphens and
+the `plan_` prefix, by id or by name. The repaired input is then validated with the contract
+schema as usual; no match, or two matches, stays a validation error. The prompt also asks for the
+id copied exactly, in lowercase. Reason: the intent is unambiguous and the mapping is a lookup, not
+a guess; the contract stays strict. Not chosen: loosening the schema (frozen contract) or relying
+on the prompt alone (it already said to use availablePlans).
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: comparisons trigger the server's anomaly check
+
+The evals' August-to-September comparison never mentioned the September spike: the server check
+(see "the server runs the anomaly check for every invoice a turn touches") only fired on
+`getInvoice` and `explainLineItem`. A `compareInvoices` result now triggers it for both months, the
+later month first, with the same once-per-period and retry rules; the prompt says to mention a
+reported spike when explaining a change. Reason: a spike in either month can explain the change,
+and the check costs no model call.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: the last step answers, and an empty reply is asked for once
+
+In the evals the credit turns ended with no text (remember-credit): Llama 3.3 spent all four steps
+on tool calls, including four identical `getCreditRequestStatus` calls. Now:
+
+- `prepareStep` gives a step no tools (`activeTools: []`) when it is the last allowed step, or when
+  the previous step only repeated calls already made in the turn (same tool and canonical input).
+  A tool call the model still emits on such a step is refused by the SDK and not executed.
+- An empty draft, unless the turn stopped at a credit proposal awaiting the customer's
+  confirmation, goes through the grounding guard's one retry with an "answer now" instruction. A
+  grounded answer is sent (outcome `completed`); an ungrounded one becomes the safe answer; an
+  empty one becomes a fixed "could not finish" message (outcome `incomplete`).
+- The prompt asks for the amount and approval status once a credit result is in, and not to
+  fetch the same result again.
+- This supersedes the extra answer step in "the server runs the anomaly check for every invoice a
+  turn touches": with no tools on the last step, no server check can arrive after it, so the
+  `MAX_STEPS + 1` allowance was unreachable and is removed. The cap per turn is `MAX_STEPS` steps
+  plus the guard's one retry. Two tests that scripted a tool call on the last step were rewritten
+  to the new guarantee, and a chat provenance test's script was reordered so its repeat comes last.
+
+Reason: a turn must end with an answer the customer can read, inside the same model-call cap.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: the guard follows the grader's final per-turn rule exactly
+
+After rebasing onto the evals PR, `src/agent/grounding.ts` mirrors the grader's final rule
+("evals: per-turn grounding with echoed dates"): tool dates and periods are kept apart from other
+numbers and ground only date-shaped tokens; the customer's message grounds ISO dates, periods and
+an echoed yearless date, never a bare year, money, percentage or count.
+`tests/agent/grounding-parity.test.ts` runs the guard and `evals/grounding.ts` over every committed
+recording (active and archived) and requires the same flagged figures on every turn; removing
+message dates from the guard turns seven of them red. Reason: "using the same rule as the grader"
+must be checked, not assumed, while the code exists in two copies.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: an answer step sends no tools field
+
+Found in the live rerun: with `activeTools: []` the AI SDK passes an empty tool list,
+`workers-ai-provider` forwards it, and Workers AI refuses the call (error 8007, "`tools` must not
+be an empty array"), so the answer step failed and remember-credit still ended empty. A model
+middleware (`noEmptyToolsMiddleware`) now drops an empty `tools` list and its `toolChoice` before
+the call. The test stub of the AI binding refuses `tools: []` the same way, so the tests catch a
+regression (three go red without the middleware). Reason: the offline stub accepted a request the
+real binding rejects; it now mirrors that constraint.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: guard evidence is server-owned, not read from history positions
+
+Codex review round 1 found that the guard took a continuation's earlier tool outputs from the
+messages after the last customer message, positions a client controls. Now a run that stops at
+a credit proposal stores its outputs server-side (`awaiting_evidence`, keyed by the proposed tool
+call ids); the next run uses them only if it is a continuation whose last assistant message holds
+one of those calls, and the stored row is cleared at the start of every run. Every other run cites
+only its own outputs. Observed while testing: the SDK's persistence currently merges a moved tool
+part back into its original message by call id, so the end-to-end replay did not reproduce;
+the rule no longer depends on that. Also from this round: a retry call that throws now falls back
+to the safe answer instead of erroring the turn.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: stored evidence needs the customer's answer to that proposal
+
+Codex review round 2 reproduced a continuation that was not a confirmation (a client
+`cf_agent_tool_result` frame putting the proposal into `output-error`) reusing the proposing run's
+stored evidence. Now `consumeAnsweredConfirmation` returns the consumed tool call id, and the
+stored evidence applies only when that id is one of the stored proposals and the run answers the
+same customer message (`userMessageId`); the stored question text is used for date evidence.
+The row is read and cleared at the very start of every run, before any cap refusal, so a refused,
+abandoned or unrelated run cannot leave it for a later one. An end-to-end WebSocket test with the
+tool-result frame goes red on the round-1 code.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## ui: Production builds default to the live API
+
+`apiMode` (src/ui/api.ts) picks the backend: a production build talks to the live API, the dev
+server shows the fixture preview, and `VITE_BILLING_API_MODE=live` or `=fixture` overrides either.
+This supersedes the default in "ui: Fixture transport and live handoff". Reason: the release smoke
+test found the deployed site serving the fixture preview, because the handoff to live was an
+opt-in build variable that the deploy command did not set; production must not depend on
+remembering it, while `npm run dev` stays free of model calls.
+An approval link minted by the earlier fixture build still opens /admin, but its sandbox id
+was never admitted by the live API, so it gets 404 or 401 and the page shows the error; nothing
+is read or written, so links are not tagged with their mode.
+
+Decided by: Anna.
+
+## ui: Admin re-fetches until the Workflow finishes a decision
+
+After a decision the admin page re-fetches the list up to 5 times, 1 second apart, while the
+decided request is still `approved` or `pending_approval` with a recorded decision, and stops at
+the first terminal state or when the page unmounts. Every list read (initial, focus, Refresh and
+follow-up) goes through one serial queue, and the page stays busy until no read is queued, so
+reads never overlap and Approve cannot be clicked while an earlier read is outstanding. Reason: the Workflow applies or rejects a
+moment after the decision is recorded, so the single re-fetch left the card on "approved" in
+production; a bounded follow-up shows the outcome without polling against the 200-request daily
+cap ("ui: Approval links and refresh boundaries").
+
+Decided by: Anna (the fix); bounds by Release engineer under standing orders.
+
 ## release: Transcript export scope and scrubbing
 
 `scripts/export-transcripts.mjs` exports every Claude Code and Codex session for this repo: the

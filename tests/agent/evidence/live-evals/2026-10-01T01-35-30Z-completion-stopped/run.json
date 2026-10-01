@@ -1,0 +1,45 @@
+{
+  "formatVersion": 1,
+  "source": "live",
+  "baseUrl": "http://127.0.0.1:5174",
+  "environment": "local dev",
+  "modelCallCount": 0,
+  "estimatedNeurons": 0,
+  "sandboxes": {
+    "read-only": {
+      "sandboxId": "d542748e897513775cdb63f0041a7863",
+      "messages": 11
+    },
+    "duplicate-credit": {
+      "sandboxId": "e3cf283b77583731a8c35e4cdc54ccf0",
+      "messages": 1
+    },
+    "remember-plan": {
+      "sandboxId": "793204c6633e13869bb4de6054f77791",
+      "messages": 2
+    }
+  },
+  "runDate": "2026-10-01T01:35:30.726Z",
+  "status": "stopped",
+  "totalCases": 2,
+  "attemptedCases": 1,
+  "completedCases": 0,
+  "passedCases": 0,
+  "passRate": "0/2",
+  "usage": {
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "modelCalls": 0
+  },
+  "turnsPosted": 0,
+  "stopCode": "cap_reached",
+  "cases": [
+    {
+      "id": "remember-credit",
+      "passed": false,
+      "issues": [
+        "Run stopped: cap_reached"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,252 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "zero-tax-invoice",
+  "turns": [
+    {
+      "customerId": "cus_3",
+      "request": {
+        "message": "How many invoice lines are on my September 2026 invoice, including the tax line? Also give the total and tax amount.",
+        "confirm": false
+      },
+      "response": {
+        "text": "The September 2026 invoice has 6 lines, including the tax line. The total amount is $262.00 and the tax amount is $0.00. There are no unusual single-day usage spikes in September 2026.",
+        "toolCalls": [
+          {
+            "name": "getInvoice",
+            "input": {
+              "period": "2026-09"
+            },
+            "output": {
+              "id": "inv_efb49b532ebb0744",
+              "customerId": "cus_3",
+              "period": "2026-09",
+              "issuedOn": "2026-10-01",
+              "lines": [
+                {
+                  "id": "line_796705c104262969",
+                  "kind": "subscription",
+                  "description": "Scale fee: 2026-09-01 to 2026-10-01 (end exclusive); 30 of 30 days",
+                  "planId": "plan_scale",
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 9000,
+                    "display": "$90.00"
+                  },
+                  "tiers": []
+                },
+                {
+                  "id": "line_796704c1042627b6",
+                  "kind": "usage",
+                  "description": "Edge requests on Scale: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_scale",
+                  "meterId": "meter_requests",
+                  "quantity": 180000,
+                  "amount": {
+                    "cents": 7400,
+                    "display": "$74.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 100000,
+                      "unitPrice": {
+                        "cents": 50,
+                        "display": "$0.50"
+                      },
+                      "perUnits": 1000,
+                      "rateDisplay": "$0.50 per 1,000 requests",
+                      "amount": {
+                        "cents": 5000,
+                        "display": "$50.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 80000,
+                      "unitPrice": {
+                        "cents": 30,
+                        "display": "$0.30"
+                      },
+                      "perUnits": 1000,
+                      "rateDisplay": "$0.30 per 1,000 requests",
+                      "amount": {
+                        "cents": 2400,
+                        "display": "$24.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_796703c104262603",
+                  "kind": "usage",
+                  "description": "Object storage on Scale: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_scale",
+                  "meterId": "meter_storage",
+                  "quantity": 1200,
+                  "amount": {
+                    "cents": 5800,
+                    "display": "$58.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 500,
+                      "unitPrice": {
+                        "cents": 6,
+                        "display": "$0.06"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.06 per 1 GB-day",
+                      "amount": {
+                        "cents": 3000,
+                        "display": "$30.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 700,
+                      "unitPrice": {
+                        "cents": 4,
+                        "display": "$0.04"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.04 per 1 GB-day",
+                      "amount": {
+                        "cents": 2800,
+                        "display": "$28.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_796702c104262450",
+                  "kind": "usage",
+                  "description": "Data transfer on Scale: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_scale",
+                  "meterId": "meter_transfer",
+                  "quantity": 1500,
+                  "amount": {
+                    "cents": 4000,
+                    "display": "$40.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 1000,
+                      "unitPrice": {
+                        "cents": 3,
+                        "display": "$0.03"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.03 per 1 GB",
+                      "amount": {
+                        "cents": 3000,
+                        "display": "$30.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 500,
+                      "unitPrice": {
+                        "cents": 2,
+                        "display": "$0.02"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.02 per 1 GB",
+                      "amount": {
+                        "cents": 1000,
+                        "display": "$10.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_796709c104263035",
+                  "kind": "usage",
+                  "description": "Compute time on Scale: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_scale",
+                  "meterId": "meter_compute",
+                  "quantity": 6600,
+                  "amount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 6600,
+                      "unitPrice": {
+                        "cents": 0,
+                        "display": "$0.00"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.00 per 1 CPU-minute",
+                      "amount": {
+                        "cents": 0,
+                        "display": "$0.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_796708c104262e82",
+                  "kind": "tax",
+                  "description": "Sales tax: 0 basis points on $262.00",
+                  "planId": null,
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "tiers": []
+                }
+              ],
+              "subtotal": {
+                "cents": 26200,
+                "display": "$262.00"
+              },
+              "credits": {
+                "cents": 0,
+                "display": "$0.00"
+              },
+              "tax": {
+                "cents": 0,
+                "display": "$0.00"
+              },
+              "total": {
+                "cents": 26200,
+                "display": "$262.00"
+              }
+            },
+            "error": null
+          },
+          {
+            "name": "detectAnomalies",
+            "input": {
+              "period": "2026-09"
+            },
+            "output": {
+              "customerId": "cus_3",
+              "period": "2026-09",
+              "anomalies": [],
+              "method": "Leave-one-day-out median of other daily totals in the same UTC month and meter; missing days are zero, even medians round half away from zero. Flag >=3x a positive baseline (>=4x warning, >=5x critical); zero baselines are not scored. Excess cost is the difference in rounded usage charges when that day's excess is removed, retaining the actual plan history; excludes fee, tax and credits."
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 5041,
+          "outputTokens": 69,
+          "modelCalls": 2
+        }
+      }
+    }
+  ],
+  "source": "live",
+  "recordedAt": "2026-10-01T00:21:08.818Z",
+  "baseUrl": "http://127.0.0.1:5174",
+  "environment": "local dev"
+}

@@ -1,0 +1,37 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "tax-line",
+  "turns": [
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "Explain the tax line and taxable subtotal on my September 2026 invoice.",
+        "confirm": false
+      },
+      "response": {
+        "text": "I am not able to explain the tax line and taxable subtotal on your September 2026 invoice because I do not have the invoice ID for the September 2026 invoice.",
+        "toolCalls": [
+          {
+            "name": "explainLineItem",
+            "input": {
+              "invoiceId": "inv_1234567890",
+              "lineId": "line_1234567890"
+            },
+            "output": null,
+            "error": "No invoice inv_1234567890 for this customer"
+          }
+        ],
+        "usage": {
+          "inputTokens": 6706,
+          "outputTokens": 78,
+          "modelCalls": 2
+        }
+      }
+    }
+  ],
+  "source": "live",
+  "recordedAt": "2026-09-30T20:47:23.707Z",
+  "baseUrl": "http://127.0.0.1:5173",
+  "environment": "local dev"
+}

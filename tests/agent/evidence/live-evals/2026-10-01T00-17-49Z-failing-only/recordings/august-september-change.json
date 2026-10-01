@@ -1,0 +1,257 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "august-september-change",
+  "turns": [
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "Compare August and September 2026: both totals, dollar and percentage change, every meter's dollar delta, and tax delta.",
+        "confirm": false
+      },
+      "response": {
+        "text": "The total for August 2026 is $299.18 and the total for September 2026 is $412.87. The dollar change is $113.69 and the percentage change is 38%. \n\nThe Compute time meter has a dollar delta of $51.32. \nThe Edge requests meter has a dollar delta of $8.60. \nThe Object storage meter has a dollar delta of $21.60. \nThe Data transfer meter has a dollar delta of $23.50. \nThe tax delta is $8.67.\n\nThere is an unusual usage spike on 2026-09-18 for Edge requests, with a quantity of 15,000, which is 5x the baseline quantity of 3,000. The estimated excess cost is $11.60. \n\nThere are no unusual usage spikes in August 2026.",
+        "toolCalls": [
+          {
+            "name": "compareInvoices",
+            "input": {
+              "fromPeriod": "2026-08",
+              "toPeriod": "2026-09"
+            },
+            "output": {
+              "customerId": "cus_1",
+              "fromPeriod": "2026-08",
+              "toPeriod": "2026-09",
+              "fromTotal": {
+                "cents": 29918,
+                "display": "$299.18"
+              },
+              "toTotal": {
+                "cents": 41287,
+                "display": "$412.87"
+              },
+              "totalDelta": {
+                "cents": 11369,
+                "display": "$113.69"
+              },
+              "totalChange": {
+                "basisPoints": 3800,
+                "display": "38%"
+              },
+              "byMeter": [
+                {
+                  "meterId": "meter_compute",
+                  "meterName": "Compute time",
+                  "product": "Compute",
+                  "fromQuantity": 2248,
+                  "toQuantity": 7380,
+                  "fromAmount": {
+                    "cents": 2248,
+                    "display": "$22.48"
+                  },
+                  "toAmount": {
+                    "cents": 7380,
+                    "display": "$73.80"
+                  },
+                  "delta": {
+                    "cents": 5132,
+                    "display": "$51.32"
+                  },
+                  "change": {
+                    "basisPoints": 22829,
+                    "display": "228%"
+                  }
+                },
+                {
+                  "meterId": "meter_requests",
+                  "meterName": "Edge requests",
+                  "product": "Edge",
+                  "fromQuantity": 93000,
+                  "toQuantity": 102000,
+                  "fromAmount": {
+                    "cents": 9300,
+                    "display": "$93.00"
+                  },
+                  "toAmount": {
+                    "cents": 10160,
+                    "display": "$101.60"
+                  },
+                  "delta": {
+                    "cents": 860,
+                    "display": "$8.60"
+                  },
+                  "change": {
+                    "basisPoints": 925,
+                    "display": "9%"
+                  }
+                },
+                {
+                  "meterId": "meter_storage",
+                  "meterName": "Object storage",
+                  "product": "Storage",
+                  "fromQuantity": 930,
+                  "toQuantity": 1200,
+                  "fromAmount": {
+                    "cents": 8440,
+                    "display": "$84.40"
+                  },
+                  "toAmount": {
+                    "cents": 10600,
+                    "display": "$106.00"
+                  },
+                  "delta": {
+                    "cents": 2160,
+                    "display": "$21.60"
+                  },
+                  "change": {
+                    "basisPoints": 2559,
+                    "display": "26%"
+                  }
+                },
+                {
+                  "meterId": "meter_transfer",
+                  "meterName": "Data transfer",
+                  "product": "Edge",
+                  "fromQuantity": 930,
+                  "toQuantity": 1500,
+                  "fromAmount": {
+                    "cents": 4650,
+                    "display": "$46.50"
+                  },
+                  "toAmount": {
+                    "cents": 7000,
+                    "display": "$70.00"
+                  },
+                  "delta": {
+                    "cents": 2350,
+                    "display": "$23.50"
+                  },
+                  "change": {
+                    "basisPoints": 5054,
+                    "display": "51%"
+                  }
+                }
+              ],
+              "otherChanges": [
+                {
+                  "label": "subscription",
+                  "fromAmount": {
+                    "cents": 3000,
+                    "display": "$30.00"
+                  },
+                  "toAmount": {
+                    "cents": 3000,
+                    "display": "$30.00"
+                  },
+                  "delta": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  }
+                },
+                {
+                  "label": "proration",
+                  "fromAmount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "toAmount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "delta": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  }
+                },
+                {
+                  "label": "credit",
+                  "fromAmount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "toAmount": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  },
+                  "delta": {
+                    "cents": 0,
+                    "display": "$0.00"
+                  }
+                },
+                {
+                  "label": "tax",
+                  "fromAmount": {
+                    "cents": 2280,
+                    "display": "$22.80"
+                  },
+                  "toAmount": {
+                    "cents": 3147,
+                    "display": "$31.47"
+                  },
+                  "delta": {
+                    "cents": 867,
+                    "display": "$8.67"
+                  }
+                }
+              ],
+              "summary": "2026-09 total $412.87 versus 2026-08 $299.18: change $113.69 (38%). Usage by product: Compute: $51.32; Edge: $32.10; Storage: $21.60. Other changes: subscription: $0.00; proration: $0.00; credit: $0.00; tax: $8.67."
+            },
+            "error": null
+          },
+          {
+            "name": "detectAnomalies",
+            "input": {
+              "period": "2026-09"
+            },
+            "output": {
+              "customerId": "cus_1",
+              "period": "2026-09",
+              "anomalies": [
+                {
+                  "meterId": "meter_requests",
+                  "meterName": "Edge requests",
+                  "date": "2026-09-18",
+                  "quantity": 15000,
+                  "baselineQuantity": 3000,
+                  "multiple": {
+                    "hundredths": 500,
+                    "display": "5x"
+                  },
+                  "estimatedExcessCost": {
+                    "cents": 1160,
+                    "display": "$11.60"
+                  },
+                  "severity": "critical"
+                }
+              ],
+              "method": "Leave-one-day-out median of other daily totals in the same UTC month and meter; missing days are zero, even medians round half away from zero. Flag >=3x a positive baseline (>=4x warning, >=5x critical); zero baselines are not scored. Excess cost is the difference in rounded usage charges when that day's excess is removed, retaining the actual plan history; excludes fee, tax and credits."
+            },
+            "error": null
+          },
+          {
+            "name": "detectAnomalies",
+            "input": {
+              "period": "2026-08"
+            },
+            "output": {
+              "customerId": "cus_1",
+              "period": "2026-08",
+              "anomalies": [],
+              "method": "Leave-one-day-out median of other daily totals in the same UTC month and meter; missing days are zero, even medians round half away from zero. Flag >=3x a positive baseline (>=4x warning, >=5x critical); zero baselines are not scored. Excess cost is the difference in rounded usage charges when that day's excess is removed, retaining the actual plan history; excludes fee, tax and credits."
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 6376,
+          "outputTokens": 215,
+          "modelCalls": 2
+        }
+      }
+    }
+  ],
+  "source": "live",
+  "recordedAt": "2026-10-01T00:18:11.421Z",
+  "baseUrl": "http://127.0.0.1:5174",
+  "environment": "local dev"
+}

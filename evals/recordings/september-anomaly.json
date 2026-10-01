@@ -1,0 +1,58 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "september-anomaly",
+  "turns": [
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "Describe the unusual usage in September 2026: date, quantity, baseline, multiplier and estimated excess usage cost.",
+        "confirm": false
+      },
+      "response": {
+        "text": "The unusual usage in September 2026 occurred on 2026-09-18, with a quantity of 15,000 Edge requests. The baseline quantity is 3,000, and the usage is 5x the baseline. The estimated excess usage cost is $11.60.",
+        "toolCalls": [
+          {
+            "name": "detectAnomalies",
+            "input": {
+              "period": "2026-09"
+            },
+            "output": {
+              "customerId": "cus_1",
+              "period": "2026-09",
+              "anomalies": [
+                {
+                  "meterId": "meter_requests",
+                  "meterName": "Edge requests",
+                  "date": "2026-09-18",
+                  "quantity": 15000,
+                  "baselineQuantity": 3000,
+                  "multiple": {
+                    "hundredths": 500,
+                    "display": "5x"
+                  },
+                  "estimatedExcessCost": {
+                    "cents": 1160,
+                    "display": "$11.60"
+                  },
+                  "severity": "critical"
+                }
+              ],
+              "method": "Leave-one-day-out median of other daily totals in the same UTC month and meter; missing days are zero, even medians round half away from zero. Flag >=3x a positive baseline (>=4x warning, >=5x critical); zero baselines are not scored. Excess cost is the difference in rounded usage charges when that day's excess is removed, retaining the actual plan history; excludes fee, tax and credits."
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 6064,
+          "outputTokens": 88,
+          "modelCalls": 2
+        }
+      }
+    }
+  ],
+  "source": "live",
+  "recordedAt": "2026-09-30T20:43:51.993Z",
+  "baseUrl": "http://127.0.0.1:5173",
+  "environment": "local dev"
+}

@@ -1,0 +1,159 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "duplicate-credit",
+  "turns": [
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "The September 2026 invoice debit was posted twice. I confirm: start a credit request for the duplicate and tell me the amount and approval status.",
+        "confirm": true
+      },
+      "response": {
+        "text": "The credit request for the duplicate September 2026 invoice debit is pending approval. The amount of the credit request is $412.87.",
+        "toolCalls": [
+          {
+            "name": "startCreditRequest",
+            "input": {
+              "invoiceId": "inv_43219e3da3298042",
+              "reason": "The September 2026 invoice debit was posted twice."
+            },
+            "output": {
+              "request": {
+                "id": "cr_0347642bd06cc8b7993d3e9f",
+                "invoiceId": "inv_43219e3da3298042",
+                "status": "pending_approval",
+                "validatedAmount": {
+                  "cents": 41287,
+                  "display": "$412.87"
+                },
+                "createdAt": "2026-09-30T20:44:01.625Z",
+                "deadline": "2026-10-01T20:44:01.889Z",
+                "outcomeReason": null
+              },
+              "existing": true,
+              "message": "A credit request for this charge already exists (cr_0347642bd06cc8b7993d3e9f, status pending_approval). No new request was created."
+            },
+            "error": null
+          },
+          {
+            "name": "getCreditRequestStatus",
+            "input": {
+              "requestId": "cr_0347642bd06cc8b7993d3e9f"
+            },
+            "output": {
+              "requests": [
+                {
+                  "request": {
+                    "id": "cr_0347642bd06cc8b7993d3e9f",
+                    "invoiceId": "inv_43219e3da3298042",
+                    "status": "pending_approval",
+                    "validatedAmount": {
+                      "cents": 41287,
+                      "display": "$412.87"
+                    },
+                    "createdAt": "2026-09-30T20:44:01.625Z",
+                    "deadline": "2026-10-01T20:44:01.889Z",
+                    "outcomeReason": null
+                  },
+                  "audit": [
+                    {
+                      "seq": 8,
+                      "at": "2026-09-30T20:44:01.625Z",
+                      "actor": "customer:cus_1",
+                      "action": "credit_requested",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_0347642bd06cc8b7993d3e9f"
+                      },
+                      "reason": "Confirmed by the customer via /turn (confirm: true): The September 2026 invoice debit was posted twice.",
+                      "before": null,
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null,
+                        "confirmedBy": "customer",
+                        "confirmedVia": "turn"
+                      }
+                    },
+                    {
+                      "seq": 9,
+                      "at": "2026-09-30T20:44:01.839Z",
+                      "actor": "workflow:cr_0347642bd06cc8b7993d3e9f",
+                      "action": "credit_validated",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_0347642bd06cc8b7993d3e9f"
+                      },
+                      "reason": "Charge le_duplicate_september duplicates earlier charge le_charge_1_2026_09: same customer, invoice, billing-run posting id and amount $412.87. Pending and applied reservations total $0.00; remaining creditable amount $412.87.",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      }
+                    },
+                    {
+                      "seq": 10,
+                      "at": "2026-09-30T20:44:01.889Z",
+                      "actor": "workflow:cr_0347642bd06cc8b7993d3e9f",
+                      "action": "memo_pending",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_0347642bd06cc8b7993d3e9f"
+                      },
+                      "reason": "Pending credit memo cm_0347642bd06cc8b7993d3e9f for $412.87 reserves le_duplicate_september",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "pending_approval",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": "2026-10-01T20:44:01.889Z",
+                        "decision": null
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 9075,
+          "outputTokens": 109,
+          "modelCalls": 3
+        }
+      }
+    }
+  ],
+  "source": "live",
+  "recordedAt": "2026-09-30T20:47:49.386Z",
+  "baseUrl": "http://127.0.0.1:5173",
+  "environment": "local dev"
+}

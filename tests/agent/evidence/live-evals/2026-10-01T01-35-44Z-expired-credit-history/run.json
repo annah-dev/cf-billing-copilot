@@ -1,0 +1,43 @@
+{
+  "formatVersion": 1,
+  "source": "live",
+  "baseUrl": "http://127.0.0.1:5174",
+  "environment": "local dev",
+  "modelCallCount": 2,
+  "estimatedNeurons": 194,
+  "sandboxes": {
+    "read-only": {
+      "sandboxId": "d542748e897513775cdb63f0041a7863",
+      "messages": 12
+    },
+    "duplicate-credit": {
+      "sandboxId": "e3cf283b77583731a8c35e4cdc54ccf0",
+      "messages": 1
+    },
+    "remember-plan": {
+      "sandboxId": "793204c6633e13869bb4de6054f77791",
+      "messages": 2
+    }
+  },
+  "runDate": "2026-10-01T01:35:44.673Z",
+  "status": "complete",
+  "totalCases": 1,
+  "attemptedCases": 1,
+  "completedCases": 1,
+  "passedCases": 1,
+  "passRate": "1/1",
+  "usage": {
+    "inputTokens": 6922,
+    "outputTokens": 43,
+    "modelCalls": 2
+  },
+  "turnsPosted": 1,
+  "stopCode": null,
+  "cases": [
+    {
+      "id": "expired-credit-history",
+      "passed": true,
+      "issues": []
+    }
+  ]
+}

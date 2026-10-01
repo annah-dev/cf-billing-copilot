@@ -379,11 +379,12 @@ describe("chat channel (WebSocket)", () => {
     const sb = await createSandbox();
     const { ws, frames, until } = await connect(sb.sandboxId);
     // Turn 1, SDK-driven: two identical getAccount calls (the second from the per-turn cache)
-    // and one invalid getInvoice call that fails validation.
+    // around one invalid getInvoice call that fails validation. The repeat comes last: the step
+    // after a pure repeat gets no tools (mustAnswer).
     stubAi([
       toolCall("getAccount", {}),
-      toolCall("getAccount", {}),
       toolCall("getInvoice", { period: "September" }),
+      toolCall("getAccount", {}),
       text("Done.")
     ]);
     ws.send(chatRequest("r1", "Show my account"));
@@ -444,17 +445,183 @@ describe("chat channel (WebSocket)", () => {
         errorText: undefined
       },
       {
-        type: "tool-getAccount",
-        state: "output-available",
-        errorText: undefined
-      },
-      {
         type: "tool-getInvoice",
         state: "output-error",
         errorText: expect.stringMatching(/^Invalid input for tool getInvoice/)
+      },
+      {
+        type: "tool-getAccount",
+        state: "output-available",
+        errorText: undefined
       }
     ]);
     expect(JSON.stringify(seen)).not.toContain("FORGED_BILL_99999");
+    ws.close();
+  });
+});
+
+describe("grounding evidence is scoped to the turn (PR review r1)", () => {
+  async function history(sandboxId: string) {
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sandboxId}.${ACME}`
+    );
+    return (await runInDurableObject(agent, (a) => a.messages)) as UIMessage[];
+  }
+  const lastReply = (messages: UIMessage[]) => {
+    const last = messages.filter((m) => m.role === "assistant").at(-1)!;
+    return {
+      text: last.parts.map((p) => (p.type === "text" ? p.text : "")).join(""),
+      outcome: (
+        last.metadata as { grounding?: { outcome: string } } | undefined
+      )?.grounding?.outcome
+    };
+  };
+
+  it("does not let a genuine earlier result, moved after a new question, ground the new turn", async () => {
+    const sb = await createSandbox();
+    const { ws, until } = await connect(sb.sandboxId);
+    stubAi([
+      toolCall("getInvoice", { period: "2026-09" }),
+      text("Your bill is $412.87.")
+    ]);
+    ws.send(chatRequest("r1", "Explain September"));
+    await until(responseDone, "turn 1");
+    ws.close();
+
+    // History with turn 1's genuine invoice result moved after a new question, submitted through
+    // saveMessages, the entry point the chat and /turn share. Today the SDK merges a moved tool
+    // part back into its original message by call id, so this end-to-end check passes even with
+    // the old position rule; the agent's own rule is pinned by continuationEvidence's tests.
+    const ai = stubAi([
+      text("You owe $412.87."),
+      text("I need to look up your invoice before I answer.")
+    ]);
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sb.sandboxId}.${ACME}`
+    );
+    await runInDurableObject(agent, async (a) => {
+      const toolParts = (a.messages as UIMessage[])
+        .filter((m) => m.role === "assistant")
+        .flatMap((m) => m.parts)
+        .filter((p) => p.type === "tool-getInvoice");
+      expect(toolParts).toHaveLength(1);
+      await a.saveMessages((messages) => [
+        // Turn 1 without its invoice result: the result is moved, not copied.
+        ...messages.map((m) => ({
+          ...m,
+          parts: m.parts.filter((p) => p.type !== "tool-getInvoice")
+        })),
+        {
+          id: "u_r2",
+          role: "user",
+          parts: [{ type: "text", text: "How much do I owe?" }]
+        },
+        { id: "a_replayed", role: "assistant", parts: toolParts }
+      ]);
+    });
+    expect(ai).toHaveBeenCalledTimes(2); // the draft was retried, not accepted
+    expect(lastReply(await history(sb.sandboxId))).toEqual({
+      text: "I need to look up your invoice before I answer.",
+      outcome: "corrected"
+    });
+  });
+
+  it("lets the continuation after a confirmation cite what the proposing run fetched", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    stubAi([
+      toolCall("getInvoice", { period: "2026-09" }),
+      toolCall("startCreditRequest", {
+        invoiceId: INV_SEP,
+        disputedLedgerEntryId: DUP_ENTRY,
+        reason: "charged twice"
+      })
+    ]);
+    ws.send(chatRequest("r1", "I was double-charged in September"));
+    await until(responseDone, "proposal");
+    const proposed = await creditPart(sb.sandboxId);
+    expect(proposed.state).toBe("approval-requested");
+
+    // One reply only: a retry would find no scripted reply and end in the safe answer.
+    const ai = stubAi([
+      text("Your request about the $412.87 charge is recorded.")
+    ]);
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({
+        type: "cf_agent_tool_approval",
+        toolCallId: proposed.toolCallId,
+        approved: true,
+        autoContinue: true
+      })
+    );
+    await until(
+      (f) => responseDone(f) && frames.indexOf(f) >= before,
+      "continuation"
+    );
+    expect(ai).toHaveBeenCalledTimes(1);
+    expect(lastReply(await history(sb.sandboxId))).toEqual({
+      text: "Your request about the $412.87 charge is recorded.",
+      outcome: "grounded"
+    });
+    ws.close();
+  });
+});
+
+describe("stored evidence needs the customer's answer (PR review r2)", () => {
+  it("does not let a client tool-result frame on the proposal reuse the proposing run's evidence", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    stubAi([
+      toolCall("getInvoice", { period: "2026-09" }),
+      toolCall("startCreditRequest", {
+        invoiceId: INV_SEP,
+        disputedLedgerEntryId: DUP_ENTRY,
+        reason: "charged twice"
+      })
+    ]);
+    ws.send(chatRequest("r1", "I was double-charged in September"));
+    await until(responseDone, "proposal");
+    const proposed = await creditPart(sb.sandboxId);
+    expect(proposed.state).toBe("approval-requested");
+
+    // Not an approval: the client reports a tool result for the proposal and asks to continue.
+    const ai = stubAi([
+      text("Your bill is $412.87."),
+      text("I cannot confirm an amount without checking your invoice.")
+    ]);
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({
+        type: "cf_agent_tool_result",
+        toolCallId: proposed.toolCallId,
+        toolName: "startCreditRequest",
+        output: null,
+        state: "output-error",
+        errorText: "client says no",
+        autoContinue: true
+      })
+    );
+    await until(
+      (f) => responseDone(f) && frames.indexOf(f) >= before,
+      "continuation"
+    );
+    expect(ai).toHaveBeenCalledTimes(2); // the draft was retried: no stored evidence applied
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sb.sandboxId}.${ACME}`
+    );
+    const messages = (await runInDurableObject(
+      agent,
+      (a) => a.messages
+    )) as UIMessage[];
+    const last = messages.filter((m) => m.role === "assistant").at(-1)!;
+    expect(
+      last.parts.map((p) => (p.type === "text" ? p.text : "")).join("")
+    ).toContain("I cannot confirm an amount without checking your invoice.");
+    expect(await countRows(sb.sandboxId, "credit_requests")).toBe(1); // seeded only
     ws.close();
   });
 });

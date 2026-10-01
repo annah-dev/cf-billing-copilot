@@ -1,0 +1,854 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "remember-credit",
+  "turns": [
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "The September 2026 invoice debit was posted twice. I confirm: start a credit request for the duplicate and tell me the amount and approval status.",
+        "confirm": true
+      },
+      "response": {
+        "text": "",
+        "toolCalls": [
+          {
+            "name": "startCreditRequest",
+            "input": {
+              "invoiceId": "inv_202609",
+              "reason": "The September 2026 invoice debit was posted twice."
+            },
+            "output": null,
+            "error": "No invoice inv_202609 for this customer"
+          },
+          {
+            "name": "getInvoice",
+            "input": {
+              "period": "2026-09"
+            },
+            "output": {
+              "id": "inv_43219e3da3298042",
+              "customerId": "cus_1",
+              "period": "2026-09",
+              "issuedOn": "2026-10-01",
+              "lines": [
+                {
+                  "id": "line_419ca8b0aaddc1fd",
+                  "kind": "subscription",
+                  "description": "Starter fee: 2026-09-01 to 2026-10-01 (end exclusive); 30 of 30 days",
+                  "planId": "plan_starter",
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 3000,
+                    "display": "$30.00"
+                  },
+                  "tiers": []
+                },
+                {
+                  "id": "line_419ca7b0aaddc04a",
+                  "kind": "usage",
+                  "description": "Edge requests on Starter: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_starter",
+                  "meterId": "meter_requests",
+                  "quantity": 102000,
+                  "amount": {
+                    "cents": 10160,
+                    "display": "$101.60"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 100000,
+                      "unitPrice": {
+                        "cents": 100,
+                        "display": "$1.00"
+                      },
+                      "perUnits": 1000,
+                      "rateDisplay": "$1.00 per 1,000 requests",
+                      "amount": {
+                        "cents": 10000,
+                        "display": "$100.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 2000,
+                      "unitPrice": {
+                        "cents": 80,
+                        "display": "$0.80"
+                      },
+                      "perUnits": 1000,
+                      "rateDisplay": "$0.80 per 1,000 requests",
+                      "amount": {
+                        "cents": 160,
+                        "display": "$1.60"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca6b0aaddbe97",
+                  "kind": "usage",
+                  "description": "Object storage on Starter: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_starter",
+                  "meterId": "meter_storage",
+                  "quantity": 1200,
+                  "amount": {
+                    "cents": 10600,
+                    "display": "$106.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 500,
+                      "unitPrice": {
+                        "cents": 10,
+                        "display": "$0.10"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.10 per 1 GB-day",
+                      "amount": {
+                        "cents": 5000,
+                        "display": "$50.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 700,
+                      "unitPrice": {
+                        "cents": 8,
+                        "display": "$0.08"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.08 per 1 GB-day",
+                      "amount": {
+                        "cents": 5600,
+                        "display": "$56.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca5b0aaddbce4",
+                  "kind": "usage",
+                  "description": "Data transfer on Starter: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_starter",
+                  "meterId": "meter_transfer",
+                  "quantity": 1500,
+                  "amount": {
+                    "cents": 7000,
+                    "display": "$70.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 1000,
+                      "unitPrice": {
+                        "cents": 5,
+                        "display": "$0.05"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.05 per 1 GB",
+                      "amount": {
+                        "cents": 5000,
+                        "display": "$50.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 500,
+                      "unitPrice": {
+                        "cents": 4,
+                        "display": "$0.04"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.04 per 1 GB",
+                      "amount": {
+                        "cents": 2000,
+                        "display": "$20.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca4b0aaddbb31",
+                  "kind": "usage",
+                  "description": "Compute time on Starter: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_starter",
+                  "meterId": "meter_compute",
+                  "quantity": 7380,
+                  "amount": {
+                    "cents": 7380,
+                    "display": "$73.80"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 7380,
+                      "unitPrice": {
+                        "cents": 1,
+                        "display": "$0.01"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.01 per 1 CPU-minute",
+                      "amount": {
+                        "cents": 7380,
+                        "display": "$73.80"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca3b0aaddb97e",
+                  "kind": "tax",
+                  "description": "Sales tax: 825 basis points on $381.40",
+                  "planId": null,
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 3147,
+                    "display": "$31.47"
+                  },
+                  "tiers": []
+                }
+              ],
+              "subtotal": {
+                "cents": 38140,
+                "display": "$381.40"
+              },
+              "credits": {
+                "cents": 0,
+                "display": "$0.00"
+              },
+              "tax": {
+                "cents": 3147,
+                "display": "$31.47"
+              },
+              "total": {
+                "cents": 41287,
+                "display": "$412.87"
+              }
+            },
+            "error": null
+          },
+          {
+            "name": "detectAnomalies",
+            "input": {
+              "period": "2026-09"
+            },
+            "output": {
+              "customerId": "cus_1",
+              "period": "2026-09",
+              "anomalies": [
+                {
+                  "meterId": "meter_requests",
+                  "meterName": "Edge requests",
+                  "date": "2026-09-18",
+                  "quantity": 15000,
+                  "baselineQuantity": 3000,
+                  "multiple": {
+                    "hundredths": 500,
+                    "display": "5x"
+                  },
+                  "estimatedExcessCost": {
+                    "cents": 1160,
+                    "display": "$11.60"
+                  },
+                  "severity": "critical"
+                }
+              ],
+              "method": "Leave-one-day-out median of other daily totals in the same UTC month and meter; missing days are zero, even medians round half away from zero. Flag >=3x a positive baseline (>=4x warning, >=5x critical); zero baselines are not scored. Excess cost is the difference in rounded usage charges when that day's excess is removed, retaining the actual plan history; excludes fee, tax and credits."
+            },
+            "error": null
+          },
+          {
+            "name": "startCreditRequest",
+            "input": {
+              "invoiceId": "inv_43219e3da3298042",
+              "reason": "The September 2026 invoice debit was posted twice."
+            },
+            "output": {
+              "request": {
+                "id": "cr_1ca330db6000eb4ac7be3f08",
+                "invoiceId": "inv_43219e3da3298042",
+                "status": "pending_approval",
+                "validatedAmount": {
+                  "cents": 41287,
+                  "display": "$412.87"
+                },
+                "createdAt": "2026-09-30T20:44:22.178Z",
+                "deadline": "2026-10-01T20:44:22.371Z",
+                "outcomeReason": null
+              },
+              "existing": true,
+              "message": "A credit request for this charge already exists (cr_1ca330db6000eb4ac7be3f08, status pending_approval). No new request was created."
+            },
+            "error": null
+          },
+          {
+            "name": "getCreditRequestStatus",
+            "input": {
+              "requestId": "cr_1ca330db6000eb4ac7be3f08"
+            },
+            "output": {
+              "requests": [
+                {
+                  "request": {
+                    "id": "cr_1ca330db6000eb4ac7be3f08",
+                    "invoiceId": "inv_43219e3da3298042",
+                    "status": "pending_approval",
+                    "validatedAmount": {
+                      "cents": 41287,
+                      "display": "$412.87"
+                    },
+                    "createdAt": "2026-09-30T20:44:22.178Z",
+                    "deadline": "2026-10-01T20:44:22.371Z",
+                    "outcomeReason": null
+                  },
+                  "audit": [
+                    {
+                      "seq": 8,
+                      "at": "2026-09-30T20:44:22.178Z",
+                      "actor": "customer:cus_1",
+                      "action": "credit_requested",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Confirmed by the customer via /turn (confirm: true): The September 2026 invoice debit was posted twice.",
+                      "before": null,
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null,
+                        "confirmedBy": "customer",
+                        "confirmedVia": "turn"
+                      }
+                    },
+                    {
+                      "seq": 9,
+                      "at": "2026-09-30T20:44:22.316Z",
+                      "actor": "workflow:cr_1ca330db6000eb4ac7be3f08",
+                      "action": "credit_validated",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Charge le_duplicate_september duplicates earlier charge le_charge_1_2026_09: same customer, invoice, billing-run posting id and amount $412.87. Pending and applied reservations total $0.00; remaining creditable amount $412.87.",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      }
+                    },
+                    {
+                      "seq": 10,
+                      "at": "2026-09-30T20:44:22.371Z",
+                      "actor": "workflow:cr_1ca330db6000eb4ac7be3f08",
+                      "action": "memo_pending",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Pending credit memo cm_1ca330db6000eb4ac7be3f08 for $412.87 reserves le_duplicate_september",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "pending_approval",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": "2026-10-01T20:44:22.371Z",
+                        "decision": null
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 10961,
+          "outputTokens": 143,
+          "modelCalls": 4
+        }
+      }
+    },
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "I have reopened the chat. What is the status and amount of the credit request we just started?",
+        "confirm": false
+      },
+      "response": {
+        "text": "",
+        "toolCalls": [
+          {
+            "name": "getCreditRequestStatus",
+            "input": {
+              "requestId": "cr_1ca330db6000eb4ac7be3f08"
+            },
+            "output": {
+              "requests": [
+                {
+                  "request": {
+                    "id": "cr_1ca330db6000eb4ac7be3f08",
+                    "invoiceId": "inv_43219e3da3298042",
+                    "status": "pending_approval",
+                    "validatedAmount": {
+                      "cents": 41287,
+                      "display": "$412.87"
+                    },
+                    "createdAt": "2026-09-30T20:44:22.178Z",
+                    "deadline": "2026-10-01T20:44:22.371Z",
+                    "outcomeReason": null
+                  },
+                  "audit": [
+                    {
+                      "seq": 8,
+                      "at": "2026-09-30T20:44:22.178Z",
+                      "actor": "customer:cus_1",
+                      "action": "credit_requested",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Confirmed by the customer via /turn (confirm: true): The September 2026 invoice debit was posted twice.",
+                      "before": null,
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null,
+                        "confirmedBy": "customer",
+                        "confirmedVia": "turn"
+                      }
+                    },
+                    {
+                      "seq": 9,
+                      "at": "2026-09-30T20:44:22.316Z",
+                      "actor": "workflow:cr_1ca330db6000eb4ac7be3f08",
+                      "action": "credit_validated",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Charge le_duplicate_september duplicates earlier charge le_charge_1_2026_09: same customer, invoice, billing-run posting id and amount $412.87. Pending and applied reservations total $0.00; remaining creditable amount $412.87.",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      }
+                    },
+                    {
+                      "seq": 10,
+                      "at": "2026-09-30T20:44:22.371Z",
+                      "actor": "workflow:cr_1ca330db6000eb4ac7be3f08",
+                      "action": "memo_pending",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Pending credit memo cm_1ca330db6000eb4ac7be3f08 for $412.87 reserves le_duplicate_september",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "pending_approval",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": "2026-10-01T20:44:22.371Z",
+                        "decision": null
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "error": null
+          },
+          {
+            "name": "getCreditRequestStatus",
+            "input": {
+              "requestId": "cr_1ca330db6000eb4ac7be3f08"
+            },
+            "output": {
+              "requests": [
+                {
+                  "request": {
+                    "id": "cr_1ca330db6000eb4ac7be3f08",
+                    "invoiceId": "inv_43219e3da3298042",
+                    "status": "pending_approval",
+                    "validatedAmount": {
+                      "cents": 41287,
+                      "display": "$412.87"
+                    },
+                    "createdAt": "2026-09-30T20:44:22.178Z",
+                    "deadline": "2026-10-01T20:44:22.371Z",
+                    "outcomeReason": null
+                  },
+                  "audit": [
+                    {
+                      "seq": 8,
+                      "at": "2026-09-30T20:44:22.178Z",
+                      "actor": "customer:cus_1",
+                      "action": "credit_requested",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Confirmed by the customer via /turn (confirm: true): The September 2026 invoice debit was posted twice.",
+                      "before": null,
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null,
+                        "confirmedBy": "customer",
+                        "confirmedVia": "turn"
+                      }
+                    },
+                    {
+                      "seq": 9,
+                      "at": "2026-09-30T20:44:22.316Z",
+                      "actor": "workflow:cr_1ca330db6000eb4ac7be3f08",
+                      "action": "credit_validated",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Charge le_duplicate_september duplicates earlier charge le_charge_1_2026_09: same customer, invoice, billing-run posting id and amount $412.87. Pending and applied reservations total $0.00; remaining creditable amount $412.87.",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      }
+                    },
+                    {
+                      "seq": 10,
+                      "at": "2026-09-30T20:44:22.371Z",
+                      "actor": "workflow:cr_1ca330db6000eb4ac7be3f08",
+                      "action": "memo_pending",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Pending credit memo cm_1ca330db6000eb4ac7be3f08 for $412.87 reserves le_duplicate_september",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "pending_approval",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": "2026-10-01T20:44:22.371Z",
+                        "decision": null
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "error": null
+          },
+          {
+            "name": "getCreditRequestStatus",
+            "input": {
+              "requestId": "cr_1ca330db6000eb4ac7be3f08"
+            },
+            "output": {
+              "requests": [
+                {
+                  "request": {
+                    "id": "cr_1ca330db6000eb4ac7be3f08",
+                    "invoiceId": "inv_43219e3da3298042",
+                    "status": "pending_approval",
+                    "validatedAmount": {
+                      "cents": 41287,
+                      "display": "$412.87"
+                    },
+                    "createdAt": "2026-09-30T20:44:22.178Z",
+                    "deadline": "2026-10-01T20:44:22.371Z",
+                    "outcomeReason": null
+                  },
+                  "audit": [
+                    {
+                      "seq": 8,
+                      "at": "2026-09-30T20:44:22.178Z",
+                      "actor": "customer:cus_1",
+                      "action": "credit_requested",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Confirmed by the customer via /turn (confirm: true): The September 2026 invoice debit was posted twice.",
+                      "before": null,
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null,
+                        "confirmedBy": "customer",
+                        "confirmedVia": "turn"
+                      }
+                    },
+                    {
+                      "seq": 9,
+                      "at": "2026-09-30T20:44:22.316Z",
+                      "actor": "workflow:cr_1ca330db6000eb4ac7be3f08",
+                      "action": "credit_validated",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Charge le_duplicate_september duplicates earlier charge le_charge_1_2026_09: same customer, invoice, billing-run posting id and amount $412.87. Pending and applied reservations total $0.00; remaining creditable amount $412.87.",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      }
+                    },
+                    {
+                      "seq": 10,
+                      "at": "2026-09-30T20:44:22.371Z",
+                      "actor": "workflow:cr_1ca330db6000eb4ac7be3f08",
+                      "action": "memo_pending",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Pending credit memo cm_1ca330db6000eb4ac7be3f08 for $412.87 reserves le_duplicate_september",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "pending_approval",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": "2026-10-01T20:44:22.371Z",
+                        "decision": null
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "error": null
+          },
+          {
+            "name": "getCreditRequestStatus",
+            "input": {
+              "requestId": "cr_1ca330db6000eb4ac7be3f08"
+            },
+            "output": {
+              "requests": [
+                {
+                  "request": {
+                    "id": "cr_1ca330db6000eb4ac7be3f08",
+                    "invoiceId": "inv_43219e3da3298042",
+                    "status": "pending_approval",
+                    "validatedAmount": {
+                      "cents": 41287,
+                      "display": "$412.87"
+                    },
+                    "createdAt": "2026-09-30T20:44:22.178Z",
+                    "deadline": "2026-10-01T20:44:22.371Z",
+                    "outcomeReason": null
+                  },
+                  "audit": [
+                    {
+                      "seq": 8,
+                      "at": "2026-09-30T20:44:22.178Z",
+                      "actor": "customer:cus_1",
+                      "action": "credit_requested",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Confirmed by the customer via /turn (confirm: true): The September 2026 invoice debit was posted twice.",
+                      "before": null,
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null,
+                        "confirmedBy": "customer",
+                        "confirmedVia": "turn"
+                      }
+                    },
+                    {
+                      "seq": 9,
+                      "at": "2026-09-30T20:44:22.316Z",
+                      "actor": "workflow:cr_1ca330db6000eb4ac7be3f08",
+                      "action": "credit_validated",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Charge le_duplicate_september duplicates earlier charge le_charge_1_2026_09: same customer, invoice, billing-run posting id and amount $412.87. Pending and applied reservations total $0.00; remaining creditable amount $412.87.",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": null,
+                        "disputedLedgerEntryId": null,
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      }
+                    },
+                    {
+                      "seq": 10,
+                      "at": "2026-09-30T20:44:22.371Z",
+                      "actor": "workflow:cr_1ca330db6000eb4ac7be3f08",
+                      "action": "memo_pending",
+                      "subject": {
+                        "type": "credit_request",
+                        "id": "cr_1ca330db6000eb4ac7be3f08"
+                      },
+                      "reason": "Pending credit memo cm_1ca330db6000eb4ac7be3f08 for $412.87 reserves le_duplicate_september",
+                      "before": {
+                        "status": "requested",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": null,
+                        "decision": null
+                      },
+                      "after": {
+                        "status": "pending_approval",
+                        "validatedAmount": {
+                          "cents": 41287,
+                          "display": "$412.87"
+                        },
+                        "disputedLedgerEntryId": "le_duplicate_september",
+                        "deadline": "2026-10-01T20:44:22.371Z",
+                        "decision": null
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 15390,
+          "outputTokens": 152,
+          "modelCalls": 4
+        }
+      }
+    }
+  ],
+  "source": "live",
+  "recordedAt": "2026-09-30T20:48:11.024Z",
+  "baseUrl": "http://127.0.0.1:5173",
+  "environment": "local dev"
+}

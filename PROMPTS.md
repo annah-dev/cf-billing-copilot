@@ -2199,7 +2199,759 @@ Checking the merged logs for fence balance, section numbering, and the reference
 claude exited pid=291742 status=success
 ````
 
-## 32. Release lane phase note
+## 2026-09-29T20:35:34-07:00 - Evals early-start note
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05a-evals-early-start.md
+Outcome: (pending)
+
+Early-start note: you are starting before the agent lane (PR #4) has merged. Contract PR #6 (confirm on /turn, D-20) is on main. Until I tell you PR #4 has merged, build only what does not need the live agent: the question set, expected answers computed from the engine and seed on main (never typed by hand), the harness, the replay format, and replay mode wired into npm test. Use confirm: true on /turn only for the credit-request questions. Expect the September anomaly to be mentioned without the model choosing to call detectAnomalies; the agent lane is making that deterministic. Record live model outputs only after PR #4 has merged and you have pulled main.
+
+## 2026-09-29T20:35:34-07:00 - Evals lane kickoff
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05-evals.md
+Outcome: (pending)
+
+# 05 - Evals lane kickoff
+
+Role: QA / evals engineer. Harness: Codex CLI. You start after the engine and agent lanes have
+merged. You work alone in this worktree (~/projects/wt/cf-billing-copilot-evals, branch
+feat/evals, cut from that main). You see this prompt, the assignment and the repo; nothing else.
+
+## Read first, in this order
+
+1. prompt-history/prompts/00-assignment.md: the user stories and the eval requirement.
+2. AGENTS.md: the rules, including Decision rights. They bind you.
+3. docs/agent/plan.md, section "evals": what you own, what you build, your definition of done.
+4. docs/agent/verification.md: the evidence your PR must carry.
+5. src/contracts/http.ts (`TurnRequest`, `TurnResponse`, `ToolCallRecord`), tools.ts and
+   engine.ts; src/engine/ (read only); docs/DECISIONS.md D-7, D-8, D-15, D-17.
+
+At session start, append this prompt to PROMPTS.md by copying this file with a tool (not by
+retyping), with an ISO-8601 timestamp with offset, role, harness "Codex CLI", source path and
+outcome "(pending)". Fill in the outcome at the end.
+
+## Scope
+
+You own `evals/`, including `evals/vitest.live.config.ts` (the existing `npm run eval:live` script
+runs it), plus the append-only files. Application code is read only.
+
+Build:
+
+- 12 to 15 cases covering all six user stories (invoice explanation, what changed, plan
+  simulation, anomaly, credit request, memory across sessions), each with expected numbers computed
+  by calling `engine` on `engine.seed()` inside the harness, never typed by hand;
+- replay mode, collected by the `unit` project (`evals/**/*.test.ts`) into `npm test`: runs each
+  case against a committed recording of `TurnResponse`s and checks that every expected number
+  appears in the answer as its `display` string and that every money-looking string in the answer
+  traces to a tool output in the same recording;
+- live mode (`npm run eval:live`, never in CI or `npm test`): posts each case to the deployed
+  `/api/sandboxes/:sid/customers/:cid/turn` in a fresh sandbox, re-records, stops on the first
+  `budget_exhausted`, `cap_reached` or `rate_limited`, and writes the pass rate and run date to a
+  committed results file. The deployed URL comes from an environment variable, never hard-coded
+  secrets.
+
+## Definition of done
+
+As in docs/agent/plan.md "evals / Done": `npm test` passes offline with no network; a planted
+wrong number in a recording makes replay fail (show it red); one live run recorded with its pass
+rate and date once the owner has deployed (a few dozen model calls; report the count). If the demo
+is not deployed yet, finish everything else, say so, and give the owner the exact command to run.
+
+## Rules that are easy to miss
+
+- When web docs and the installed type definitions disagree, the installed types win; record the
+  disagreement in docs/DECISIONS.md.
+- Contracts are frozen. If one is wrong, stop, explain, and wait: the fix is its own PR to main.
+- Decide implementation details yourself; record each non-obvious one at the end of
+  docs/DECISIONS.md headed `## evals: <decision>`, with a one-line reason and "Decided by: QA
+  engineer under standing orders". Owner questions go in one batched message with a recommendation
+  each; keep working on anything they do not block.
+- One live run, never a loop against the live model; a readiness check never calls the turn
+  endpoint.
+- Plain ASCII in docs and comments. Small conventional commits, no co-author footers.
+
+## Review loop and finishing
+
+1. Rebase on origin/main, run the done-contract commands, commit.
+2. Push through the gate: `git push no-mistakes feat/evals`. Claude reviews there
+   (docs/agent/no-mistakes.md). Capture each gate review prompt: `no-mistakes axi logs --step review
+   --full` shows what the gate sent to Claude. Save that prompt text verbatim with a tool to
+   `prompt-history/prompts/05g-evals-gate-review-r<round>.md` and append it to PROMPTS.md with
+   role "automated cross-review", harness "no-mistakes v1.41.2 (Claude)" and the run id. If the log
+   does not contain the prompt text, save the log lines that identify the run, step and version,
+   say in that file and in PROMPTS.md that the prompt text was not available, and list it under NOT
+   VERIFIED in the PR.
+3. Read parked findings yourself (`no-mistakes axi status`, `no-mistakes axi logs --step review
+   --full`), fix them on your branch (after `no-mistakes axi sync` if offered), push through the
+   gate again. Two full rounds, a third on the delta only, then stop. Anything still disputed goes
+   to the owner as a FOR ANNA list with both positions.
+4. The gate opens the PR. Make sure its body carries the evidence from docs/agent/verification.md,
+   ending with VERIFIED and NOT VERIFIED lines. Never merge; the owner merges.
+
+## Evals early-start preparation - checkpoint outcome
+
+Sources: prompt-history/prompts/05a-evals-early-start.md and prompt-history/prompts/05-evals.md
+(the kickoff entries above remain unchanged because this lane is append-only).
+Outcome: Built 15 engine-derived cases, labeled synthetic recordings and replay in the existing
+unit project, plus an isolated opt-in live harness tested with an injected offline transport.
+160 tests green in normal and credential-free runs; a planted extra amount made replay fail.
+Workers AI calls 0. Live capture remains pending Anna's PR #4 merge notice, main pull and
+owner deployment. D-7's five-sandbox-per-IP cap prevents a complete 15-fresh-sandbox live run
+without an owner-approved capacity resolution. Gate review and CI pending.
+
+## 2026-09-29T20:56:49-07:00 - Evals gate review context
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Source: prompt-history/prompts/05b-evals-review-context.md
+Outcome: (pending; author context for gate, not the generated full review prompt)
+
+Implement the evals lane from prompt-history/prompts/05-evals.md under Anna's explicit EARLY-START OVERRIDE: PR #4 has NOT been confirmed merged. Contract PR #6 (D-20 confirm on /turn) is on main. Build only work that does not need the live agent: 12-15 questions, expected amounts computed by calling the engine on engine.seed() on main, harness, replay format and replay integrated into the existing npm test unit include. Use confirm:true ONLY on credit-start questions; require the September anomaly proactively without requiring the model to choose detectAnomalies. NO live Workers AI calls or recording of live model outputs until Anna says PR #4 merged and main is pulled; owner deploys. Current 15 recordings are explicitly labeled synthetic-engine with null recordedAt and zero usage, proving harness behavior only. Live runner is built and tested offline with an injected transport; it is opt-in via EVAL_LIVE_READY and EVAL_BASE_URL, refuses CI, makes one fresh sandbox per case and new requests to the same customer for memory followups, has no retries, stops immediately on budget/cap/rate limits, discards approver tokens, preserves partial recordings, reports planned-case pass fraction/date/status/token/model-call usage and never invents neuron counts. D-7 allows only five new sandboxes per IP/day, so a complete 15-case live run needs an owner-approved capacity resolution; do not bypass caps, spoof an IP, share case sandboxes or change frozen config. Live performance and deployment compatibility are explicitly NOT VERIFIED and must stay pending. Scope is evals/ and append-only PROMPTS.md, docs/DECISIONS.md and new lane prompt-history files; no application, contracts, dependencies, root config or existing historical prompt/decision rewrites. Local done-contract passed: npm ci, typecheck, 160 offline tests in normal and empty-HOME/credential-free env; test list baseline114/head160 with no loss; 15 replay cases; actual planted wrong recording amount made replay red then restored; live guard failed before fetch. Use the usual gate for Claude cross-review and CI, not deployment or merge. Review convergence: two full rounds then delta-only third, stop disputed findings FOR ANNA; the repo's standing orders authorize lane implementation/test/review-fix decisions. The document step must archive this round's actual review prompt from no-mistakes axi logs --step review --full, if exposed; otherwise save identifying run/step/version log lines verbatim in prompt-history/prompts/05g-evals-gate-review-r1.md and state exact prompt unavailable in PROMPTS.md, evals/verification.md and PR NOT VERIFIED. Do not seek other Claude session data. Append prompt outcome and update evals/verification.md gate/CI truthfully. Keep existing prompt/decision bytes unchanged; do not blanket-format the repo. PR evidence must include commands/tails, test behavior mapping, 15 synthetic replays, planted recording red, coverage comparison, decisions, zero live calls and VERIFIED/NOT VERIFIED lines. This is OFFLINE PREPARATION, not the full lane's final done claim; live recording awaits the owner's notice and deployment. Never merge or deploy. The owner merges.
+
+## 2026-09-30T13:31:37-07:00 - Evals live capture and count grounding
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05c-evals-live-and-counts.md
+Outcome: (pending)
+
+PR #4 has merged. Rebase onto main, then record the live model outputs for the eval set.
+One addition: make the grounding check cover every number in an answer, including counts. In
+the agent's live run the model said "7 lines" for a 6-line invoice; include a question that
+would catch that.
+
+## 2026-09-30T13:31:37-07:00 - Evals historical gate review round 1
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3R7B6ANF0QPEFS9F3Z2G9DX
+Source: prompt-history/prompts/05g-evals-gate-review-r1.md
+Outcome: Exact generated prompt unavailable in gate logs; identifying log copied with a tool. Round 1 found natural-date grounding and provenance reporting issues; round 2 found timestamp-date grounding; round 3 found month grounding from timestamps. The offline-only run was cancelled and its commits recovered before the owner-requested main rebase and live phase; no fixes were discarded.
+
+
+## 2026-09-30T13:31:37-07:00 - Evals historical gate review round 2
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3R7B6ANF0QPEFS9F3Z2G9DX
+Source: prompt-history/prompts/05g-evals-gate-review-r2.md
+Outcome: Exact generated prompt unavailable in gate logs; identifying log copied with a tool. Round 1 found natural-date grounding and provenance reporting issues; round 2 found timestamp-date grounding; round 3 found month grounding from timestamps. The offline-only run was cancelled and its commits recovered before the owner-requested main rebase and live phase; no fixes were discarded.
+
+
+## 2026-09-30T13:31:37-07:00 - Evals historical gate review round 3
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3R7B6ANF0QPEFS9F3Z2G9DX
+Source: prompt-history/prompts/05g-evals-gate-review-r3.md
+Outcome: Exact generated prompt unavailable in gate logs; identifying log copied with a tool. Round 1 found natural-date grounding and provenance reporting issues; round 2 found timestamp-date grounding; round 3 found month grounding from timestamps. The offline-only run was cancelled and its commits recovered before the owner-requested main rebase and live phase; no fixes were discarded.
+
+
+## 2026-09-30T13:33:04-07:00 - Evals local dev target and budget
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05d-evals-local-dev-budget.md
+Outcome: (pending)
+
+It is not deployed yet; the deploy happens in the release lane after the ui PR merges. Yes, use
+local dev with real Workers AI for now: record the replay fixtures and a first pass rate from it.
+Make the base URL a parameter (for example EVAL_BASE_URL, defaulting to local dev), and write the
+base URL, date and model call count into every results file. Label this run "local dev". The
+pass rate in the README will come from a rerun against
+https://cf-billing-copilot.anna-hester.workers.dev after deploy, done by the release lane.
+Budget: one full run, then reruns of failing questions only, no loops; report the total model
+calls and estimated neurons. If the set needs more messages than one sandbox's daily cap, spread
+the questions across sandboxes rather than raising the cap.
+
+## 2026-09-30T14:04:40-07:00 - Evals local capture outcome
+
+Sources: prompt-history/prompts/05c-evals-live-and-counts.md and prompt-history/prompts/05d-evals-local-dev-budget.md
+Outcome: Rebased onto merged PR #4 and retained the old gate fixes. Completed one full local-dev run (6/15, 46 calls) and one failing-only rerun (1/9, 33 calls), with all responses archived. Total 79 Workers AI model calls, 225252 input tokens, 3246 output tokens, estimated 6686 neurons. Current replay snapshot 7/15; eight genuine model failures keep npm test red (259 pass, 8 fail). The actual seven-lines-for-six bug is caught. Root README/deploy untouched; the release lane owns the deployed rerun. New review/PR/CI pending; no further real model calls planned.
+
+## 2026-09-30T14:07:30-07:00 - Live evals source review context
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Source: prompt-history/prompts/05f-evals-live-review-context.md
+Outcome: (pending; author context, not exact generated review prompt)
+
+Review the evals lane after Anna's new instructions: PR #4 merged; rebase onto main; capture real model outputs; ground every number including counts and catch seven lines for a six-line invoice. Anna explicitly authorized local dev with real Workers AI because release deploys later. Default EVAL_BASE_URL to loopback dev, write URL/date/environment/model-call count into every results JSON, estimate neurons, use one full run then failing-only reruns with no loops, and respect caps via sandbox grouping. Release owns the deployed rerun at https://cf-billing-copilot.anna-hester.workers.dev and the public README pass rate.
+
+This task's authorized live capture is now complete: one full local-dev run (6/15, 46 calls, 3687 estimated neurons after correcting an ISO-month count false positive offline), one nine-case failing-only rerun (1/9, 33 calls, 2999 estimated neurons), total 79 Workers AI calls and estimated 6686 neurons. Four sandboxes with reuse on rerun, no cap changes. Both response sets and initial grading are preserved. Current active replay snapshot is 7/15; eight genuine agent failures deliberately make npm test red. Normal and empty-HOME tests each report 259 pass and eight replay failures of 267. Typecheck and npm ci pass; origin/main 190 tests versus head 267 with no disappearance. Actual live seven-lines-for-six bug is rejected twice; fabricated invoice/plan ids and missing proactive comparison anomaly remain. DO NOT rewrite recordings, relax assertions, skip bad cases, change app/contracts/configuration or call the model again to make this look green. The correct outcome is honest failure evidence and a blocked done-contract until the owning agent lane fixes its behavior.
+
+The original offline-only gate was superseded by this owner-authorized live phase, cancelled with both fix commits preserved via guarded custody recovery, and the lane rebased onto main 2af8f1d. The remaining month-from-timestamp issue was reproduced red and corrected; new written-number, sign/fraction/scientific/compact tokens, ordinal and contextual-count guards are tested. Owner text is logged in 05c/05d; the old three review identifying logs are in 05g-r1/r2/r3; exact generated prompts were unavailable through axi logs. Keep frozen files unchanged and existing main PROMPTS.md/DECISIONS.md bytes preserved. Scope is evals and append-only prompt/decision files.
+
+Perform the usual source cross-review for this newly authorized scope. Source-verifiable grader/runner defects may be fixed under standing orders, but the eight recorded model failures are outside lane ownership and cannot be silently fixed or accepted as passing. Do not claim readiness, merge or deploy. Stop at the gate if these results block delivery and report them; no further live calls. The done-contract's red replay result is explicitly NOT VERIFIED as passing. Preserve evidence and request owner direction for app remediation. Archive this generated review prompt if axi logs exposes it; otherwise archive identifying run/step/version logs in 05g-evals-live-gate-review-r1.md with the exact-prompt-unavailable note. Never search other Claude sessions. Update verification/PR evidence only if exercised, ending with VERIFIED and NOT VERIFIED. Two full review rounds then a third on delta only apply to this new scope; no unchecked extra rounds. Review calls are not Workers AI live eval calls.
+
+## 2026-09-30T14:21:35-07:00 - Evals final grading and gate-start outcome
+
+Sources: prompt-history/prompts/05-evals.md, prompt-history/prompts/05c-evals-live-and-counts.md, prompt-history/prompts/05d-evals-local-dev-budget.md and prompt-history/prompts/05f-evals-live-review-context.md
+Outcome: Live capture remains one full run and one failing-only rerun, 79 model calls and estimated 6686 neurons; no additional model calls. Correcting rejected-tool recovery offline produces full-run 9/15, rerun 2/9, latest snapshot 8/15. Earlier grading and raw responses are preserved. Seven captured answer failures remain visible; npm test reports 262 pass, 7 fail (269). Expanded-scope review did not start: the local no-mistakes remote rejected the rebased branch as non-fast-forward. Old gate status is cancelled with custody returned; no new review prompt was generated, no PR/CI ran, no force-push was attempted. Owner permission is required to replace the stale local gate ref under AGENTS.md Decision rights 3. The done-contract is not passing; app failures remain for the agent lane and deployed results remain for release.
+
+## 2026-09-30T14:54:53-07:00 - Evals harness verdict tests and failure analysis
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05h-evals-verdict-tests.md
+Outcome: (pending)
+
+Hold the gate retry for now. With 7 failing tests, the gate's test step would let Claude attempt
+one automatic fix, and for an eval that could mean changing grading or recordings. The pass rate
+must not depend on that.
+
+Change the test design instead: npm test checks the harness, not the model.
+- Replay mode re-grades the committed recordings and asserts the verdicts match the committed
+  results file, so any grader change shows up as a visible diff.
+- Add grader unit tests with known-good and known-bad answers, including the 7-lines case.
+- Model failures are reported results, not test failures.
+
+Grading corrections: only as a grader fix with a unit test, applied to every recording, with raw
+and corrected results both reported. No per-answer overrides. List every correction you made and
+why.
+
+Then add a failure analysis to evals/results/README.md: for each failing question, the category
+(ungrounded number stated, tool not called, wrong tool input, grader too strict, other), the
+evidence, and the fix you would propose and where it belongs (agent, prompt, grader). Do not
+change src/agent.
+
+When npm test is green, you may update the gate's stale local branch ref, retry the gated push,
+and open the PR with the results clearly labelled as a local-dev run.
+
+## 2026-09-30T15:08:42-07:00 - Evals harness cross-review context
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Source: prompt-history/prompts/05i-evals-harness-review-context.md
+Outcome: (pending; author context, not exact generated review prompt)
+
+Review the evals lane under Anna's latest instructions in 05h-evals-verdict-tests.md. PR #4 merged and this lane rebased onto main. She authorized one local-dev full run and failing-only reruns, then explicitly changed the test design: npm test validates the harness, not model perfection. Regrade committed recordings and assert exact verdicts and issues match committed results; use independent known-good and known-bad grader unit tests including seven lines for a six-line invoice. Model failures are reported results, not test failures. Corrections need a shared grader fix and unit regression, applied to every recording, with original and corrected grades retained. No per-answer overrides. Document every correction and, for each failure, category, evidence, proposed fix and agent/prompt/grader ownership. Do not change src/agent. Only after npm test is green, update the stale local gate ref, retry gated push and open the PR clearly labeled local-dev. Anna has now explicitly authorized that local ref update; preserve the old head. No merge or deployment.
+
+Authorized model capture remains complete: one full local-dev set (15 cases, 17 turns, 46 calls, estimated 3687 neurons), one failing-only rerun (9 cases, 11 turns, 33 calls, estimated 2999 neurons). Total 79 Workers AI model calls, 225252 input tokens, 3246 output tokens, estimated 6686 neurons. Zero additional model calls are authorized for this phase. Four sandboxes with reuse, no cap increases. Full run raw capture-time 4/15 versus corrected 9/15 (60%); rerun raw 1/9 versus corrected 2/9; latest mixed snapshot raw 5/15 versus corrected 8/15. Tier/tax regressed on rerun. Seven remaining model failures are honest negative verdicts. All 39 active/archive response files are unchanged, hashed in replay.json. Raw grading, intermediate grading and corrected grading are preserved. No root README pass-rate claim: release owns the deployed rerun after UI/deploy at https://cf-billing-copilot.anna-hester.workers.dev.
+
+Replay tests now compare exact verdicts/issues, recording digests, latest-attempt provenance, complete archive coverage, raw/corrected totals and usage; no auto-regeneration. Explicit EVAL_REGRADE_ALL=1 generation is offline and grades all recordings with the same function. Known-good engine answers for all 15 cases plus known-bad guards are independent of model text. A planted grader-only extra issue made the september-invoice replay fail even though its negative pass boolean remained unchanged, and was restored byte-for-byte without touching a recording or result. All money expectations come from the engine on seed. Every-number/count/date guards remain. Live capture now archives by run start date while preserving individual case timestamps; completed negative model verdicts do not fail the live command, but transport/cap/incomplete runs still do.
+
+Source scope is evals/ plus append-only PROMPTS.md/DECISIONS.md and new prompt files. Application code, contracts, configs and pins are unchanged. Keep main's existing prompt/decision text as a byte-identical prefix. Do not rewrite recordings, alter expected results automatically, relax grounding to improve model pass rates, skip cases or call the live model. If a test unexpectedly fails in the gate, diagnose the harness and report the cause; do not regrade or change recordings as an automatic test fix. Grader fixes require meaningful unit coverage and explicit all-recordings result diffs. Source-verifiable harness defects may be fixed under standing orders; model behavior fixes belong to agent/prompt and are only proposals here.
+
+Run the new-scope source cross-review, then the usual tests/docs/push/PR/CI steps. All offline preflight tests are green (309 tests, 19 files); typecheck and npm ci pass; main collection 190 versus head 309 with no disappearance. Credential-free evidence is in evals/verification.md. The local gate's old pre-rebase head is retained, old run cancelled and custody returned; no gate bypass or origin push. Gate review rounds: two full reviews, then third on delta only; report unresolved disputes to Anna. Archive the exact generated review prompt from axi logs if exposed; otherwise archive identifying run/step/version lines and mark exact prompt unavailable. Log each review in PROMPTS.md. Include full evidence and raw/corrected local results in the PR, ending with VERIFIED and NOT VERIFIED. Public deployed performance, Cloudflare-metered neurons and credit human approval remain not verified; no such claims. Review calls are not Workers AI eval calls.
+
+## 2026-09-30T15:11:47-07:00 - Verdict-test redesign outcome before gate
+
+Source: prompt-history/prompts/05h-evals-verdict-tests.md
+Outcome: Implemented exact verdict/issue comparisons for all 39 active/archived recordings, raw/corrected reports and digests, independent known-good engine tests for all 15 questions and existing known-bad numeric/count/date/schema guards. Explicit offline regrade applied one shared grader to every recording; all raw response bytes and earlier grades preserved. Listed every correction and analyzed each of seven current failures with category, evidence and proposed owner. npm ci and typecheck pass; normal and credential-free npm test each pass 309 tests across 19 files, zero skips; main/head collection 190/309 with no losses. Planted a grader-only issue, observed replay red despite unchanged negative boolean, restored byte-for-byte. No new model calls: total remains 79 and estimated 6686 neurons. Green harness now permits the owner-authorized local gate ref update and delivery retry.
+
+## 2026-09-30T15:18:56-07:00 - Evals gate rebase fix
+
+Role: automated rebase fix
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Source: prompt-history/prompts/05j-evals-gate-rebase-fix.md (copied verbatim with a tool; rebase-fix context, not a generated review prompt)
+Outcome: Rebased all eight evals commits onto origin/main 21a8069. In every rewritten commit PROMPTS.md and docs/DECISIONS.md are origin/main's bytes as an exact prefix plus that commit's lane entries appended once; no conflict markers remain (the first commit's historically committed markers were dropped, keeping both sides). evals/ at the new head is byte-identical to 9fa01a89d7a1412ac83adec1c12e3cb73abac981, so all 39 recordings, grader results and raw/corrected verdicts are unchanged. Zero Workers AI calls. Tests were not rerun in this phase; main/head test collection counts for the new base are left to the test phase.
+
+## 2026-09-30T15:25:59-07:00 - Evals harness gate review round 1
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Source: prompt-history/prompts/05g-evals-harness-review-r1.md (identifying log lines copied with a tool; exact generated review prompt unavailable, axi logs exposed only run/step/version and completion lines)
+Outcome: Three findings. F1 (warning, ask-user): tool-output-only grounding flags the user's echoed "September 2026" period as ungrounded in request-tiers, tax-line and pro-simulation, conflicting with the results README's no-known-false-positive claim; grounding-policy choice pending Anna, no change made. F2 (info, auto-fix): result filename timestamp came from a separate `new Date()` than runDate/archive. F3 (info, no-op): simulation answer can pass expected displays without a successful simulatePlan call; already documented as a proposal. Full findings JSON archived in the source file.
+
+## 2026-09-30T15:25:59-07:00 - Evals gate F2 fix
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Source: prompt-history/prompts/05k-evals-gate-F2-fix.md (fix context copied verbatim with a tool)
+Outcome: evals/run.live.ts now builds the future run result path inside saveResult from result.runDate, so the report filename, runDate and archive directory share the run start timestamp. Existing committed run filenames, all 39 recordings, grader source and raw/corrected verdicts unchanged. Zero Workers AI calls. F1 still pending Anna; F3 left as documented proposal.
+
+## 2026-09-30T16:46:29-07:00 - Evals owner grounding rule
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05l-evals-owner-grounding-rule.md
+Outcome: Implemented in evals/grounding.ts under 05m: per-turn tool-only evidence for money, percentages, counts and numbers; dates and billing periods also from the customer's message after normalization, kept apart from numeric evidence. Red-first regressions plus echoed-date passes and echoed-$500/percentage/count/wrong-date/prior-turn rejections. All 39 recordings regraded offline: only `ungrounded number 2026-09` removed (pro-simulation, request-tiers, tax-line); pass rates unchanged at 9/15, 2/9, 8/15 corrected (raw 4/15, 1/9, 5/15). Recorded in docs/DECISIONS.md, decided by Anna. Zero Workers AI calls.
+
+Decision on the grounding finding: neither option as stated. Use this rule, because the runtime
+grounding guard we add next will enforce the same one:
+- Money amounts, percentages and counts must come from the turn's tool results. An amount the
+  customer typed is not evidence, so a wrong premise ("why is my bill $500?") repeated back fails.
+- Dates and billing periods may come from the tool results or from the customer's own message,
+  compared after normalizing formats (for example "September 18" and 2026-09-18).
+Add grader tests for both sides (an echoed date passes; an echoed dollar amount from the question
+fails), apply the rule to every recording, report raw and re-graded totals as before, record it in
+DECISIONS.md as decided by me, then continue the gated push and open the PR.
+
+## 2026-09-30T16:52:08-07:00 - Evals harness gate review round 2
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Source: prompt-history/prompts/05g-evals-harness-review-r2.md (identifying log lines copied with a tool; exact generated review prompt unavailable, axi logs exposed only run/step/version, fix-round and completion lines)
+Outcome: Round 2 reviewed the F2 fix and completed with status success; no generated prompt or findings text was exposed in the log. It ran before Anna's grounding rule, so it did not review the changed grader.
+
+## 2026-09-30T16:52:08-07:00 - Evals gate grounding fix
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Source: prompt-history/prompts/05m-evals-gate-grounding-fix.md (fix context copied verbatim with a tool)
+Outcome: Grader, regressions, all-recordings regrade, evals/README.md policy, results README corrections/failure analysis and verification evidence updated. Normal and credential-free npm test: 22 files, 353 tests passed; typecheck exit 0; main 21a8069 collects 223, head 353, zero disappeared, 130 added. Recordings and initialGrading identical to 9fa01a8. src/agent, contracts, configs and pins unchanged; zero Workers AI calls. Any source review of this delta must be a third, delta-only round.
+
+## 32. Agent fixes kickoff
+
+- Timestamp: 2026-09-30T16:57:35-07:00
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/07-agent-fixes.md
+- Outcome: grounding guard and five per-cause fixes on feat/agent-fixes, rebased onto evals PR #7; live local dev: failing-only rerun 6/7, full set 13/13 completed (stopped by the per-IP sandbox cap before 2 of 15), versus a 9/15 baseline; 53 model calls, about 4,531 estimated neurons; Codex rounds 1 and 2 each found one major (fixed), delta round approved; PR opened against main, depending on #7.
+
+````text
+Role: agent fixes. Harness: Claude Code. Read AGENTS.md, docs/ARCHITECTURE.md and docs/DECISIONS.md first, and log this prompt in PROMPTS.md.
+
+I am away for about five hours. Do not wait on me: take your recommended option on anything within your decision rights and log it. For anything reserved to me (merge, deploy, login, secrets, force-push to main, account changes, contract changes), add it to a FOR ANNA list and keep going with everything it does not block. If wrangler authentication fails, do not try to log in; continue offline and list it.
+
+Context: the evals lane measured the copilot on 15 scripted questions in local dev: 9 of 15 pass. Its harness, recordings and per-question failure analysis are on the unmerged branch feat/evals (worktree ~/projects/wt/cf-billing-copilot-evals, file evals/results/README.md). It is finishing a grader rule I decided: money amounts, percentages and counts must come from the turn's tool results; dates and billing periods may also come from the customer's own message.
+
+Goal: raise the real pass rate by fixing the product, never the grader.
+1. Runtime grounding guard: before a reply is sent, check every money amount, percentage and count in it against that turn's tool results, and dates and periods against the tool results or the customer's message, using the same rule as the grader. If something is unsupported, retry once with a correction naming it; if it still fails, send a safe answer without the unsupported figure. Record the guard outcome on the turn. Add tests that go red without the guard. This part needs no harness; start it now on this branch.
+2. Once the evals PR is open, rebase onto feat/evals so you can run the harness, then fix the other failures the analysis attributes to the agent or its prompt, one commit per cause. When the evals PR merges, rebase onto main.
+3. Do not change evals/ or src/contracts. If a failure is the grader's fault, list it for me.
+Measure: rerun only the failing questions live against your local dev, once each, then the full set once. Report pass rate before and after, model calls and neurons. No loops.
+Review: Codex headless per AGENTS.md (two full rounds, one delta). Open the PR against main, marked as depending on the evals PR.
+````
+
+## 2026-09-30T17:00:13-07:00 - Evals harness gate review round 3 (grounding delta only)
+
+Role: automated cross-review
+Harness: Codex (read-only second-model inspection, agent-output-review skill); not a codex exec run, but the root Codex reviewer inspecting the Claude-authored gate delta
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Scope: round 3, delta only, d702da68088fd5782ca304f9be0959bf8ed8934d..780f66a387c43b7bd16a803833a6a43413879085
+Source: prompt-history/prompts/05n-evals-grounding-delta-review.md (prompt); prompt-history/prompts/05g-evals-harness-review-r3.md (result); both copied with a tool
+Outcome: PASS, no blocking findings. Per-turn tool-only grounding of amounts, percentages and counts, normalized customer-message dates, negative guards, all-recording issue diff (only `ungrounded number 2026-09` removed, no verdict change) and immutable raw evidence confirmed. Resolves doc-grounding-delta-review; no fourth review needed. Zero Workers AI calls.
+
+Review round 3, delta only, for feat/evals before its local-dev eval PR is opened.
+Role: Codex second-model reviewer using agent-output-review; read-only, no fixes, pushes, rebase, merge or model calls.
+Review git diff d702da68088fd5782ca304f9be0959bf8ed8934d 780f66a387c43b7bd16a803833a6a43413879085 in the active gate worktree. Do not repeat the two full source-review rounds. Check AGENTS.md, docs/agent/verification.md, docs/agent/cross-review.md, prompt-history/prompts/05-evals.md and 05l-evals-owner-grounding-rule.md against this delta.
+Verify this turn's successful tool results exclusively ground amounts, percentages, counts and other quantities; dates/periods also normalize from the customer message. Check echoed dates pass and customer money fails, prior-turn evidence fails, seven-lines-for-six stays rejected, no per-answer exceptions. Inspect the shared all-recordings regrade, immutable raw recording digests/initial grades and preserved earlier grade history; verify exact issue changes and unchanged usage. Check attached normal and credential-free 353-test evidence, red-first regressions, unchanged frozen/app source, append-only logs, no skipped tests or silent fixture regeneration. No new Workers AI calls are authorized.
+Report PASS or FAIL, findings most severe first with severity/file/line/evidence/proposed fix, and end with VERIFIED / NOT VERIFIED. Delivery, CI, deployed evaluation and metered neurons remain unverified until exercised; do not claim the PR is mergeable before gated delivery succeeds.
+
+## 2026-09-30T17:00:13-07:00 - Evals away standing orders
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05o-evals-away-standing-orders.md
+Outcome: Recorded in docs/DECISIONS.md, decided by Anna. FOR ANNA list added to evals/verification.md: merge this PR when back; release-lane deploy, deployed eval and public README later. No newly reserved decision blocks the gated push/PR; feat/evals history is preserved after the PR opens unless the gate requires a rewrite, which will be reported.
+
+I am away for about five hours. Do not wait on me: take your recommended option on anything within
+your decision rights and log it. For anything reserved to me (merge, deploy, login, secrets,
+force-push to main, account changes, contract changes), add it to a FOR ANNA list and keep going
+with everything it does not block. If wrangler authentication fails, do not try to log in.
+Finish the grading rule, the gated push and the PR, then stop; I merge when I am back. The
+agent-fixes lane will build on feat/evals, so after the PR is open, do not rewrite its history
+unless the gate requires it, and say so if it does.
+
+## 33. Agent fixes cross-review, round 1
+
+- Timestamp: 2026-09-30T17:26:26-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/07a-agent-fixes-review-r1.md
+- Outcome: CHANGES REQUESTED, one major finding: guard evidence for a continuation was read from client-controlled history positions. Fixed in 7282254 (server-stored evidence, continuationEvidence tests that go red on the old rule). Codex verified evals/ and src/contracts unchanged, 422 tests passing, live verdicts matching the manifests.
+
+````text
+You are the cross-reviewer for the agent-fixes branch `feat/agent-fixes` on
+annah-dev/cf-billing-copilot, round 1 of 2 full rounds. The work was written by Claude Code (the
+agent fixes engineer). You are Codex, running read-only: do not edit, commit, push or comment
+anywhere; your whole output is your review. You may run `npm run typecheck` and `npm test` if the
+sandbox allows (both are offline).
+
+The branch depends on the open evals PR #7 (`origin/feat/evals`) and is rebased onto it, so review
+this branch's own changes: `git diff origin/feat/evals...HEAD` and
+`git log origin/feat/evals..HEAD`. `evals/` and `src/contracts/` must be identical to
+`origin/feat/evals` (check it). The frozen files in AGENTS.md hard rule 4 must be unchanged.
+
+Check against: prompt-history/prompts/00-assignment.md, the kickoff
+prompt-history/prompts/07-agent-fixes.md, AGENTS.md, docs/agent/cross-review.md,
+docs/agent/verification.md, docs/ARCHITECTURE.md, and the new docs/DECISIONS.md entries headed
+"agent:" at the end of the file.
+
+What the branch claims, each to be verified:
+
+1. A runtime grounding guard (src/agent/grounding.ts, src/agent/guard.ts, wired in
+   src/agent/billing-agent.ts): before a reply is sent, every money amount, percentage, count and
+   number must come from that turn's successful tool outputs; dates and periods may also come from
+   the customer's message, using the same rule as evals/grounding.ts. Unsupported: one retry with
+   a correction naming the figures (no tools), then a safe answer without them. The outcome is
+   stored as assistant message metadata. Check: can unsupported text reach the client before the
+   check (WebSocket chat and /turn), including on errors, aborts, continuations after a credit
+   confirmation and budget refusals; is the evidence really scoped to the turn; is the retry
+   budget-reserved and counted; does tests/agent/grounding-parity.test.ts really prove agreement
+   with the grader; can the safe answer still contain an unsupported figure.
+2. One commit per cause from evals/results/README.md's failure analysis: unknown-id errors list
+   the real ids (src/ledger/ledger.ts); simulatePlan plan-id repair (src/agent/repair.ts); the
+   server anomaly check for compareInvoices; the last step and any step after a pure repeat get no
+   tools, an empty reply is asked for once (billing-agent.ts mustAnswer, guard.ts), and an empty
+   tool list is never sent to Workers AI (model.ts noEmptyToolsMiddleware). Check each for
+   correctness, for ways it could start a credit request or a write without confirmation (D-20),
+   leak another customer's data, or loop.
+3. Tests: tests/agent/grounding.test.ts, tests/agent/recovery.test.ts, the parity test, and the
+   rewritten tests in agent.test.ts and chat.test.ts. The PR says each fix's tests go red without
+   it; plant the defect where you can and confirm. Two tests were removed and rewritten (the
+   unreachable MAX_STEPS + 1 extra step): judge whether coverage was lost.
+4. Live evidence in tests/agent/evidence/live-evals/: do the claims in its README match run.json
+   and the recordings? Is anything in it a secret, token or real personal data?
+5. Money rule (AGENTS.md hard rule 1): no arithmetic on amounts outside src/engine and formatUsd.
+
+Report defects in or caused by this branch. Mark anything you cannot verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 34. Agent fixes cross-review, round 2
+
+- Timestamp: 2026-09-30T17:41:32-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/07b-agent-fixes-review-r2.md
+- Outcome: CHANGES REQUESTED, one major finding: stored evidence could be reused by a continuation that was not the customer's answer (client tool-result frame). Fixed in 7ecfd88 (consumed confirmation id and question must match; row cleared before caps; end-to-end WebSocket test red on the round-1 code). Codex verified 426 tests, unchanged evals/ and contracts, and the live evidence totals.
+
+````text
+You are the cross-reviewer for the agent-fixes branch `feat/agent-fixes` on
+annah-dev/cf-billing-copilot, round 2 of 2 full rounds. The work was written by Claude Code (the
+agent fixes engineer). You are Codex, running read-only: do not edit, commit, push or comment
+anywhere; your whole output is your review. You may run `npm run typecheck` and `npm test` if the
+sandbox allows (both are offline).
+
+The branch depends on the open evals PR #7 (`origin/feat/evals`) and is rebased onto it, so review
+this branch's own changes: `git diff origin/feat/evals...HEAD` and
+`git log origin/feat/evals..HEAD`. `evals/` and `src/contracts/` must be identical to
+`origin/feat/evals` (check it). The frozen files in AGENTS.md hard rule 4 must be unchanged.
+
+Check against: prompt-history/prompts/00-assignment.md, the kickoff
+prompt-history/prompts/07-agent-fixes.md, AGENTS.md, docs/agent/cross-review.md,
+docs/agent/verification.md, docs/ARCHITECTURE.md, and the new docs/DECISIONS.md entries headed
+"agent:" at the end of the file.
+
+What the branch claims, each to be verified:
+
+1. A runtime grounding guard (src/agent/grounding.ts, src/agent/guard.ts, wired in
+   src/agent/billing-agent.ts): before a reply is sent, every money amount, percentage, count and
+   number must come from that turn's successful tool outputs; dates and periods may also come from
+   the customer's message, using the same rule as evals/grounding.ts. Unsupported: one retry with
+   a correction naming the figures (no tools), then a safe answer without them. The outcome is
+   stored as assistant message metadata. Check: can unsupported text reach the client before the
+   check (WebSocket chat and /turn), including on errors, aborts, continuations after a credit
+   confirmation and budget refusals; is the evidence really scoped to the turn; is the retry
+   budget-reserved and counted; does tests/agent/grounding-parity.test.ts really prove agreement
+   with the grader; can the safe answer still contain an unsupported figure.
+2. One commit per cause from evals/results/README.md's failure analysis: unknown-id errors list
+   the real ids (src/ledger/ledger.ts); simulatePlan plan-id repair (src/agent/repair.ts); the
+   server anomaly check for compareInvoices; the last step and any step after a pure repeat get no
+   tools, an empty reply is asked for once (billing-agent.ts mustAnswer, guard.ts), and an empty
+   tool list is never sent to Workers AI (model.ts noEmptyToolsMiddleware). Check each for
+   correctness, for ways it could start a credit request or a write without confirmation (D-20),
+   leak another customer's data, or loop.
+3. Tests: tests/agent/grounding.test.ts, tests/agent/recovery.test.ts, the parity test, and the
+   rewritten tests in agent.test.ts and chat.test.ts. The PR says each fix's tests go red without
+   it; plant the defect where you can and confirm. Two tests were removed and rewritten (the
+   unreachable MAX_STEPS + 1 extra step): judge whether coverage was lost.
+4. Live evidence in tests/agent/evidence/live-evals/: do the claims in its README match run.json
+   and the recordings? Is anything in it a secret, token or real personal data?
+5. Money rule (AGENTS.md hard rule 1): no arithmetic on amounts outside src/engine and formatUsd.
+
+Round 1 (prompt-history/prompts/07a-agent-fixes-review-r1.md) found one major defect: the
+guard read a continuation's earlier tool outputs from client-controlled history positions. The
+fix is commit "fix(agent): keep grounding evidence server-owned across a credit confirmation"
+(`continuationEvidence` and the `awaiting_evidence` key in src/agent/billing-agent.ts). Verify the
+fix, including stale or concurrent runs, a continuation that is not a credit confirmation, and
+whether a client can make a stored row apply to the wrong run; then review the whole branch again,
+not only the fix. A commit after round 1 also made a thrown retry fall back to the safe answer.
+
+Report defects in or caused by this branch. Mark anything you cannot verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 35. Agent fixes cross-review, round 3 (delta only)
+
+- Timestamp: 2026-09-30T17:57:01-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/07c-agent-fixes-review-r3-delta.md
+- Outcome: APPROVE, no findings in the delta; Codex traced approval, denial, tool-result, forged or stale approval and /turn paths and ran 430 passing tests. Review loop closed after two full rounds and one delta round.
+
+````text
+You are the cross-reviewer for the agent-fixes branch `feat/agent-fixes` on
+annah-dev/cf-billing-copilot, round 3: the delta-only round after two full rounds. The work was
+written by Claude Code. You are Codex, running read-only: do not edit, commit, push or comment
+anywhere; your whole output is your review. You may run `npm run typecheck` and `npm test`.
+
+Review only this delta: `git diff 1fa7b0c HEAD -- src tests` and `git log 1fa7b0c..HEAD`. It is
+the fix for round 2's finding (prompt-history/prompts/07b-agent-fixes-review-r2.md): stored
+grounding evidence was reusable by a continuation that was not the customer's answer to the
+proposal. The fix: `consumeAnsweredConfirmation` (src/agent/provenance.ts) returns the consumed
+tool call id; `continuationEvidence` (src/agent/billing-agent.ts) applies stored evidence only for
+that id and the same customer message id; the stored row is read and cleared at the start of every
+run, before cap refusals. Tests: tests/agent/grounding.test.ts ("evidence from earlier steps") and
+tests/agent/chat.test.ts ("stored evidence needs the customer's answer").
+
+Check: is the finding closed for every continuation path (approval, denial, tool-result frames,
+forged or stale approvals, /turn), did the change alter the message-cap exemption or D-20
+confirmation behaviour, and do the tests fail without the fix. Report only defects in or caused
+by this delta. Mark anything you cannot verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+
+## 2026-09-30T18:31:21-07:00 - Owner answers to the release phase 1 report (typed mid-session)
+
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06e-release-owner-phase1-answers.md
+- Outcome: item A is this PR (#9): production builds default to the live API and /admin follows up a decision until the Workflow finishes. The other items are handled in the release PR (feat/release).
+
+````text
+A: put "live is the default for production builds" and the item 5 admin re-fetch fix into a
+small separate PR now, so it merges before the final deploy. No redeploy now; I deploy once,
+after the remaining PRs merge. B: items 2, 3 and the WebSocket finding go to the agent-fixes lane
+as a follow-up PR. Item 6: keep the README note; it resolves itself after October 2.
+C2, edits:
+- Replace "made the product, security and cost decisions" with "made the decisions reserved to
+  the owner (product scope, security model, cost and contract changes), each marked 'Decided by:
+  Anna' in docs/DECISIONS.md, while agents decided implementation details under the written
+  decision rights in AGENTS.md".
+- Keep "merged every pull request" only if it is still true when you open the release PR.
+- Add: "Planning, decision review and independent verification of each pull request were done in
+  a separate Claude conversation; see the note at the top of PROMPTS.md."
+D1, and annotate the 04l entry with what you find about it rather than removing it.
+E1. Also store the transcripts gzip-compressed (one .jsonl.gz per session) so the repository
+stays small, with every file under 50 MB. I will review scripts/scrub-terms.local.txt myself.
+Phase 2 starts when I tell you the agent PRs, the grader PR and your UI PR have merged and I
+have redeployed.
+````
+
+## 2026-09-30T18:40:16-07:00 - PR #9 cross-review, round 1
+
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06f-ui-live-review-r1.md
+- Outcome: CHANGES REQUESTED, 3 major and 2 minor. Fixed: refresh overlap, untested follow-up loop, missing prompt log, unmount cancellation. Rebutted: fixture approval links against the live API (404 or 401, nothing read or written).
+
+````text
+# PR #9 cross-review, round 1 (full)
+
+You are reviewing pull request #9 in this repository, branch `fix/ui-live-default`, authored by
+Claude Code (release engineer) at the owner's request. You are read-only: do not edit, commit,
+push, rebase or merge anything, and make no network calls or live model calls.
+
+The diff under review:
+
+    git diff origin/main...origin/fix/ui-live-default
+
+The PR body is reproduced at the end of this prompt. Check the change against:
+
+- prompt-history/prompts/00-assignment.md (acceptance criteria)
+- prompt-history/prompts/06e-release-owner-phase1-answers.md (the owner's instruction for this PR:
+  "live is the default for production builds" and the admin re-fetch after a decision)
+- AGENTS.md (hard rules and decision rights)
+- docs/agent/cross-review.md ("What the reviewer checks")
+- docs/agent/verification.md (done-contract)
+- docs/DECISIONS.md entries "ui: Fixture transport and live handoff", "ui: Approval links and
+  refresh boundaries" and the two new `ui:` entries at the end
+
+Focus on:
+
+1. Mode selection. Does `apiMode(import.meta.env)` give live for `vite build` and fixture for
+   `vite dev` with no variable set, and honour `VITE_BILLING_API_MODE`? Could any path still send a
+   fixture session to the live API or the reverse (separate storage keys)? Is the `?preview=`
+   scenario still restricted to the dev fixture preview?
+2. Admin follow-up. Is the loop bounded, does it stop at a terminal state and on unmount, can it
+   overlap a user-triggered refresh or a second decision, and does it respect the 200-request daily
+   cap rationale? Does `refresh` returning data change any existing behaviour (stale generation,
+   errors)?
+3. Tests. Do the five new tests check what the PR claims; can they fail; is anything claimed but
+   untested? The PR says browser evidence was produced with a mocked API: is the claim scoped
+   honestly in VERIFIED / NOT VERIFIED?
+4. Rules: no money arithmetic in the UI, no frozen file changed (src/contracts, wrangler.jsonc,
+   package files, vitest config, tsconfig, .github, AGENTS.md), plain ASCII in comments and docs,
+   DECISIONS entries appended only, with "Decided by".
+
+You may run `npm ci`, `npm run typecheck`, `npm test`, `npx vitest list` and `npx vite build` in a
+scratch copy if your sandbox allows it; say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each
+with severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest.
+End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+
+## PR body
+
+See `gh pr view 9` if available; otherwise rely on the diff and the commit message. The PR
+claims: typecheck, lint and tests pass (358 tests, 5 added); planted defects in `apiMode` and
+`awaitingWorkflow` turned the new tests red; a production bundle with no env var ran in live mode
+and the admin card reached "applied" 2.4 s after Approve with no manual refresh against a mocked
+API; origin/main's bundle failed the same check; not deployed.
+````
+
+## 2026-09-30T18:55:02-07:00 - PR #9 cross-review, round 2
+
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06g-ui-live-review-r2.md
+- Outcome: CHANGES REQUESTED, 1 major: a manual or focus refresh could leave a list read outstanding while Approve was enabled, so the follow-up overlapped it. Fixed with one serial queue for all admin list reads and busy held until the queue drains; round-1 items 2 to 4 held and the rebuttal of item 5 was accepted.
+
+````text
+# PR #9 cross-review, round 2 (full)
+
+You are reviewing pull request #9 again after the round-1 fixes in this repository, branch `fix/ui-live-default`, authored by
+Claude Code (release engineer) at the owner's request. You are read-only: do not edit, commit,
+push, rebase or merge anything, and make no network calls or live model calls.
+
+The diff under review:
+
+    git diff origin/main...origin/fix/ui-live-default
+
+The PR body is reproduced at the end of this prompt. Check the change against:
+
+- prompt-history/prompts/00-assignment.md (acceptance criteria)
+- prompt-history/prompts/06e-release-owner-phase1-answers.md (the owner's instruction for this PR:
+  "live is the default for production builds" and the admin re-fetch after a decision)
+- AGENTS.md (hard rules and decision rights)
+- docs/agent/cross-review.md ("What the reviewer checks")
+- docs/agent/verification.md (done-contract)
+- docs/DECISIONS.md entries "ui: Fixture transport and live handoff", "ui: Approval links and
+  refresh boundaries" and the two new `ui:` entries at the end
+
+Focus on:
+
+1. Mode selection. Does `apiMode(import.meta.env)` give live for `vite build` and fixture for
+   `vite dev` with no variable set, and honour `VITE_BILLING_API_MODE`? Could any path still send a
+   fixture session to the live API or the reverse (separate storage keys)? Is the `?preview=`
+   scenario still restricted to the dev fixture preview?
+2. Admin follow-up. Is the loop bounded, does it stop at a terminal state and on unmount, can it
+   overlap a user-triggered refresh or a second decision, and does it respect the 200-request daily
+   cap rationale? Does `refresh` returning data change any existing behaviour (stale generation,
+   errors)?
+3. Tests. Do the five new tests check what the PR claims; can they fail; is anything claimed but
+   untested? The PR says browser evidence was produced with a mocked API: is the claim scoped
+   honestly in VERIFIED / NOT VERIFIED?
+4. Rules: no money arithmetic in the UI, no frozen file changed (src/contracts, wrangler.jsonc,
+   package files, vitest config, tsconfig, .github, AGENTS.md), plain ASCII in comments and docs,
+   DECISIONS entries appended only, with "Decided by".
+
+You may run `npm ci`, `npm run typecheck`, `npm test`, `npx vitest list` and `npx vite build` in a
+scratch copy if your sandbox allows it; say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each
+with severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest.
+End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+
+## Round 1 and its dispositions
+
+Round 1 (prompt 06f) requested changes. The author answered:
+
+1. Follow-up reads could overlap a manual Refresh: fixed. Follow-up reads are quiet (they do not
+   clear `busy`), so Refresh stays disabled for the whole decision; the Refresh handler also
+   ignores clicks while a decision is in progress.
+2. Tests did not protect the follow-up loop: fixed. The loop moved into `followUpDecision`
+   (src/ui/api.ts) with injected read, sleep and active; six tests cover the retry bound, terminal
+   stop, failed read, unmount during a delay and unrelated unfinished requests. Removing the loop
+   fails 3 tests; removing the post-delay active check fails 1.
+3. Prompt history missing from this PR: fixed. The owner instruction (06e) and the review prompts
+   (06f, 06g) are committed here and appended to PROMPTS.md.
+4. Unmount did not cancel a delayed read: fixed. `active()` is checked after every delay, and
+   `refresh` returns early once the page is unmounted, so no read starts and no generation
+   advances after cleanup.
+5. Fragment credentials bypass mode separation: rebutted. An approval link minted by the old
+   fixture build carries a fixture sandbox id that the live API never admitted, so it gets 404 or
+   401 and the page shows the error; nothing is read or written. Noted in the DECISIONS entry.
+
+Re-check every round-1 finding against the new head, then review the whole diff again as a full
+round. Say for each round-1 item whether the fix holds.
+
+## PR body
+
+The PR claims: typecheck, lint and tests pass (364 tests, 11 added, none removed); planted
+defects turn the new tests red; a production bundle with no env var runs in live mode; after
+Approve the admin card reaches applied with no manual refresh, Refresh stays disabled during the
+follow-up and list reads never overlap (mocked API, Playwright); origin/main's bundle stays in
+fixture mode; not deployed.
+````
+
+## 2026-09-30T19:08:21-07:00 - PR #9 cross-review, round 3 (delta only)
+
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06h-ui-live-review-r3-delta.md
+- Outcome: APPROVE, no findings: all four read paths use the one queue, the queued-read counter keeps Approve disabled until reads drain, failures release the counter and queued reads check mounting first. Review loop for PR #9 complete; the owner merges.
+
+````text
+# PR #9 cross-review, round 3 (delta only)
+
+You are reviewing pull request #9 in this repository, branch `fix/ui-live-default`, authored by
+Claude Code (release engineer) at the owner's request. This is the third and last round and
+covers only the changes made after round 2. You are read-only: do not edit, commit, push, rebase
+or merge anything, and make no network calls or live model calls.
+
+The delta under review (round-2 head e4bb9d4e67e4718d365bafc6b43c5514c07b29f8):
+
+    git log --oneline origin/main..origin/fix/ui-live-default
+    git diff e4bb9d4e67e4718d365bafc6b43c5514c07b29f8..origin/fix/ui-live-default
+
+Round 2 (prompt-history/prompts/06g-ui-live-review-r2.md) requested one change: an earlier
+refresh (manual Refresh, then a window focus refresh) could clear `busy` while another list read
+was outstanding, so Approve became clickable and the decision follow-up overlapped that read.
+The author's fix:
+
+- `serialQueue` (src/ui/api.ts) runs tasks one at a time in call order; every admin list read
+  (initial, focus, Refresh, follow-up) goes through one queue.
+- `busy` is cleared only when no read is queued and no decision is in progress; a decision's
+  `finally` leaves the page busy while queued reads remain.
+- Two unit tests: no two reads at once with call order kept, and a failed read does not block
+  the next. Planting `const run = task();` (no waiting) fails the first.
+- Browser check reproducing your sequence (Refresh held 2 s, focus dispatched, then Approve):
+  on the round-1 head, peak concurrent reads 2 and Approve enabled while reads were queued; on
+  the new head, peak 1 and Approve disabled until the queue drained, then applied.
+- DECISIONS entry "ui: Admin re-fetches until the Workflow finishes a decision" amended inside
+  this PR (not yet merged) to describe the queue.
+
+Check: does the fix hold for the round-2 sequence and for any other ordering of initial, focus,
+Refresh and follow-up reads; can the queue deadlock or leak (a read after unmount, a stuck
+`busy`, a lost error); do the new tests check what is claimed; are VERIFIED / NOT VERIFIED
+honest. Do not re-review unchanged code except where the delta interacts with it.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each
+with severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest.
+End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 36. Release lane phase note
 
 - Timestamp: 2026-09-30T16:58:44-07:00
 - Role: Reviewer and release engineer
@@ -2216,7 +2968,7 @@ Phase 1, now: Main is deployed at https://cf-billing-copilot.anna-hester.workers
 Phase 2, after I tell you the evals and agent-fixes PRs have merged: I redeploy, you rerun eval:live against the deployed URL once, put that pass rate and its date in the README, finish the export and the PROMPTS.md cross-check, and open the release PR.
 ````
 
-## 33. Release lane kickoff
+## 37. Release lane kickoff
 
 - Timestamp: 2026-09-30T16:58:44-07:00
 - Role: Reviewer and release engineer
@@ -2307,101 +3059,7 @@ reason. `npm run typecheck` and `npm test` pass.
 4. Never merge; the owner merges.
 ````
 
-## 34. Owner answers to the release phase 1 report (typed mid-session)
-
-- Timestamp: 2026-09-30T18:31:21-07:00
-- Role: Reviewer and release engineer
-- Harness: Claude Code
-- Source: prompt-history/prompts/06e-release-owner-phase1-answers.md
-- Outcome: (pending)
-
-````text
-A: put "live is the default for production builds" and the item 5 admin re-fetch fix into a
-small separate PR now, so it merges before the final deploy. No redeploy now; I deploy once,
-after the remaining PRs merge. B: items 2, 3 and the WebSocket finding go to the agent-fixes lane
-as a follow-up PR. Item 6: keep the README note; it resolves itself after October 2.
-C2, edits:
-- Replace "made the product, security and cost decisions" with "made the decisions reserved to
-  the owner (product scope, security model, cost and contract changes), each marked 'Decided by:
-  Anna' in docs/DECISIONS.md, while agents decided implementation details under the written
-  decision rights in AGENTS.md".
-- Keep "merged every pull request" only if it is still true when you open the release PR.
-- Add: "Planning, decision review and independent verification of each pull request were done in
-  a separate Claude conversation; see the note at the top of PROMPTS.md."
-D1, and annotate the 04l entry with what you find about it rather than removing it.
-E1. Also store the transcripts gzip-compressed (one .jsonl.gz per session) so the repository
-stays small, with every file under 50 MB. I will review scripts/scrub-terms.local.txt myself.
-Phase 2 starts when I tell you the agent PRs, the grader PR and your UI PR have merged and I
-have redeployed.
-````
-
-## 35. PR #9 (UI live default) cross-review, round 1
-
-- Timestamp: 2026-09-30T18:40:21-07:00
-- Role: automated cross-review
-- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
-- Source: prompt-history/prompts/06f-ui-live-review-r1.md
-- Outcome: (pending)
-
-````text
-# PR #9 cross-review, round 1 (full)
-
-You are reviewing pull request #9 in this repository, branch `fix/ui-live-default`, authored by
-Claude Code (release engineer) at the owner's request. You are read-only: do not edit, commit,
-push, rebase or merge anything, and make no network calls or live model calls.
-
-The diff under review:
-
-    git diff origin/main...origin/fix/ui-live-default
-
-The PR body is reproduced at the end of this prompt. Check the change against:
-
-- prompt-history/prompts/00-assignment.md (acceptance criteria)
-- prompt-history/prompts/06e-release-owner-phase1-answers.md (the owner's instruction for this PR:
-  "live is the default for production builds" and the admin re-fetch after a decision)
-- AGENTS.md (hard rules and decision rights)
-- docs/agent/cross-review.md ("What the reviewer checks")
-- docs/agent/verification.md (done-contract)
-- docs/DECISIONS.md entries "ui: Fixture transport and live handoff", "ui: Approval links and
-  refresh boundaries" and the two new `ui:` entries at the end
-
-Focus on:
-
-1. Mode selection. Does `apiMode(import.meta.env)` give live for `vite build` and fixture for
-   `vite dev` with no variable set, and honour `VITE_BILLING_API_MODE`? Could any path still send a
-   fixture session to the live API or the reverse (separate storage keys)? Is the `?preview=`
-   scenario still restricted to the dev fixture preview?
-2. Admin follow-up. Is the loop bounded, does it stop at a terminal state and on unmount, can it
-   overlap a user-triggered refresh or a second decision, and does it respect the 200-request daily
-   cap rationale? Does `refresh` returning data change any existing behaviour (stale generation,
-   errors)?
-3. Tests. Do the five new tests check what the PR claims; can they fail; is anything claimed but
-   untested? The PR says browser evidence was produced with a mocked API: is the claim scoped
-   honestly in VERIFIED / NOT VERIFIED?
-4. Rules: no money arithmetic in the UI, no frozen file changed (src/contracts, wrangler.jsonc,
-   package files, vitest config, tsconfig, .github, AGENTS.md), plain ASCII in comments and docs,
-   DECISIONS entries appended only, with "Decided by".
-
-You may run `npm ci`, `npm run typecheck`, `npm test`, `npx vitest list` and `npx vite build` in a
-scratch copy if your sandbox allows it; say which you ran.
-
-Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each
-with severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest.
-End with:
-
-    VERIFIED:     <what you ran and observed>
-    NOT VERIFIED: <what you did not exercise, and why>
-
-## PR body
-
-See `gh pr view 9` if available; otherwise rely on the diff and the commit message. The PR
-claims: typecheck, lint and tests pass (358 tests, 5 added); planted defects in `apiMode` and
-`awaitingWorkflow` turned the new tests red; a production bundle with no env var ran in live mode
-and the admin card reached "applied" 2.4 s after Approve with no manual refresh against a mocked
-API; origin/main's bundle failed the same check; not deployed.
-````
-
-## 36. Owner answer: merge main, do not rebase (typed mid-session)
+## 38. Owner answer: merge main, do not rebase (typed mid-session)
 
 - Timestamp: 2026-09-30T19:01:42-07:00
 - Role: Reviewer and release engineer
@@ -2414,7 +3072,7 @@ Merging main into feat/release in phase 2 is fine, and no rebase is needed since
 squash-merged. When main comes back in, keep one copy of each duplicated PROMPTS.md entry.
 ````
 
-## 37. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)
+## 39. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)
 
 - Timestamp: 2026-09-30T19:24:33-07:00
 - Role: Reviewer and release engineer
