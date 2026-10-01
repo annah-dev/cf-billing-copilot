@@ -3380,7 +3380,7 @@ you suggest. End with:
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06a-release-phase-note.md
-- Outcome: (pending)
+- Outcome: Phase 1: reviewed main (no secrets, no money math outside the engine, auth on every route); smoke-tested the live site by curl and, because the deployed UI was a fixture build, through a live-mode bundle against production; drafted the README; built the transcript export. Production findings went to PR #9 (UI) and PR #12 (agent). Phase 2 is entry 50.
 
 ````text
 Note first, then follow prompt-history/prompts/06-release.md as your lane prompt, including logging it in PROMPTS.md.
@@ -3397,7 +3397,7 @@ Phase 2, after I tell you the evals and agent-fixes PRs have merged: I redeploy,
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06-release.md
-- Outcome: (pending)
+- Outcome: Release PR #14: README with every assignment section, deployed eval run (11/15 on 2026-10-01), scrubbed transcripts with the PROMPTS.md cross-check and time-order index, late entries 51 to 57. At the owner's request also PR #9 (UI live default, admin follow-up) and PR #13 (30 s test timeouts). Cross-review rounds for #14 follow this entry.
 
 ````text
 # 06 - Release lane kickoff
@@ -3488,7 +3488,7 @@ reason. `npm run typecheck` and `npm test` pass.
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06i-release-owner-merge-not-rebase.md
-- Outcome: (pending)
+- Outcome: Main was merged into feat/release (no rebase, no force-push) after #9, #11 and #12; duplicated entries kept once, in main's form.
 
 ````text
 Merging main into feat/release in phase 2 is fine, and no rebase is needed since PRs are
@@ -3501,7 +3501,7 @@ squash-merged. When main comes back in, keep one copy of each duplicated PROMPTS
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06j-release-owner-pr9-merged.md
-- Outcome: (pending)
+- Outcome: Acknowledged; the production agent fixes arrived as PR #12.
 
 ````text
 Merged #9. You're right: the production fixes come in a separate agent-fixes PR, still to come.
@@ -3513,7 +3513,7 @@ Merged #9. You're right: the production fixes come in a separate agent-fixes PR,
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06k-release-owner-wsl-restart.md
-- Outcome: (pending)
+- Outcome: Recovered: the merge commit had landed; checks rerun (443 passed, credential-free too) and pushed; this lane had no gate run; PR #10's interrupted gate run and conflict were reported to the owner.
 
 ````text
 WSL restarted while you were working, so every process you started is gone: dev servers,
@@ -3530,7 +3530,7 @@ docs/DECISIONS.md. Then report where you are.
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06l-release-owner-pr10-pr11.md
-- Outcome: (pending)
+- Outcome: PR #10 left to the evals lane; after #11 merged, the README cost section notes the per-IP cap of 20 and why the monthly estimate does not change.
 
 ````text
 A1: the evals lane handles #10. #11 is merged, so update the README cost section and its estimate
@@ -3543,7 +3543,7 @@ in phase 2.
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06m-release-phase2-start.md
-- Outcome: (pending)
+- Outcome: Live UI recheck passed with wrangler tail (no internal-error lines; panel needs a manual Refresh after confirming); PR #13 for test timeouts; README top, five owner calls and one Links block; eval:live once, 11/15; release PR #14.
 
 ````text
 #12 (production fixes) and #10 are merged, and I have redeployed main. Start phase 2. Additions:
@@ -3662,3 +3662,141 @@ of docs/DECISIONS.md, rerun the gate, and tell me when #10 is ready.
 Make the guard follow the same rule in fix/prod-chat (merge main in first), with a test, and keep
 the guard-versus-grader agreement test passing.
 ````
+
+## Release note: outcomes recorded in later entries
+
+Seven entries above still read "Outcome: (pending)". Their lanes kept PROMPTS.md append-only and
+recorded the outcome in a later entry instead, so the release pass leaves those lines as written and
+points to where each outcome is:
+
+| Entry still marked pending | Outcome recorded in |
+|---|---|
+| 2026-09-29T17:25:01-07:00 - Engine lane kickoff | Engine lane kickoff - final outcome |
+| 2026-09-29T18:44:47-07:00 - Engine seed realism and gate prompt recovery | Engine seed realism and gate prompt recovery - final outcome |
+| 2026-09-29T20:35:34-07:00 - Evals early-start note | Evals early-start preparation - checkpoint outcome |
+| 2026-09-29T20:35:34-07:00 - Evals lane kickoff | Evals early-start preparation - checkpoint outcome, then 2026-09-30T14:21:35-07:00 - Evals final grading and gate-start outcome |
+| 2026-09-30T13:31:37-07:00 - Evals live capture and count grounding | 2026-09-30T14:04:40-07:00 - Evals local capture outcome |
+| 2026-09-30T13:33:04-07:00 - Evals local dev target and budget | 2026-09-30T14:04:40-07:00 - Evals local capture outcome |
+| 2026-09-30T14:54:53-07:00 - Evals harness verdict tests and failure analysis | 2026-09-30T15:11:47-07:00 - Verdict-test redesign outcome before gate |
+
+
+## Chronological index
+
+Every entry above in time order (UTC), generated by `node scripts/export-transcripts.mjs --prompts-index` at the release pass. Lanes appended in parallel, so file order is not time order; entries added after this index are not in it.
+
+| # | Time (UTC) | Entry | Source |
+|---|---|---|---|
+| 1 | 2026-09-29 21:26 | [1. Assignment](#1-assignment) | `prompt-history/prompts/00-assignment.md` |
+| 2 | 2026-09-29 21:30 | [2. Architect kickoff (Stop 1 and Stop 2)](#2-architect-kickoff-stop-1-and-stop-2) | `prompt-history/prompts/01-architect.md` |
+| 3 | 2026-09-29 22:46 | [3. Stop 1 decisions and standing orders (typed mid-session)](#3-stop-1-decisions-and-standing-orders-typed-mid-session) | `prompt-history/prompts/01a-stop1-decisions.md` |
+| 4 | 2026-09-29 22:48 | [4. PR #1 cross-review, round 1](#4-pr-1-cross-review-round-1) | `prompt-history/prompts/01b-review-pr1-r1.md` |
+| 5 | 2026-09-29 22:56 | [5. PR #1 cross-review, round 2](#5-pr-1-cross-review-round-2) | `prompt-history/prompts/01c-review-pr1-r2.md` |
+| 6 | 2026-09-29 23:04 | [6. PR #1 cross-review, round 3 (delta only)](#6-pr-1-cross-review-round-3-delta-only) | `prompt-history/prompts/01d-review-pr1-r3.md` |
+| 7 | 2026-09-29 23:16 | [7. D-13 answer and Stop 2 go (typed mid-session)](#7-d-13-answer-and-stop-2-go-typed-mid-session) | `prompt-history/prompts/01e-stop2-go.md` |
+| 8 | 2026-09-29 23:42 | [8. PR #2 cross-review, round 1](#8-pr-2-cross-review-round-1) | `prompt-history/prompts/01f-review-pr2-r1.md` |
+| 9 | 2026-09-29 23:55 | [9. PR #2 cross-review, round 2](#9-pr-2-cross-review-round-2) | `prompt-history/prompts/01g-review-pr2-r2.md` |
+| 10 | 2026-09-30 00:04 | [10. PR #2 cross-review, round 3 (delta only)](#10-pr-2-cross-review-round-3-delta-only) | `prompt-history/prompts/01h-review-pr2-r3.md` |
+| 11 | 2026-09-30 00:14 | [11. PR #2 billing semantics round (typed mid-session)](#11-pr-2-billing-semantics-round-typed-mid-session) | `prompt-history/prompts/01i-pr2-billing-semantics.md` |
+| 12 | 2026-09-30 00:16 | [12. PR #2 cross-review, owner round (delta only)](#12-pr-2-cross-review-owner-round-delta-only) | `prompt-history/prompts/01j-review-pr2-delta.md` |
+| 13 | 2026-09-30 00:25 | [2026-09-29T17:25:01-07:00 - Engine lane kickoff](#2026-09-29t172501-0700---engine-lane-kickoff) | `prompt-history/prompts/02-engine.md` |
+| 14 | 2026-09-30 00:25 | [13. Agent lane kickoff](#13-agent-lane-kickoff) | `prompt-history/prompts/03-agent.md` |
+| 15 | 2026-09-30 00:49 | [2026-09-29T17:49:03-07:00 - Engine gate review round 1](#2026-09-29t174903-0700---engine-gate-review-round-1) | `prompt-history/prompts/02g-engine-gate-review-r1.md` |
+| 16 | 2026-09-30 00:56 | [2026-09-29T17:56:42-07:00 - Engine gate review round 2](#2026-09-29t175642-0700---engine-gate-review-round-2) | `prompt-history/prompts/02g-engine-gate-review-r2.md` |
+| 17 | 2026-09-30 00:58 | [2026-09-29T17:58:21-07:00 - Engine gate review round 3 (final, delta only)](#2026-09-29t175821-0700---engine-gate-review-round-3-final-delta-only) | `prompt-history/prompts/02g-engine-gate-review-r3.md` |
+| 18 | (none) | [Engine lane kickoff - final outcome](#engine-lane-kickoff---final-outcome) | `prompt-history/prompts/02-engine.md` |
+| 19 | 2026-09-30 01:08 | [14. Agent PR #4 cross-review, round 1](#14-agent-pr-4-cross-review-round-1) | `prompt-history/prompts/03b-agent-review-r1.md` |
+| 20 | 2026-09-30 01:17 | [13. UI restart after duplicate launches](#13-ui-restart-after-duplicate-launches) | `prompt-history/prompts/04a-ui-restart.md` |
+| 21 | 2026-09-30 01:17 | [14. UI lane kickoff](#14-ui-lane-kickoff) | `prompt-history/prompts/04-ui.md` |
+| 22 | 2026-09-30 01:29 | [15. Agent PR #4 cross-review, round 2](#15-agent-pr-4-cross-review-round-2) | `prompt-history/prompts/03c-agent-review-r2.md` |
+| 23 | 2026-09-30 01:37 | [15. UI gate review, round 1](#15-ui-gate-review-round-1) | `prompt-history/prompts/04g-ui-gate-review-r1.md` |
+| 24 | 2026-09-30 01:40 | [16. UI gate fix instruction, round 1](#16-ui-gate-fix-instruction-round-1) | `prompt-history/prompts/04b-ui-gate-fix-r1.md` |
+| 25 | 2026-09-30 01:43 | [17. UI gate review, round 2](#17-ui-gate-review-round-2) | `prompt-history/prompts/04g-ui-gate-review-r2.md` |
+| 26 | 2026-09-30 01:43 | [18. UI gate test setup instruction](#18-ui-gate-test-setup-instruction) | `prompt-history/prompts/04c-ui-gate-test-setup.md` |
+| 27 | 2026-09-30 01:44 | [2026-09-29T18:44:47-07:00 - Engine seed realism and gate prompt recovery](#2026-09-29t184447-0700---engine-seed-realism-and-gate-prompt-recovery) | `prompt-history/prompts/02c-engine-seed-realism-followup.md` |
+| 28 | 2026-09-30 01:44 | [2026-09-29T18:44:47-07:00 - Recovered engine gate review round 1](#2026-09-29t184447-0700---recovered-engine-gate-review-round-1) | `prompt-history/prompts/02g-engine-gate-review-r1.md` |
+| 29 | 2026-09-30 01:44 | [2026-09-29T18:44:47-07:00 - Recovered engine gate review round 2](#2026-09-29t184447-0700---recovered-engine-gate-review-round-2) | `prompt-history/prompts/02g-engine-gate-review-r2.md` |
+| 30 | 2026-09-30 01:44 | [2026-09-29T18:44:47-07:00 - Recovered engine gate review round 3](#2026-09-29t184447-0700---recovered-engine-gate-review-round-3) | `prompt-history/prompts/02g-engine-gate-review-r3.md` |
+| 31 | 2026-09-30 01:47 | [16. Agent PR #4 cross-review, round 3 (delta only)](#16-agent-pr-4-cross-review-round-3-delta-only) | `prompt-history/prompts/03d-agent-review-r3.md` |
+| 32 | 2026-09-30 01:55 | [2026-09-29T18:55:18-07:00 - Engine gate review round 4 (seed realism follow-up)](#2026-09-29t185518-0700---engine-gate-review-round-4-seed-realism-follow-up) | `prompt-history/prompts/02g-engine-gate-review-r4.md` |
+| 33 | (none) | [Engine seed realism and gate prompt recovery - final outcome](#engine-seed-realism-and-gate-prompt-recovery---final-outcome) | `prompt-history/prompts/02c-engine-seed-realism-followup.md` |
+| 34 | 2026-09-30 02:26 | [17. Misdirected paste (engine lane text, typed mid-session)](#17-misdirected-paste-engine-lane-text-typed-mid-session) | `prompt-history/prompts/03e-agent-misdirected-engine-paste.md` |
+| 35 | 2026-09-30 02:26 | [18. /turn confirmation answer (A3) and live evidence (typed mid-session)](#18-turn-confirmation-answer-a3-and-live-evidence-typed-mid-session) | `prompt-history/prompts/03f-agent-owner-turn-confirm-and-live.md` |
+| 36 | 2026-09-30 02:29 | [19. Contract PR #6 cross-review (turn confirm, D-20)](#19-contract-pr-6-cross-review-turn-confirm-d-20) | `prompt-history/prompts/03g-agent-contract-pr6-review.md` |
+| 37 | 2026-09-30 02:35 | [20. Agent PR #4 cross-review, round 4 (delta only, owner-requested)](#20-agent-pr-4-cross-review-round-4-delta-only-owner-requested) | `prompt-history/prompts/03h-agent-review-r4-delta.md` |
+| 38 | 2026-09-30 03:09 | [51. UI owner answer: preserve the old head and synchronize (typed mid-session, logged late)](#51-ui-owner-answer-preserve-the-old-head-and-synchronize-typed-mid-session-logged-late) | `prompt-history/prompts/06q-late-ui-owner-sync-answer.md` |
+| 39 | 2026-09-30 03:10 | [19. UI shared-seed follow-up](#19-ui-shared-seed-follow-up) | `prompt-history/prompts/04d-ui-seed-followup.md` |
+| 40 | 2026-09-30 03:14 | [20. UI shared-seed gate intent](#20-ui-shared-seed-gate-intent) | `prompt-history/prompts/04h-ui-seed-gate-intent.md` |
+| 41 | 2026-09-30 03:20 | [21. UI shared-seed gate review, round 1](#21-ui-shared-seed-gate-review-round-1) | `prompt-history/prompts/04j-ui-seed-review-r1.md` |
+| 42 | 2026-09-30 03:20 | [22. UI shared-seed gate fix instruction, round 1](#22-ui-shared-seed-gate-fix-instruction-round-1) | `prompt-history/prompts/04i-ui-seed-review-fix-r1.md` |
+| 43 | 2026-09-30 03:21 | [23. UI shared-seed gate review, round 2](#23-ui-shared-seed-gate-review-round-2) | `prompt-history/prompts/04k-ui-seed-review-r2.md` |
+| 44 | 2026-09-30 03:31 | [24. UI shared-seed documentation instruction record](#24-ui-shared-seed-documentation-instruction-record) | `prompt-history/prompts/04l-ui-seed-document-log.md` |
+| 45 | 2026-09-30 03:31 | [25. UI shared-seed third review, delta only](#25-ui-shared-seed-third-review-delta-only) | `prompt-history/prompts/04m-ui-seed-delta-review.md` |
+| 46 | 2026-09-30 03:35 | [2026-09-29T20:35:34-07:00 - Evals early-start note](#2026-09-29t203534-0700---evals-early-start-note) | `prompt-history/prompts/05a-evals-early-start.md` |
+| 47 | 2026-09-30 03:35 | [2026-09-29T20:35:34-07:00 - Evals lane kickoff](#2026-09-29t203534-0700---evals-lane-kickoff) | `prompt-history/prompts/05-evals.md` |
+| 48 | 2026-09-30 03:36 | [26. UI shared-seed gate test setup instruction](#26-ui-shared-seed-gate-test-setup-instruction) | `prompt-history/prompts/04n-ui-seed-gate-test-setup-final.md` |
+| 49 | 2026-09-30 03:41 | [21. Anomaly determinism and final review (typed mid-session)](#21-anomaly-determinism-and-final-review-typed-mid-session) | `prompt-history/prompts/03i-agent-owner-anomaly-and-final-review.md` |
+| 50 | 2026-09-30 03:41 | [22. Agent PR #4 cross-review, round 5 (final, delta only, owner-requested)](#22-agent-pr-4-cross-review-round-5-final-delta-only-owner-requested) | `prompt-history/prompts/03j-agent-review-r5-delta.md` |
+| 51 | 2026-09-30 03:56 | [2026-09-29T20:56:49-07:00 - Evals gate review context](#2026-09-29t205649-0700---evals-gate-review-context) | `prompt-history/prompts/05b-evals-review-context.md` |
+| 52 | 2026-09-30 20:28 | [27. UI rebase after agent merge](#27-ui-rebase-after-agent-merge) | `prompt-history/prompts/04o-ui-agent-merge-rebase.md` |
+| 53 | 2026-09-30 20:28 | [28. UI agent-merge gate intent](#28-ui-agent-merge-gate-intent) | `prompt-history/prompts/04p-ui-agent-merge-gate-intent.md` |
+| 54 | 2026-09-30 20:31 | [29. UI agent-merge rebase conflict fix instruction](#29-ui-agent-merge-rebase-conflict-fix-instruction) | `prompt-history/prompts/04q-ui-agent-merge-rebase-fix.md` |
+| 55 | 2026-09-30 20:31 | [2026-09-30T13:31:37-07:00 - Evals live capture and count grounding](#2026-09-30t133137-0700---evals-live-capture-and-count-grounding) | `prompt-history/prompts/05c-evals-live-and-counts.md` |
+| 56 | 2026-09-30 20:31 | [2026-09-30T13:31:37-07:00 - Evals historical gate review round 1](#2026-09-30t133137-0700---evals-historical-gate-review-round-1) | `prompt-history/prompts/05g-evals-gate-review-r1.md` |
+| 57 | 2026-09-30 20:31 | [2026-09-30T13:31:37-07:00 - Evals historical gate review round 2](#2026-09-30t133137-0700---evals-historical-gate-review-round-2) | `prompt-history/prompts/05g-evals-gate-review-r2.md` |
+| 58 | 2026-09-30 20:31 | [2026-09-30T13:31:37-07:00 - Evals historical gate review round 3](#2026-09-30t133137-0700---evals-historical-gate-review-round-3) | `prompt-history/prompts/05g-evals-gate-review-r3.md` |
+| 59 | 2026-09-30 20:31 | [52. Evals owner answer: base URL, local dev and budget (typed mid-session, logged late)](#52-evals-owner-answer-base-url-local-dev-and-budget-typed-mid-session-logged-late) | `prompt-history/prompts/06r-late-evals-owner-base-url-answer.md` |
+| 60 | 2026-09-30 20:33 | [2026-09-30T13:33:04-07:00 - Evals local dev target and budget](#2026-09-30t133304-0700---evals-local-dev-target-and-budget) | `prompt-history/prompts/05d-evals-local-dev-budget.md` |
+| 61 | 2026-09-30 20:46 | [30. UI agent-merge evidence refresh instruction](#30-ui-agent-merge-evidence-refresh-instruction) | `prompt-history/prompts/04r-ui-agent-merge-evidence-fix.md` |
+| 62 | 2026-09-30 20:46 | [31. UI agent-merge delta review provenance](#31-ui-agent-merge-delta-review-provenance) | `prompt-history/prompts/04s-ui-agent-merge-review.md` |
+| 63 | 2026-09-30 21:04 | [2026-09-30T14:04:40-07:00 - Evals local capture outcome](#2026-09-30t140440-0700---evals-local-capture-outcome) |  |
+| 64 | 2026-09-30 21:07 | [2026-09-30T14:07:30-07:00 - Live evals source review context](#2026-09-30t140730-0700---live-evals-source-review-context) | `prompt-history/prompts/05f-evals-live-review-context.md` |
+| 65 | 2026-09-30 21:21 | [2026-09-30T14:21:35-07:00 - Evals final grading and gate-start outcome](#2026-09-30t142135-0700---evals-final-grading-and-gate-start-outcome) |  |
+| 66 | 2026-09-30 21:54 | [2026-09-30T14:54:53-07:00 - Evals harness verdict tests and failure analysis](#2026-09-30t145453-0700---evals-harness-verdict-tests-and-failure-analysis) | `prompt-history/prompts/05h-evals-verdict-tests.md` |
+| 67 | 2026-09-30 22:08 | [2026-09-30T15:08:42-07:00 - Evals harness cross-review context](#2026-09-30t150842-0700---evals-harness-cross-review-context) | `prompt-history/prompts/05i-evals-harness-review-context.md` |
+| 68 | 2026-09-30 22:11 | [2026-09-30T15:11:47-07:00 - Verdict-test redesign outcome before gate](#2026-09-30t151147-0700---verdict-test-redesign-outcome-before-gate) | `prompt-history/prompts/05h-evals-verdict-tests.md` |
+| 69 | 2026-09-30 22:18 | [2026-09-30T15:18:56-07:00 - Evals gate rebase fix](#2026-09-30t151856-0700---evals-gate-rebase-fix) | `prompt-history/prompts/05j-evals-gate-rebase-fix.md` |
+| 70 | 2026-09-30 22:25 | [2026-09-30T15:25:59-07:00 - Evals harness gate review round 1](#2026-09-30t152559-0700---evals-harness-gate-review-round-1) | `prompt-history/prompts/05g-evals-harness-review-r1.md` |
+| 71 | 2026-09-30 22:25 | [2026-09-30T15:25:59-07:00 - Evals gate F2 fix](#2026-09-30t152559-0700---evals-gate-f2-fix) | `prompt-history/prompts/05k-evals-gate-F2-fix.md` |
+| 72 | 2026-09-30 23:46 | [2026-09-30T16:46:29-07:00 - Evals owner grounding rule](#2026-09-30t164629-0700---evals-owner-grounding-rule) | `prompt-history/prompts/05l-evals-owner-grounding-rule.md` |
+| 73 | 2026-09-30 23:52 | [2026-09-30T16:52:08-07:00 - Evals harness gate review round 2](#2026-09-30t165208-0700---evals-harness-gate-review-round-2) | `prompt-history/prompts/05g-evals-harness-review-r2.md` |
+| 74 | 2026-09-30 23:52 | [2026-09-30T16:52:08-07:00 - Evals gate grounding fix](#2026-09-30t165208-0700---evals-gate-grounding-fix) | `prompt-history/prompts/05m-evals-gate-grounding-fix.md` |
+| 75 | 2026-09-30 23:57 | [32. Agent fixes kickoff](#32-agent-fixes-kickoff) | `prompt-history/prompts/07-agent-fixes.md` |
+| 76 | 2026-09-30 23:58 | [44. Release lane phase note](#44-release-lane-phase-note) | `prompt-history/prompts/06a-release-phase-note.md` |
+| 77 | 2026-09-30 23:58 | [45. Release lane kickoff](#45-release-lane-kickoff) | `prompt-history/prompts/06-release.md` |
+| 78 | 2026-10-01 00:00 | [2026-09-30T17:00:13-07:00 - Evals harness gate review round 3 (grounding delta only)](#2026-09-30t170013-0700---evals-harness-gate-review-round-3-grounding-delta-only) | `prompt-history/prompts/05n-evals-grounding-delta-review.md` |
+| 79 | 2026-10-01 00:00 | [2026-09-30T17:00:13-07:00 - Evals away standing orders](#2026-09-30t170013-0700---evals-away-standing-orders) | `prompt-history/prompts/05o-evals-away-standing-orders.md` |
+| 80 | 2026-10-01 00:26 | [33. Agent fixes cross-review, round 1](#33-agent-fixes-cross-review-round-1) | `prompt-history/prompts/07a-agent-fixes-review-r1.md` |
+| 81 | 2026-10-01 00:41 | [34. Agent fixes cross-review, round 2](#34-agent-fixes-cross-review-round-2) | `prompt-history/prompts/07b-agent-fixes-review-r2.md` |
+| 82 | 2026-10-01 00:57 | [35. Agent fixes cross-review, round 3 (delta only)](#35-agent-fixes-cross-review-round-3-delta-only) | `prompt-history/prompts/07c-agent-fixes-review-r3-delta.md` |
+| 83 | 2026-10-01 01:31 | [2026-09-30T18:31:21-07:00 - Owner answers to the release phase 1 report (typed mid-session)](#2026-09-30t183121-0700---owner-answers-to-the-release-phase-1-report-typed-mid-session) | `prompt-history/prompts/06e-release-owner-phase1-answers.md` |
+| 84 | 2026-10-01 01:32 | [2026-09-30T18:32:32-07:00 - Evals figures and simulation follow-up](#2026-09-30t183232-0700---evals-figures-and-simulation-follow-up) | `prompt-history/prompts/05p-evals-figures-simulation-followup.md` |
+| 85 | 2026-10-01 01:34 | [53. Agent fixes owner answer A1 (typed mid-session, logged late)](#53-agent-fixes-owner-answer-a1-typed-mid-session-logged-late) | `prompt-history/prompts/06t-late-agent-fixes-owner-a1.md` |
+| 86 | 2026-10-01 01:40 | [2026-09-30T18:40:16-07:00 - PR #9 cross-review, round 1](#2026-09-30t184016-0700---pr-9-cross-review-round-1) | `prompt-history/prompts/06f-ui-live-review-r1.md` |
+| 87 | 2026-10-01 01:42 | [2026-09-30T18:42:41-07:00 - Evals follow-up cross-review context](#2026-09-30t184241-0700---evals-follow-up-cross-review-context) | `prompt-history/prompts/05q-evals-followup-gate-context.md` |
+| 88 | 2026-10-01 01:47 | [36. Production chat fixes and rebase instructions (owner, mid-session)](#36-production-chat-fixes-and-rebase-instructions-owner-mid-session) | `prompt-history/prompts/08-prod-chat-fixes.md` |
+| 89 | 2026-10-01 01:51 | [37. Sandbox per-IP cap (owner, mid-session)](#37-sandbox-per-ip-cap-owner-mid-session) | `prompt-history/prompts/08a-sandbox-ip-cap.md` |
+| 90 | 2026-10-01 01:51 | [2026-09-30T18:51:14-07:00 - Evals follow-up review round 1](#2026-09-30t185114-0700---evals-follow-up-review-round-1) | `prompt-history/prompts/05g-evals-followup-review-r1.md` |
+| 91 | 2026-10-01 01:51 | [2026-09-30T18:51:14-07:00 - Evals follow-up cardinal-before-ordinal-label fix](#2026-09-30t185114-0700---evals-follow-up-cardinal-before-ordinal-label-fix) | `prompt-history/prompts/05r-evals-followup-cardinal-fix.md` |
+| 92 | 2026-10-01 01:55 | [2026-09-30T18:55:02-07:00 - PR #9 cross-review, round 2](#2026-09-30t185502-0700---pr-9-cross-review-round-2) | `prompt-history/prompts/06g-ui-live-review-r2.md` |
+| 93 | 2026-10-01 02:00 | [54. Agent fixes: release-lane pointers pasted by the owner (typed mid-session, logged late)](#54-agent-fixes-release-lane-pointers-pasted-by-the-owner-typed-mid-session-logged-late) | `prompt-history/prompts/06u-late-agent-fixes-release-pointers.md` |
+| 94 | 2026-10-01 02:01 | [46. Owner answer: merge main, do not rebase (typed mid-session)](#46-owner-answer-merge-main-do-not-rebase-typed-mid-session) | `prompt-history/prompts/06i-release-owner-merge-not-rebase.md` |
+| 95 | 2026-10-01 02:02 | [38. Sandbox IP cap cross-review, round 1](#38-sandbox-ip-cap-cross-review-round-1) | `prompt-history/prompts/08b-config-ip-cap-review-r1.md` |
+| 96 | 2026-10-01 02:07 | [2026-09-30T19:07:24-07:00 - Evals follow-up review round 2](#2026-09-30t190724-0700---evals-follow-up-review-round-2) | `prompt-history/prompts/05g-evals-followup-review-r2.md` |
+| 97 | 2026-10-01 02:07 | [2026-09-30T19:07:24-07:00 - Evals follow-up final delta review](#2026-09-30t190724-0700---evals-follow-up-final-delta-review) | `prompt-history/prompts/05s-evals-followup-final-delta.md` |
+| 98 | 2026-10-01 02:08 | [2026-09-30T19:08:21-07:00 - PR #9 cross-review, round 3 (delta only)](#2026-09-30t190821-0700---pr-9-cross-review-round-3-delta-only) | `prompt-history/prompts/06h-ui-live-review-r3-delta.md` |
+| 99 | 2026-10-01 02:13 | [2026-09-30T19:13:43-07:00 - Evals follow-up test-phase install fix](#2026-09-30t191343-0700---evals-follow-up-test-phase-install-fix) | `prompt-history/prompts/05t-evals-followup-install-fix.md` |
+| 100 | 2026-10-01 02:16 | [39. Sandbox IP cap cross-review, round 2](#39-sandbox-ip-cap-cross-review-round-2) | `prompt-history/prompts/08b-config-ip-cap-review-r2.md` |
+| 101 | 2026-10-01 02:20 | [2026-09-30T19:20:00-07:00 - Evals follow-up review round 3 (delta only)](#2026-09-30t192000-0700---evals-follow-up-review-round-3-delta-only) | `prompt-history/prompts/05g-evals-followup-review-r3.md` |
+| 102 | 2026-10-01 02:22 | [40. Sandbox IP cap cross-review, round 3 (delta only)](#40-sandbox-ip-cap-cross-review-round-3-delta-only) | `prompt-history/prompts/08b-config-ip-cap-review-r3-delta.md` |
+| 103 | 2026-10-01 02:24 | [47. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)](#47-owner-pr-9-merged-production-agent-fixes-in-a-later-pr-typed-mid-session) | `prompt-history/prompts/06j-release-owner-pr9-merged.md` |
+| 104 | 2026-10-01 06:00 | [48. Owner: WSL restart recovery (typed mid-session)](#48-owner-wsl-restart-recovery-typed-mid-session) | `prompt-history/prompts/06k-release-owner-wsl-restart.md` |
+| 105 | 2026-10-01 06:06 | [2026-09-30T23:06:30-07:00 - Evals WSL recovery](#2026-09-30t230630-0700---evals-wsl-recovery) | `prompt-history/prompts/05u-evals-wsl-recovery.md` |
+| 106 | 2026-10-01 06:12 | [55. Agent fixes owner answer A3: merge main, remember-credit run (typed mid-session, logged late)](#55-agent-fixes-owner-answer-a3-merge-main-remember-credit-run-typed-mid-session-logged-late) | `prompt-history/prompts/06v-late-agent-fixes-owner-a3.md` |
+| 107 | 2026-10-01 06:13 | [56. Evals owner note: recover the PR #10 gate run after the WSL restart (typed mid-session, logged late)](#56-evals-owner-note-recover-the-pr-10-gate-run-after-the-wsl-restart-typed-mid-session-logged-late) | `prompt-history/prompts/06s-late-evals-owner-wsl-recovery.md` |
+| 108 | 2026-10-01 06:14 | [49. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)](#49-owner-pr-10-to-the-evals-lane-readme-cost-update-in-phase-2-typed-mid-session) | `prompt-history/prompts/06l-release-owner-pr10-pr11.md` |
+| 109 | 2026-10-01 06:17 | [41. Production chat fixes cross-review, round 1](#41-production-chat-fixes-cross-review-round-1) | `prompt-history/prompts/08c-prod-chat-review-r1.md` |
+| 110 | 2026-10-01 06:18 | [2026-09-30T23:18:03-07:00 - Evals WSL recovery review](#2026-09-30t231803-0700---evals-wsl-recovery-review) | `prompt-history/prompts/05g-evals-wsl-recovery-review.md` |
+| 111 | 2026-10-01 06:32 | [42. Production chat fixes cross-review, round 2](#42-production-chat-fixes-cross-review-round-2) | `prompt-history/prompts/08c-prod-chat-review-r2.md` |
+| 112 | 2026-10-01 06:38 | [57. Agent fixes owner note: guard follows the grader's ordinal rule (typed mid-session, logged late)](#57-agent-fixes-owner-note-guard-follows-the-graders-ordinal-rule-typed-mid-session-logged-late) | `prompt-history/prompts/06w-late-agent-fixes-owner-guard-ordinals.md` |
+| 113 | 2026-10-01 06:42 | [43. Production chat fixes cross-review, round 3 (delta only)](#43-production-chat-fixes-cross-review-round-3-delta-only) | `prompt-history/prompts/08c-prod-chat-review-r3-delta.md` |
+| 114 | 2026-10-01 07:06 | [50. Owner: start phase 2 (typed mid-session)](#50-owner-start-phase-2-typed-mid-session) | `prompt-history/prompts/06m-release-phase2-start.md` |
