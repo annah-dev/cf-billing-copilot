@@ -1175,3 +1175,13 @@ Decided by: Agent fixes engineer under standing orders.
   `onChatMessage` run) from inference attempts (up to three each with the SDK's default retries).
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: resume acknowledgements are gated too (PR review round 2)
+
+`cf_agent_stream_resume_ack` frames now pass the rate limiter and the API request cap: after
+hibernation an acknowledgement can complete an orphaned stream, which the SDK then persists as an
+assistant message. Resume requests and cancels store nothing and stay ungated. At the API cap a
+client therefore cannot resume an interrupted stream until the 00:00 UTC reset; it gets the
+refusal instead. Reason: every client frame that can lead to a write is counted, as `/turn` is.
+
+Decided by: Agent fixes engineer under standing orders.

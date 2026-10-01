@@ -976,4 +976,36 @@ describe("chat frames are counted like /turn (D-7, D-13; production report)", ()
     });
     ws.close();
   });
+
+  it("gates resume acknowledgements, which can persist an orphaned stream (PR review r2)", async () => {
+    const { classifyFrame } = await import("../../src/agent/frames");
+    expect(
+      classifyFrame(
+        JSON.stringify({ type: "cf_agent_stream_resume_ack", id: "s" })
+      )
+    ).toEqual({
+      kind: "write"
+    });
+    expect(
+      classifyFrame(JSON.stringify({ type: "cf_agent_stream_resume_request" }))
+    ).toEqual({
+      kind: "pass"
+    });
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    await setCounter(
+      sb.sandboxId,
+      "api",
+      Number(env.API_REQUESTS_PER_SANDBOX_DAY)
+    );
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({ type: "cf_agent_stream_resume_ack", id: "stream_1" })
+    );
+    await until(
+      (f) => f.type === "billing-refusal" && frames.indexOf(f) >= before,
+      "refusal"
+    );
+    ws.close();
+  });
 });

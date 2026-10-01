@@ -10,12 +10,15 @@ export type Frame =
   | { kind: "chat-request"; id: string; lastUserText: string }
   /** Anything else that writes or can start model work: counted as an API request. */
   | { kind: "write" }
-  /** Reads and stream control (cancel, resume, acks): not counted. */
+  /** Reads and stream control that store nothing (cancel, resume requests): not counted. */
   | { kind: "pass" };
 
 const WRITES = new Set([
   // Agent state from the client: the SDK persists it (_setStateInternal). PR review r1.
   "cf_agent_state",
+  // A resume acknowledgement can complete an orphaned stream after hibernation, which the SDK
+  // then persists as an assistant message (ResumableStream.replayChunks). PR review r2.
+  "cf_agent_stream_resume_ack",
   "cf_agent_chat_messages",
   "cf_agent_tool_result",
   "cf_agent_tool_approval",

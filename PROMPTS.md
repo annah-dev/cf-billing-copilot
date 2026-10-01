@@ -3157,7 +3157,7 @@ with:
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/08c-prod-chat-review-r2.md
-- Outcome: (filled in after the round)
+- Outcome: CHANGES REQUESTED: major, resume acknowledgements could persist an orphaned stream without admission (now gated, test red without it); minor, the UI recheck stated exact model calls the logs cannot show (qualified as logical steps, dev-log excerpt attached).
 
 ````text
 You are the cross-reviewer for branch `fix/prod-chat` on annah-dev/cf-billing-copilot, round 2 of

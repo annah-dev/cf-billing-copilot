@@ -16,6 +16,10 @@ restart) showed a confirmation for `inv_123456789`, a failed tool call after con
 confirmation, and a UI stuck on "Checking billing records..." after the client sent both the
 approval frame and a full chat request. That sequence is described in docs/DECISIONS.md.
 
-Model calls: 4 for this recheck, one per streamed step in `ui-log.txt` (getInvoice and the
+Model calls: 4 logical model steps, one per streamed step in `ui-log.txt` (getInvoice and the
 proposal before the confirmation; the status lookup and the answer after; detectAnomalies is
-run by the server, not the model). The dev log shows no grounding retry.
+run by the server, not the model). Not verified: SDK retry attempts are not visible in the frames
+and the dev server logs no per-call or token counters, so the exact number of inference attempts,
+tokens and neurons for this recheck is not known. `dev-log-excerpt.txt` (the whole dev session,
+which also served the remember-credit run) shows one logged grounding outcome
+(`awaiting_confirmation`, the proposal) and no retry; a turn that is grounded logs nothing.
