@@ -1,0 +1,15 @@
+4:  VITE v8.1.5  ready in 21035 ms
+5:  ➜  Local:   http://127.0.0.1:5174/
+8:Error: internal error; reference = 65as0j3orb1vka60mbgb1bk3
+9:Error: internal error; reference = g5cpc27ck85skgaelcsuagb1
+10:Error: internal error; reference = 7vsra2c10dmo1d1s2mkc1e4k
+11:Error: internal error; reference = 1rq6na5td81epn5q2d63hi83
+12:Error: internal error; reference = lupr8u9q1kphggeonjve9g2g
+13:Error: internal error; reference = sl1a7h2sj1jqfj8p3ljqeuup
+15:grounding guard {
+16:  outcome: 'awaiting_confirmation',
+17:  unsupported: [],
+18:  retryUnsupported: null
+20:Error: internal error; reference = sa6ej4ulus1lh44r7pap20p8
+21:Error: internal error; reference = a3hn9r8u6hos4097snheh7mj
+22:Error: internal error; reference = ki90d1eias636bffa6jc7pr6

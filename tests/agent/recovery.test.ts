@@ -267,3 +267,90 @@ describe("counts that do not match the listed entries (september-invoice)", () =
     );
   });
 });
+
+describe("a claim that skipped the confirmation never writes (production report)", () => {
+  it("refuses in execute even when the invoice reads fine after a failed check", async () => {
+    const { buildTools } = await import("../../src/agent/tools");
+    const invoice = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        message: "Billing data could not be read just now."
+      })
+      .mockResolvedValue({ ok: true, value: { id: INV_SEP } });
+    const startCreditRequest = vi.fn();
+    const tools = buildTools(
+      {
+        sandboxId: "0".repeat(32),
+        customerId: ACME,
+        ledger: { invoice },
+        startCreditRequest,
+        remember: vi.fn(),
+        recordResult: vi.fn()
+      } as never,
+      new Map(),
+      { confirmCredit: true }
+    );
+    const input = { invoiceId: INV_SEP, reason: "charged twice" };
+    const call = { toolCallId: "c1", messages: [] };
+    const needs = tools.startCreditRequest.needsApproval as unknown as (
+      i: unknown,
+      o: typeof call
+    ) => Promise<boolean>;
+    expect(await needs(input, call)).toBe(false);
+    await expect(
+      tools.startCreditRequest.execute!(input, call)
+    ).rejects.toThrow("Billing data could not be read just now.");
+    expect(startCreditRequest).not.toHaveBeenCalled();
+    // A different call on a known invoice is confirmed first, as before.
+    expect(await needs(input, { toolCallId: "c2", messages: [] })).toBe(true);
+  });
+});
+
+describe("tool inputs are validated inside every tool (AGENTS.md hard rule 2)", () => {
+  it("rejects invalid input in execute itself, before any Ledger read or write", async () => {
+    const { buildTools } = await import("../../src/agent/tools");
+    const { TOOL_NAMES } = await import("../../src/contracts");
+    const ledger = new Proxy(
+      {},
+      {
+        get: () => {
+          throw new Error("the Ledger must not be reached");
+        }
+      }
+    );
+    const startCreditRequest = vi.fn();
+    const tools = buildTools(
+      {
+        sandboxId: "0".repeat(32),
+        customerId: ACME,
+        ledger,
+        startCreditRequest,
+        remember: vi.fn(),
+        recordResult: vi.fn()
+      } as never,
+      new Map(),
+      { confirmCredit: false }
+    );
+    const bad = {
+      period: "September",
+      invoiceId: "INV-9",
+      planId: "Pro",
+      requestId: 7
+    };
+    for (const name of TOOL_NAMES) {
+      if (name === "getAccount") continue; // takes no fields; a non-object is checked below
+      await expect(
+        tools[name].execute!(bad, { toolCallId: `c_${name}`, messages: [] }),
+        name
+      ).rejects.toThrow(`Invalid input for ${name}`);
+    }
+    await expect(
+      tools.getAccount.execute!(
+        "not an object",
+        { toolCallId: "c_acc", messages: [] }
+      )
+    ).rejects.toThrow("Invalid input for getAccount");
+    expect(startCreditRequest).not.toHaveBeenCalled();
+  });
+});

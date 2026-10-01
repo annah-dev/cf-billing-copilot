@@ -625,3 +625,387 @@ describe("stored evidence needs the customer's answer (PR review r2)", () => {
     ws.close();
   });
 });
+
+describe("a full-conversation resend after a confirmation (production report)", () => {
+  // The UI used to send the whole conversation again, with the proposal approval-responded, as a
+  // chat request (sendAutomaticallyWhen), besides the SDK's own approval frame. The UI no longer
+  // does (tests/ui/live-chat.test.ts); a client that still does must get a working answer.
+  it("records the request and answers after a resend with the proposal approved", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    stubAi([
+      toolCall("startCreditRequest", {
+        invoiceId: INV_SEP,
+        disputedLedgerEntryId: DUP_ENTRY,
+        reason: "charged twice"
+      })
+    ]);
+    ws.send(chatRequest("r1", "I was double-charged in September"));
+    await until(responseDone, "proposal");
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sb.sandboxId}.${ACME}`
+    );
+    const history = (await runInDurableObject(
+      agent,
+      (a) => a.messages
+    )) as UIMessage[];
+    const answered = structuredClone(history);
+    let found = 0;
+    for (const m of answered) {
+      for (const p of m.parts as {
+        type: string;
+        state?: string;
+        approval?: { id: string; approved?: boolean };
+      }[]) {
+        if (
+          p.type === "tool-startCreditRequest" &&
+          p.state === "approval-requested"
+        ) {
+          p.state = "approval-responded";
+          p.approval = { id: p.approval!.id, approved: true };
+          found += 1;
+        }
+      }
+    }
+    expect(found).toBe(1);
+
+    const cont = stubAi([
+      text("Your request is recorded; an approver will review it.")
+    ]);
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({
+        type: "cf_agent_use_chat_request",
+        id: "r2",
+        init: {
+          method: "POST",
+          body: JSON.stringify({
+            messages: answered,
+            trigger: "submit-message"
+          })
+        }
+      })
+    );
+    await until(
+      (f) => responseDone(f) && frames.indexOf(f) >= before,
+      "confirmation"
+    );
+    const after = frames
+      .slice(before)
+      .map((f) => f.body ?? "")
+      .join("\n");
+    expect(after).not.toContain("An internal error occurred");
+    const rid = await requestIdFor(sb.sandboxId, ACME, INV_SEP, DUP_ENTRY);
+    expect(
+      await countRows(sb.sandboxId, "credit_requests", `id = '${rid}'`)
+    ).toBe(1);
+    const final = (await runInDurableObject(
+      agent,
+      (a) => a.messages
+    )) as UIMessage[];
+    const text_ = final
+      .filter((m) => m.role === "assistant")
+      .at(-1)!
+      .parts.map((p) => (p.type === "text" ? p.text : ""))
+      .join("");
+    expect(text_).toContain("Your request is recorded");
+    ws.close();
+  });
+});
+
+describe("confirmation only for a known invoice (production report)", () => {
+  it("never asks the customer to confirm a claim on an invented invoice, and writes nothing", async () => {
+    const sb = await createSandbox();
+    const { ws, until } = await connect(sb.sandboxId);
+    stubAi([
+      toolCall("startCreditRequest", {
+        invoiceId: "inv_1234567890",
+        reason: "charged twice"
+      }),
+      toolCall("getInvoice", { period: "2026-09" }),
+      toolCall("startCreditRequest", {
+        invoiceId: INV_SEP,
+        disputedLedgerEntryId: DUP_ENTRY,
+        reason: "charged twice"
+      })
+    ]);
+    ws.send(chatRequest("r1", "I was double-charged in September"));
+    await until(responseDone, "proposal");
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sb.sandboxId}.${ACME}`
+    );
+    const parts = (
+      (await runInDurableObject(agent, (a) => a.messages)) as UIMessage[]
+    )
+      .flatMap((m) => m.parts)
+      .filter((p) => p.type === "tool-startCreditRequest") as unknown as {
+      toolCallId: string;
+      state: string;
+      input: { invoiceId: string };
+      errorText?: string;
+    }[];
+    expect(parts.map((p) => [p.input.invoiceId, p.state])).toEqual([
+      ["inv_1234567890", "output-error"],
+      [INV_SEP, "approval-requested"]
+    ]);
+    expect(parts[0].errorText).toContain(`${INV_SEP} (2026-09)`);
+    expect(await countRows(sb.sandboxId, "credit_requests")).toBe(1); // seeded only
+    // Only the real proposal is recorded as awaiting the customer's confirmation.
+    const awaiting = await runInDurableObject(agent, (_a, state) =>
+      state.storage.sql
+        .exec<{ id: string }>(
+          "SELECT id FROM issued_tool_calls WHERE confirmation = 'requested'"
+        )
+        .toArray()
+        .map((r) => r.id)
+    );
+    expect(awaiting).toEqual([parts[1].toolCallId]);
+    ws.close();
+  });
+});
+
+describe("chat frames are counted like /turn (D-7, D-13; production report)", () => {
+  const legacyRequest = (id: string, content: unknown) =>
+    JSON.stringify({
+      type: "cf_agent_use_chat_request",
+      id,
+      init: {
+        method: "POST",
+        body: JSON.stringify({
+          messages: [{ id: `u_${id}`, role: "user", content }],
+          trigger: "submit-message"
+        })
+      }
+    });
+  const today = () => new Date().toISOString().slice(0, 10);
+  async function counter(sandboxId: string, name: string): Promise<number> {
+    return runInDurableObject(ledgerOf(sandboxId), (_i, s) => {
+      const row = s.storage.sql
+        .exec<{ day: string; count: number }>(
+          "SELECT day, count FROM counters WHERE name = ?",
+          name
+        )
+        .toArray()[0];
+      return row && row.day === today() ? row.count : 0;
+    });
+  }
+  async function setCounter(sandboxId: string, name: string, count: number) {
+    await runInDurableObject(ledgerOf(sandboxId), (_i, s) => {
+      s.storage.sql.exec(
+        "INSERT INTO counters (name, day, count) VALUES (?, ?, ?) ON CONFLICT (name) DO UPDATE SET day = excluded.day, count = excluded.count",
+        name,
+        today(),
+        count
+      );
+    });
+  }
+  async function stored(sandboxId: string): Promise<UIMessage[]> {
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sandboxId}.${ACME}`
+    );
+    return (await runInDurableObject(agent, (a) => a.messages)) as UIMessage[];
+  }
+
+  it("charges a chat turn one API request and one message, not two", async () => {
+    const sb = await createSandbox();
+    const { ws, until } = await connect(sb.sandboxId);
+    const api = await counter(sb.sandboxId, "api");
+    const messages = await counter(sb.sandboxId, "messages");
+    stubAi([text("Hello.")]);
+    ws.send(chatRequest("r1", "Hi"));
+    await until(responseDone, "turn");
+    expect(await counter(sb.sandboxId, "api")).toBe(api + 1);
+    expect(await counter(sb.sandboxId, "messages")).toBe(messages + 1);
+    ws.close();
+  });
+
+  it("refuses a chat turn over the message cap before anything is stored or the model runs", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    await setCounter(
+      sb.sandboxId,
+      "messages",
+      Number(env.MESSAGES_PER_SANDBOX_DAY)
+    );
+    const ai = stubAi([text("should not be used")]);
+    ws.send(chatRequest("r1", "Hi"));
+    await until(responseDone, "refusal");
+    expect(ai).not.toHaveBeenCalled();
+    expect(await stored(sb.sandboxId)).toEqual([]);
+    // The client raises the error and the UI reads the contract body (src/ui/errors.ts).
+    const refusalFrame = frames.find(
+      (f) => f.type === "cf_agent_use_chat_response" && f.id === "r1" && f.done
+    ) as Frame & { error?: boolean };
+    expect(refusalFrame.error).toBe(true);
+    expect(JSON.parse(refusalFrame.body ?? "")).toMatchObject({
+      error: { code: "cap_reached", cap: { name: "messages" } }
+    });
+    ws.close();
+  });
+
+  it("refuses an oversize chat message before it is stored", async () => {
+    const sb = await createSandbox();
+    const { ws, until } = await connect(sb.sandboxId);
+    const ai = stubAi([text("should not be used")]);
+    ws.send(chatRequest("r1", "x".repeat(Number(env.MESSAGE_MAX_CHARS) + 1)));
+    await until(responseDone, "refusal");
+    expect(ai).not.toHaveBeenCalled();
+    expect(await stored(sb.sandboxId)).toEqual([]);
+    ws.close();
+  });
+
+  it("does not store a client history frame over the API request cap", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    await setCounter(
+      sb.sandboxId,
+      "api",
+      Number(env.API_REQUESTS_PER_SANDBOX_DAY)
+    );
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({
+        type: "cf_agent_chat_messages",
+        messages: [
+          {
+            id: "u_forged",
+            role: "user",
+            parts: [{ type: "text", text: "planted" }]
+          }
+        ]
+      })
+    );
+    await until(
+      (f) => f.type === "cf_agent_chat_messages" && frames.indexOf(f) >= before,
+      "resync"
+    );
+    expect(await stored(sb.sandboxId)).toEqual([]);
+    ws.close();
+  });
+
+  it("applies the per-IP rate limiter to chat frames", async () => {
+    const sb = await createSandbox();
+    const { ws, until } = await connect(sb.sandboxId);
+    const limit = vi
+      .spyOn(env.RATE_LIMITER, "limit")
+      .mockResolvedValue({ success: false } as never);
+    try {
+      const ai = stubAi([text("should not be used")]);
+      ws.send(chatRequest("r1", "Hi"));
+      await until(responseDone, "refusal");
+      expect(limit).toHaveBeenCalled();
+      expect(ai).not.toHaveBeenCalled();
+      expect(await stored(sb.sandboxId)).toEqual([]);
+    } finally {
+      limit.mockRestore();
+    }
+    ws.close();
+  });
+
+  it("measures the older content shapes as the SDK stores them (PR review r1)", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    const ai = stubAi([text("should not be used")]);
+    const long = "x".repeat(Number(env.MESSAGE_MAX_CHARS) + 1);
+    ws.send(legacyRequest("s1", long));
+    await until((f) => responseDone(f) && f.id === "s1", "string content");
+    const before = frames.length;
+    ws.send(legacyRequest("a1", [{ type: "text", text: long }]));
+    await until(
+      (f) => responseDone(f) && f.id === "a1" && frames.indexOf(f) >= before,
+      "array content"
+    );
+    expect(ai).not.toHaveBeenCalled();
+    expect(await stored(sb.sandboxId)).toEqual([]);
+    ws.close();
+  });
+
+  it("does not store client agent state over the API request cap (PR review r1)", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    await setCounter(
+      sb.sandboxId,
+      "api",
+      Number(env.API_REQUESTS_PER_SANDBOX_DAY)
+    );
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({ type: "cf_agent_state", state: { planted: true } })
+    );
+    await until(
+      (f) => f.type === "billing-refusal" && frames.indexOf(f) >= before,
+      "refusal"
+    );
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sb.sandboxId}.${ACME}`
+    );
+    const state = await runInDurableObject(agent, (a) => a.state);
+    expect(JSON.stringify(state ?? null)).not.toContain("planted");
+    ws.close();
+  });
+
+  it("tells the client why a confirmation frame was refused (PR review r1)", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    await setCounter(
+      sb.sandboxId,
+      "api",
+      Number(env.API_REQUESTS_PER_SANDBOX_DAY)
+    );
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({
+        type: "cf_agent_tool_approval",
+        toolCallId: "call_x",
+        approved: true,
+        autoContinue: true
+      })
+    );
+    await until(
+      (f) => f.type === "billing-refusal" && frames.indexOf(f) >= before,
+      "refusal"
+    );
+    const after = frames.slice(before);
+    expect(after.some((f) => f.type === "cf_agent_chat_messages")).toBe(true);
+    expect(after.find((f) => f.type === "billing-refusal")).toMatchObject({
+      error: { code: "cap_reached", cap: { name: "api" } }
+    });
+    ws.close();
+  });
+
+  it("gates resume acknowledgements, which can persist an orphaned stream (PR review r2)", async () => {
+    const { classifyFrame } = await import("../../src/agent/frames");
+    expect(
+      classifyFrame(
+        JSON.stringify({ type: "cf_agent_stream_resume_ack", id: "s" })
+      )
+    ).toEqual({
+      kind: "write"
+    });
+    expect(
+      classifyFrame(JSON.stringify({ type: "cf_agent_stream_resume_request" }))
+    ).toEqual({
+      kind: "pass"
+    });
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    await setCounter(
+      sb.sandboxId,
+      "api",
+      Number(env.API_REQUESTS_PER_SANDBOX_DAY)
+    );
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({ type: "cf_agent_stream_resume_ack", id: "stream_1" })
+    );
+    await until(
+      (f) => f.type === "billing-refusal" && frames.indexOf(f) >= before,
+      "refusal"
+    );
+    ws.close();
+  });
+});

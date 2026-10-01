@@ -60,19 +60,6 @@ const numberWords = new RegExp(
   `\\b(?:${wordAlternatives})(?:[ -]+(?:and[ -]+)?(?:${wordAlternatives}))*\\b`,
   "gi"
 );
-const ordinals = [
-  "first",
-  "second",
-  "third",
-  "fourth",
-  "fifth",
-  "sixth",
-  "seventh",
-  "eighth",
-  "ninth",
-  "tenth"
-];
-
 function wordValue(text: string): string {
   let total = 0;
   let segment = 0;
@@ -95,13 +82,71 @@ function wordValue(text: string): string {
   return String(total + segment);
 }
 
+// Copied from evals/grounding.ts after #10: ordinal words ("first", "twenty-first") are labels,
+// not figures; numeral ordinals ("1st") still go through the numeric matcher.
 function normalizeNumberWords(text: string): string {
+  const ordinals = [
+    "first",
+    "second",
+    "third",
+    "fourth",
+    "fifth",
+    "sixth",
+    "seventh",
+    "eighth",
+    "ninth",
+    "tenth",
+    "eleventh",
+    "twelfth",
+    "thirteenth",
+    "fourteenth",
+    "fifteenth",
+    "sixteenth",
+    "seventeenth",
+    "eighteenth",
+    "nineteenth",
+    "twentieth",
+    "thirtieth",
+    "fortieth",
+    "fiftieth",
+    "sixtieth",
+    "seventieth",
+    "eightieth",
+    "ninetieth",
+    "hundredth",
+    "thousandth",
+    "millionth",
+    "billionth"
+  ];
+  const cardinal = [
+    ...smallNumbers,
+    ...tens,
+    "hundred",
+    "thousand",
+    "million",
+    "billion"
+  ].join("|");
+  // Ordinal words (including compound phrases) are labels, not figures. Numeral ordinals
+  // still go through the numeric matcher; cardinal words still normalize to figures.
+  const ordinalWords = new RegExp(
+    `\\b((?:(?:${cardinal})(?:[ -]+(?:and[ -]+)?(?:${cardinal}))*[ -]+(?:and[ -]+)?)?)(${ordinals.join("|")})\\b(?=(-[a-z]|[ ]+(?:time|hand)\\b)?)`,
+    "gi"
+  );
   return text
-    .replace(numberWords, (words) => wordValue(words))
     .replace(
-      new RegExp(`\\b(${ordinals.join("|")})\\b`, "gi"),
-      (word) => `${ordinals.indexOf(word.toLowerCase()) + 1}th`
+      ordinalWords,
+      (_, prefix: string, ordinal: string, label: string | undefined) => {
+        // Preserve a cardinal before an independent ordinal word, such as "one second",
+        // or before a spaced ordinal label, such as "forty first-time".
+        const compound =
+          !(label && /\s$/.test(prefix)) &&
+          (/\b(hundred|thousand|million|billion)\b/i.test(prefix) ||
+            tens.some((word) => prefix.toLowerCase().startsWith(word)) ||
+            /^(hundredth|thousandth|millionth|billionth)$/i.test(ordinal));
+        return !prefix || compound ? " " : prefix;
+      }
     )
+    .replace(numberWords, (words) => wordValue(words))
     .replace(/(\d+(?:\.\d+)?)\s+percent\b/gi, "$1%")
     .replace(/(\d+(?:\.\d+)?)\s+times\b/gi, "$1x");
 }

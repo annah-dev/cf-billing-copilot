@@ -3,6 +3,7 @@
 // startCreditRequest, which records a `requested` row and starts the credit Workflow. It never
 // decides, approves or applies a credit, and it never does money math (D-15).
 import { AIChatAgent, type OnChatMessageOptions } from "@cloudflare/ai-chat";
+import type { Connection, ConnectionContext } from "agents";
 import {
   InvalidToolInputError,
   NoSuchToolError,
@@ -21,12 +22,14 @@ import {
   type CreditRequest,
   type ToolCallRecord,
   type ToolName,
+  type ErrorResponse,
   type TurnResponse
 } from "../contracts";
 import { DAY_MS, getConfig, utcDay } from "../http/config";
 import {
   BUDGET_MESSAGE,
   capMessage,
+  errorBody,
   refusal,
   type Refusal,
   type Result
@@ -41,6 +44,7 @@ import { collectEvidence } from "./grounding";
 import { guardReply, type GroundingRecord } from "./guard";
 import { ToolProvenance } from "./provenance";
 import { ToolError, buildTools, stableKey } from "./tools";
+import { classifyFrame, type Frame } from "./frames";
 
 /** Model calls per turn: tool round trips plus the answer. Small on purpose (Stop 2 finding). */
 export const MAX_STEPS = 4;
@@ -78,6 +82,9 @@ export const AWAITING_CONFIRMATION =
   "Awaiting the customer's confirmation: nothing was recorded. Send the turn with confirm: true to start the credit request.";
 
 /** Broadcast to connected chat clients when a credit request changes state. */
+/** Sent on the chat connection when a non-chat frame is refused (the contract ErrorResponse). */
+export type BillingRefusalMessage = { type: "billing-refusal" } & ErrorResponse;
+
 export type CreditUpdateMessage = {
   type: "credit-request-update";
   requestId: string;
@@ -111,6 +118,8 @@ function toolErrorText(error: unknown): string {
   }
   if (NoSuchToolError.isInstance(error)) return error.message;
   if (error instanceof ToolError) return error.message;
+  // The customer sees a generic text; the raw error goes to the log so it can be diagnosed.
+  console.error("chat stream error", error);
   return "An internal error occurred.";
 }
 
@@ -197,6 +206,127 @@ function fixedTextResponse(text: string): Response {
 
 export class BillingAgent extends AIChatAgent<Env> {
   maxPersistedMessages = 200;
+
+  /** Chat requests whose message cap the frame gate already charged (by request id). */
+  private precharged = new Set<string>();
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // The SDK installs its chat protocol handler in its constructor and saves a chat request's
+    // messages before onChatMessage runs. Every frame passes the gate first (frames.ts).
+    const sdkOnMessage = this.onMessage;
+    this.onMessage = async (connection, message) => {
+      if (
+        typeof message === "string" &&
+        !(await this.admitFrame(connection, message))
+      ) {
+        return;
+      }
+      return sdkOnMessage(connection, message);
+    };
+  }
+
+  /** Remember the client's address for the per-IP rate limiter (D-13) on later frames. */
+  async onConnect(
+    connection: Connection,
+    ctx: ConnectionContext
+  ): Promise<void> {
+    const ip = ctx.request.headers.get("CF-Connecting-IP") ?? "unknown";
+    connection.setState({ ...(connection.state as object | null), ip });
+    await super.onConnect(connection, ctx);
+  }
+
+  /**
+   * Count a chat-channel frame exactly like a /turn request: the per-IP rate limiter, the
+   * sandbox's daily API request cap and, for a new chat turn, the length limit and the chat
+   * message cap. A refused frame writes nothing and never reaches the SDK.
+   */
+  private async admitFrame(
+    connection: Connection,
+    message: string
+  ): Promise<boolean> {
+    const frame = classifyFrame(message);
+    if (frame.kind === "pass") return true;
+    const config = getConfig(this.env);
+    const ip = (connection.state as { ip?: string } | null)?.ip ?? "unknown";
+    const { success } = await this.env.RATE_LIMITER.limit({ key: ip });
+    if (!success) {
+      this.refuseFrame(
+        connection,
+        frame,
+        refusal(429, "rate_limited", "Too many requests; slow down.")
+      );
+      return false;
+    }
+    const { customerId } = this.identity();
+    const admitted = await this.ledger().gate({ customerId });
+    if (!admitted.ok) {
+      this.refuseFrame(
+        connection,
+        frame,
+        refusal(admitted.status, admitted.code, admitted.message, admitted.cap)
+      );
+      return false;
+    }
+    if (frame.kind !== "chat-request") return true;
+    if (frame.lastUserText.length > config.MESSAGE_MAX_CHARS) {
+      this.refuseFrame(
+        connection,
+        frame,
+        refusal(
+          400,
+          "invalid_request",
+          `Messages are limited to ${config.MESSAGE_MAX_CHARS} characters. Please shorten your message.`
+        )
+      );
+      return false;
+    }
+    const cap = await this.ledger().consumeMessage();
+    if (!cap.ok) {
+      this.refuseFrame(
+        connection,
+        frame,
+        refusal(cap.status, cap.code, cap.message, cap.cap)
+      );
+      return false;
+    }
+    this.precharged.add(frame.id);
+    return true;
+  }
+
+  /**
+   * Answer a refused frame on its own connection without storing anything. A chat request's
+   * response stream ends in an error whose text is the contract ErrorResponse, which the chat hook
+   * raises and the UI shows with the cap and its reset (src/ui/errors.ts). Any other frame gets the
+   * stored conversation back, so the client drops its unsaved change, plus a `billing-refusal`
+   * message the UI shows, because the hook does not surface errors on that path (PR review r1).
+   */
+  private refuseFrame(connection: Connection, frame: Frame, r: Refusal): void {
+    const body = JSON.stringify(errorBody(r));
+    if (frame.kind === "chat-request") {
+      connection.send(
+        JSON.stringify({
+          type: "cf_agent_use_chat_response",
+          id: frame.id,
+          body,
+          error: true,
+          done: true
+        })
+      );
+      return;
+    }
+    connection.send(
+      JSON.stringify({
+        type: "cf_agent_chat_messages",
+        messages: this.messages
+      })
+    );
+    const message: BillingRefusalMessage = {
+      type: "billing-refusal",
+      ...errorBody(r)
+    };
+    connection.send(JSON.stringify(message));
+  }
 
   /** Turn accounting keyed by the user message id that started the turn (read by /turn). */
   private turns = new Map<string, TurnRecord>();
@@ -453,7 +583,16 @@ export class BillingAgent extends AIChatAgent<Env> {
       ? await this.provenance.consumeAnsweredConfirmation(conversation)
       : null;
     const exempt = answered !== null;
-    if (!exempt) {
+    // A chat request from the socket was already counted, length-checked and charged as a
+    // message by the frame gate, before the SDK saved it.
+    const prepaid =
+      !continuation &&
+      options?.requestId !== undefined &&
+      this.precharged.delete(options.requestId);
+    if (prepaid) {
+      this.rememberQuestion(textOf(lastUser));
+      await this.touchActivity();
+    } else if (!exempt) {
       if (!continuation) {
         const text = textOf(lastUser);
         if (text.length > config.MESSAGE_MAX_CHARS) {
@@ -560,7 +699,13 @@ export class BillingAgent extends AIChatAgent<Env> {
                     ]
                   : []
               ),
-              !preConfirmed
+              new Set(
+                step.content.flatMap((c) =>
+                  c.type === "tool-approval-request"
+                    ? [c.toolCall.toolCallId]
+                    : []
+                )
+              )
             ),
           // The last step has no tools (mustAnswer), so no server check can arrive after it.
           stopWhen: stepCountIs(MAX_STEPS),

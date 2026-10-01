@@ -242,11 +242,15 @@ Decided by: Anna.
 
 ## D-14 Simulated streaming for Llama 3.3 tool calls
 
-`BillingAgent` wraps the model as
-`wrapLanguageModel({ model: workersai(MODEL_ID), middleware: simulateStreamingMiddleware() })` and
-keeps `streamText` and `AIChatAgent`. Reason: native streaming garbles tool arguments (DEV-16);
-the simulated stream produced a correct tool call, tool result and answer in the Stop 2 round trip.
-Cost: the UI shows each step's text at once instead of token by token.
+`BillingAgent` wraps the model with `wrapLanguageModel` and keeps `streamText` and `AIChatAgent`.
+Reason: native streaming garbles tool arguments (DEV-16); the simulated stream produced a correct
+tool call, tool result and answer in the Stop 2 round trip. Cost: no token-by-token text.
+
+As built (updated 2026-10-01, `billingModel` in src/agent/model.ts), the middleware list is, from
+the outside in: `simulateStreamingMiddleware()`, `noEmptyToolsMiddleware` (Workers AI refuses
+`tools: []`) and the budget middleware (neuron reservation per call). The reply text reaches the
+client only after the grounding guard has checked it ("agent: runtime grounding guard"); tool
+parts still stream as each step finishes.
 
 Decided by: Architect under standing orders.
 
@@ -558,7 +562,15 @@ Anna).
 
 ## agent: model settings, budget estimate and history
 
-- `temperature: 0`, `maxOutputTokens` from `MAX_OUTPUT_TOKENS`, `stopWhen: stepCountIs(4)`.
+- `temperature: 0`, `maxOutputTokens` from `MAX_OUTPUT_TOKENS` (512), `stopWhen:
+  stepCountIs(MAX_STEPS)` with `MAX_STEPS = 4`. Updated 2026-10-01 to match the code: the last
+  step, and any step after one that only repeated earlier calls, gets no tools (`mustAnswer`); the
+  grounding guard may add one retry call without tools; so one `onChatMessage` run makes at most
+  `MAX_STEPS + 1` logical model calls. `maxRetries` is the AI SDK default (2): each logical call
+  that fails can be attempted up to three times, so a run can reach `3 x (MAX_STEPS + 1)` = 15
+  inference attempts. Every attempt is reserved and settled by the budget middleware and counted
+  in `TurnStats.modelCalls`, so the neuron stop still holds. A credit confirmation's continuation
+  is its own `onChatMessage` run with the same bounds.
 - The budget middleware sits inside `simulateStreamingMiddleware` (the simulated stream calls
   `doGenerate`, which it wraps). Input tokens are bounded by the UTF-8 byte length of the
   serialised prompt and tool definitions plus 8 template tokens per message (Llama 3's tokenizer
@@ -909,7 +921,8 @@ the customer's dates.
 - An unsupported draft gets exactly one retry: the same context (server checks included), the
   draft, and a user-role correction naming each unsupported figure, with no tools, so the retry
   restates what the turn fetched and cannot start a new tool loop. It is one more budget-reserved
-  model call (worst case `MAX_STEPS + 2` per turn).
+  model call (worst case `MAX_STEPS + 2` per turn as first written; `MAX_STEPS + 1` since the last
+  step has no tools, see "agent: the last step answers, and an empty reply is asked for once").
 - If the retry is still unsupported, empty or refused by the budget, the customer gets the reply
   with every sentence carrying an unsupported figure removed plus a fixed note, or a fixed safe
   answer (no figures) when nothing verifiable is left.
@@ -1136,3 +1149,108 @@ Scope the recovery audit to merge preservation and evidence, with the already
 reviewed grader/data unchanged. Reason: the two full source reviews and third
 delta review completed before the crash; recovery is not another source-review
 round. Decided by: QA engineer under standing orders.
+
+## agent: the chat UI confirms a credit through the SDK's approval frame only
+
+Production report: after the customer confirmed a credit request the stream failed ("An internal
+error occurred", then "Unable to connect"). Reproduced in local dev with the live UI: on "Confirm
+request" `useAgentChat` sends `cf_agent_tool_approval` with `autoContinue` (its default), and the
+server continues the turn; the UI also set the AI SDK's `sendAutomaticallyWhen:
+lastAssistantMessageIsCompleteWithApprovalResponses`, so the client sent a second,
+full-conversation chat request. The two continuations raced: the client's ran as a new,
+cap-charged turn (the question was remembered twice) and the server's stream was left pending, so
+the UI stayed busy. The UI now relies on the SDK's approval frame alone (`src/ui/chat.tsx`;
+`tests/ui/live-chat.test.ts` goes red on the old wiring). `toolErrorText` now logs the raw error
+before returning the generic text. Reason: one continuation per confirmation; a masked error must
+still be diagnosable from the logs. This touches the UI lane's file because the defect is in its
+wiring.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: a credit confirmation only for an invoice the Ledger knows
+
+Production report, reproduced in local dev: the model called `startCreditRequest` with an
+invented `inv_123456789` before any lookup and the customer was shown "Request a credit?" for it;
+after confirming, the tool failed and a second confirmation followed. In the chat,
+`needsApproval` is now a check: a claim on an invoice the Ledger knows for the customer asks for
+confirmation as before; an unknown one skips the confirmation and fails in `execute`, before any
+write, with the customer's real invoice ids. A call that skipped the confirmation is remembered by
+its tool call id and can never write, even if the invoice reads fine at execute time (so a
+transient failure of the check cannot become an unconfirmed request). Provenance marks a call as
+awaiting confirmation only when the step really emitted a `tool-approval-request`. The prompt says
+to call `getInvoice` before `startCreditRequest`. `/turn` is unchanged (D-20: `confirm` decides).
+Reason: the customer must never confirm something the server has not validated.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: chat-channel frames are counted like /turn
+
+Production report: chat messages over the WebSocket passed neither the per-IP rate limiter nor
+the daily API request cap (they run per HTTP request, and the socket is upgraded once), and the
+SDK saved a chat request's messages before `onChatMessage` checked the message cap, so frames over
+the cap still wrote storage. `BillingAgent` now wraps the SDK's frame handler after `super()` and
+admits each frame first (`src/agent/frames.ts`):
+
+- Chat requests: the per-IP `RATE_LIMITER` (the address captured when the socket connected), the
+  sandbox's API request cap (`Ledger.gate`), the length limit and the chat message cap, in that
+  order, as `/turn` does. The turn is then not charged a second time.
+- History, tool-result, tool-approval and clear frames: the rate limiter and the API request cap.
+  An approval's continuation keeps its message-cap rule (exempt once only for a server-issued
+  confirmation the customer answered).
+- Cancel, stream-resume and acknowledgement frames are not counted.
+- A refused chat request gets the refusal as a one-off reply on its own connection; another
+  refused frame gets the stored conversation back. Nothing is stored and no model runs.
+
+Reason: D-7 and D-13 promise the same limits on every path.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: every tool validates its own input
+
+The AI SDK validates each tool call against its `inputSchema` before `execute` runs. Every tool
+now also checks its input against the contract schema inside `execute` (the shared `read` helper,
+`startCreditRequest` and `getCreditRequestStatus`) and answers a bad input with a `ToolError`
+naming the tool, before any Ledger read or write. Reason: AGENTS.md hard rule 2 must not depend on
+the caller; a direct call to `execute` (tests, recovery code, a future path) gets the same check.
+The D-14 and model-settings entries were updated in place to match the code (middleware list,
+held reply text, `mustAnswer`, at most `MAX_STEPS + 1` calls, `maxRetries` default).
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: frame gate review fixes (PR review round 1)
+
+- `cf_agent_state` frames are gated like other writes: the SDK persists client-sent agent state.
+- A chat request is measured after the SDK's own `autoTransformMessages`, so the older `content`
+  string and array shapes cannot slip past the length limit and then skip it as prepaid.
+- A refused chat request ends its response stream with `error: true` and the contract
+  ErrorResponse as the body; the chat hook raises it and the UI shows the cap and its reset. A
+  refused non-chat frame (for example a confirmation over the API cap) gets the stored
+  conversation back plus a `billing-refusal` message (the ErrorResponse), which the live chat UI
+  shows, because the hook surfaces no error on that path. The hook's pending continuation
+  settles on its own: its resume request gets no stream.
+- The model-settings entry distinguishes logical model calls (`MAX_STEPS + 1` per
+  `onChatMessage` run) from inference attempts (up to three each with the SDK's default retries).
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: resume acknowledgements are gated too (PR review round 2)
+
+`cf_agent_stream_resume_ack` frames now pass the rate limiter and the API request cap: after
+hibernation an acknowledgement can complete an orphaned stream, which the SDK then persists as an
+assistant message. Resume requests and cancels store nothing and stay ungated. At the API cap a
+client therefore cannot resume an interrupted stream until the 00:00 UTC reset; it gets the
+refusal instead. Reason: every client frame that can lead to a write is counted, as `/turn` is.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: the guard treats ordinal words as labels, as the grader does
+
+Evals PR #10 changed the grader so ordinal words ("first", "second", "twenty-first") are labels,
+not figures; numeral ordinals ("3rd") and cardinal words ("seven", the "one" in "one second") are
+still figures. `normalizeNumberWords` in src/agent/grounding.ts is now a verbatim copy of the
+grader's (checked identical after formatting), so a reply such as "First, I need your invoice"
+is sent without a corrective retry. The guard-versus-grader agreement test still passes on every
+committed recording; the new ordinal cases are covered by unit and turn tests. Reason: the guard
+must apply the grader's rule, and the owner asked for this once #10 merged.
+
+Decided by: Agent fixes engineer under standing orders.

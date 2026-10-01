@@ -2719,6 +2719,7 @@ you suggest. End with:
 
     VERIFIED:     <what you checked and how>
     NOT VERIFIED: <what you could not check, and why>
+````
 
 ## 2026-09-30T18:31:21-07:00 - Owner answers to the release phase 1 report (typed mid-session)
 
@@ -2948,6 +2949,36 @@ End with:
 
     VERIFIED:     <what you ran and observed>
     NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 36. Production chat fixes and rebase instructions (owner, mid-session)
+
+- Timestamp: 2026-09-30T18:47:16-07:00
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/08-prod-chat-fixes.md
+- Outcome: #8 rebased onto main and force-pushed (owner-authorized); the two unreached eval questions run (expired-credit-history passed; remember-credit passed later under the new cap); the four production issues fixed on fix/prod-chat with one commit each, reproduced and rechecked live in local dev (13 model calls), two full Codex rounds and one delta round; the guard follows the grader ordinal rule after #10.
+
+````text
+Merged #7. Rebase #8 onto main and force-push feat/agent-fixes (never main). A1: the daily limit
+reset at 00:00 UTC, so run the two unreached questions once now. B1: no contract change. On
+"first": the evals lane will change the grader so ordinal words are not figures; once that
+merges, make the guard follow the same rule.
+
+Then, on a NEW branch and PR after #8 merges (keep #8 as reviewed), fix what the release lane
+found against production:
+1. In the chat UI, the stream after the customer confirms a credit request fails with "An internal
+   error occurred" and the UI shows "Unable to connect". Log the raw error in toolErrorText,
+   reproduce it (local dev with VITE_BILLING_API_MODE=live, or wrangler tail against production),
+   and fix the cause.
+2. Never show the customer a confirmation for an invoice the server has not validated. The model
+   called startCreditRequest with an invented inv_1234567890 before any lookup. Resolve or
+   validate the invoice server-side before the confirmation appears.
+3. Chat messages over the WebSocket are not counted by the rate limiter or the daily caps, which
+   contradicts D-7. Count them exactly like /turn.
+4. Confirm tool inputs are schema-validated (by the SDK or inside the tool), and fix the D-14 and
+   model-settings drift in docs/DECISIONS.md.
+Same review loop, live checks under 20 model calls, then open the PR.
 ````
 
 ## 37. Sandbox per-IP cap (owner, mid-session)
@@ -3181,6 +3212,59 @@ Recovery review scope ONLY: merge correctness, preservation of both append-only 
 
 Recover through a fresh gate run after terminal failure; preserve the additive merge and all prior gate commits, never rebase/force-push published history. If dependency installation is missing, npm ci from frozen pins, never edit source/grades/recordings to fix test failures. Document phase must archive this recovery review identifying log in prompt-history/prompts/05g-evals-wsl-recovery-review.md, log role automated cross-review in PROMPTS with run id and outcome, mark exact generated prompt unavailable if not exposed. Supplied recovery context is copied/logged as 05u-evals-wsl-recovery.md. Refresh evals/followup-verification.md with actual post-merge command tails/collection counts/CI evidence and recovery state. Do not leave pending outcomes. Protected main log bytes must remain prefixes. Update existing PR #10; final description covers actual grader changes, all red-first evidence, raw/regraded totals, local-dev target/date/usage, correction reasons, test names, main/head collection, review history, crash recovery and additive merge. End VERIFIED/NOT VERIFIED. No merge, deploy, login, account, secret, contract or dependency changes; stop at checks-passed with PR open.
 
+## 41. Production chat fixes cross-review, round 1
+
+- Timestamp: 2026-09-30T23:17:31-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/08c-prod-chat-review-r1.md
+- Outcome: CHANGES REQUESTED: two major (cf_agent_state frames bypassed the gate; older `content` message shapes bypassed the length check) and two minor (a refused confirmation showed no reason; the model-call bound ignored SDK retries). All fixed with tests that go red without the fix.
+
+````text
+You are the cross-reviewer for branch `fix/prod-chat` on annah-dev/cf-billing-copilot, round 1 of
+2 full rounds. The work was written by Claude Code (agent fixes engineer). You are Codex, running
+read-only: do not edit, commit, push or comment anywhere; your whole output is your review. You
+may run `npm run typecheck` and `npm test` (offline).
+
+Diff: `git diff origin/main...HEAD` and `git log origin/main..HEAD` (main was merged in twice;
+review this branch's own changes). Check against prompt-history/prompts/08-prod-chat-fixes.md (the
+owner's request), AGENTS.md, docs/agent/verification.md, docs/agent/cross-review.md,
+docs/ARCHITECTURE.md and the new docs/DECISIONS.md entries headed "agent:" near the end, plus D-14
+and "agent: model settings, budget estimate and history", which were edited in place.
+
+Claims to verify:
+1. Credit confirmation failure in the chat UI: the UI sent both the SDK's cf_agent_tool_approval
+   (autoContinue) and a second full-conversation request (sendAutomaticallyWhen), which raced.
+   src/ui/chat.tsx drops sendAutomaticallyWhen; toolErrorText logs the raw error. Check against the
+   installed agents/@cloudflare/ai-chat sources that one continuation per confirmation remains
+   (approve and cancel), and that tests/ui/live-chat.test.ts proves the wiring.
+2. No confirmation for an unvalidated invoice: needsApproval in src/agent/tools.ts checks the
+   invoice; an unknown one fails in execute before any write; a call that skipped confirmation can
+   never write; provenance marks a call as awaiting confirmation only for a real
+   tool-approval-request. Look for any path that records a credit request without the customer's
+   confirmation (D-20), including /turn, transient Ledger failures and forged frames.
+3. WebSocket frames counted like /turn: src/agent/frames.ts and admitFrame/refuseFrame in
+   src/agent/billing-agent.ts gate frames (rate limiter, API cap, length, message cap) before the
+   SDK stores anything; chat turns are not charged twice. Check every frame type the installed SDK
+   handles, hibernation (connection state), refusal frames the client understands, and that
+   continuations keep the cap exemption rules.
+4. Every tool validates its input inside execute; D-14 and the model-settings entry now match the
+   code (check each statement against src/agent/model.ts and billing-agent.ts).
+5. Live evidence: tests/agent/evidence/live-evals/ (remember-credit section) and
+   tests/agent/evidence/live-ui/2026-10-01-credit-confirmation/: do the README claims match the
+   logs and run reports; any secret or token?
+
+Report defects in or caused by this branch, most severe first. Mark anything you cannot verify
+UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, each with
+severity (blocker, major, minor, nit), file and line, what is wrong, and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
 ## 2026-09-30T23:18:03-07:00 - Evals WSL recovery review
 
 Role: automated cross-review
@@ -3188,3 +3272,103 @@ Harness: no-mistakes v1.41.2 (Claude)
 Run: 01M3V196CVJCWVV5X97QQ2PBJK
 Source: prompt-history/prompts/05g-evals-wsl-recovery-review.md (identifying log copied with a tool; exact generated prompt unavailable; supplied context is 05u-evals-wsl-recovery.md)
 Outcome: PASS; no actionable findings. Recovery-only scope: merge 54f1086 correctness, both append-only log prefixes, eval source/data unchanged from ad782c5, and recovery evidence. One pipeline-owned delivery finding was deferred by the gate to its push/PR/CI steps. Not a fourth source review. Zero model calls.
+
+## 42. Production chat fixes cross-review, round 2
+
+- Timestamp: 2026-09-30T23:32:13-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/08c-prod-chat-review-r2.md
+- Outcome: CHANGES REQUESTED: major, resume acknowledgements could persist an orphaned stream without admission (now gated, test red without it); minor, the UI recheck stated exact model calls the logs cannot show (qualified as logical steps, dev-log excerpt attached).
+
+````text
+You are the cross-reviewer for branch `fix/prod-chat` on annah-dev/cf-billing-copilot, round 2 of
+2 full rounds. The work was written by Claude Code (agent fixes engineer). You are Codex, running
+read-only: do not edit, commit, push or comment anywhere; your whole output is your review. You
+may run `npm run typecheck` and `npm test` (offline).
+
+Diff: `git diff origin/main...HEAD` and `git log origin/main..HEAD` (main was merged in twice;
+review this branch's own changes). Check against prompt-history/prompts/08-prod-chat-fixes.md (the
+owner's request), AGENTS.md, docs/agent/verification.md, docs/agent/cross-review.md,
+docs/ARCHITECTURE.md and the new docs/DECISIONS.md entries headed "agent:" near the end, plus D-14
+and "agent: model settings, budget estimate and history", which were edited in place.
+
+Claims to verify:
+1. Credit confirmation failure in the chat UI: the UI sent both the SDK's cf_agent_tool_approval
+   (autoContinue) and a second full-conversation request (sendAutomaticallyWhen), which raced.
+   src/ui/chat.tsx drops sendAutomaticallyWhen; toolErrorText logs the raw error. Check against the
+   installed agents/@cloudflare/ai-chat sources that one continuation per confirmation remains
+   (approve and cancel), and that tests/ui/live-chat.test.ts proves the wiring.
+2. No confirmation for an unvalidated invoice: needsApproval in src/agent/tools.ts checks the
+   invoice; an unknown one fails in execute before any write; a call that skipped confirmation can
+   never write; provenance marks a call as awaiting confirmation only for a real
+   tool-approval-request. Look for any path that records a credit request without the customer's
+   confirmation (D-20), including /turn, transient Ledger failures and forged frames.
+3. WebSocket frames counted like /turn: src/agent/frames.ts and admitFrame/refuseFrame in
+   src/agent/billing-agent.ts gate frames (rate limiter, API cap, length, message cap) before the
+   SDK stores anything; chat turns are not charged twice. Check every frame type the installed SDK
+   handles, hibernation (connection state), refusal frames the client understands, and that
+   continuations keep the cap exemption rules.
+4. Every tool validates its input inside execute; D-14 and the model-settings entry now match the
+   code (check each statement against src/agent/model.ts and billing-agent.ts).
+5. Live evidence: tests/agent/evidence/live-evals/ (remember-credit section) and
+   tests/agent/evidence/live-ui/2026-10-01-credit-confirmation/: do the README claims match the
+   logs and run reports; any secret or token?
+
+Round 1 (prompt-history/prompts/08c-prod-chat-review-r1.md) found: cf_agent_state frames bypassed
+the gate; older `content` message shapes bypassed the length check; a refused confirmation showed
+no reason; the model-call bound ignored SDK retries. The fixes are in commit "fix(agent): close the
+frame gate review findings" (frames.ts, refuseFrame and BillingRefusalMessage in billing-agent.ts,
+errorBody in src/http/errors.ts, chatRefusal in src/ui/errors.ts and its use in src/ui/chat.tsx).
+Verify them, including every frame type the installed SDK persists, then review the whole branch
+again, not only the fixes.
+
+Report defects in or caused by this branch, most severe first. Mark anything you cannot verify
+UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, each with
+severity (blocker, major, minor, nit), file and line, what is wrong, and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 43. Production chat fixes cross-review, round 3 (delta only)
+
+- Timestamp: 2026-09-30T23:42:04-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/08c-prod-chat-review-r3-delta.md
+- Outcome: APPROVE, no findings: every writing frame type gated, the two ordinal functions byte-for-byte identical, both sides of the merged logs kept, 484 tests passing. Review loop closed.
+
+````text
+You are the cross-reviewer for branch `fix/prod-chat` on annah-dev/cf-billing-copilot, round 3: the
+delta-only round after two full rounds. The work was written by Claude Code. You are Codex, running
+read-only: do not edit, commit, push or comment anywhere; your whole output is your review. You may
+run `npm run typecheck` and `npm test`.
+
+Review only this delta: `git diff ab12b42 HEAD -- src tests docs` and `git log ab12b42..HEAD`. It
+holds:
+1. The fixes for round 2 (prompt-history/prompts/08c-prod-chat-review-r2.md): resume
+   acknowledgements (`cf_agent_stream_resume_ack`) are gated in src/agent/frames.ts; the UI
+   recheck's README now states logical model steps only and attaches dev-log-excerpt.txt.
+2. A merge of main that brought in evals PR #10 (684bae0); conflicts were only in the append-only
+   logs PROMPTS.md and docs/DECISIONS.md, resolved by keeping both sides.
+3. The owner's request after #10 merged: the guard treats ordinal words as labels, as the grader
+   now does. `normalizeNumberWords` in src/agent/grounding.ts should be a verbatim copy of the one
+   in evals/grounding.ts; tests in tests/agent/grounding.test.ts; the guard-versus-grader test
+   tests/agent/grounding-parity.test.ts must still pass.
+
+Check that each change is correct, that no frame type that can write is still ungated, that the
+two copies of the ordinal rule really match (compare them), and that the merge lost nothing from
+either side of the logs. Report only defects in or caused by this delta. Mark anything you cannot
+verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````

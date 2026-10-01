@@ -1,0 +1,47 @@
+{
+  "formatVersion": 1,
+  "source": "live",
+  "baseUrl": "http://127.0.0.1:5174",
+  "environment": "local dev",
+  "modelCallCount": 6,
+  "estimatedNeurons": 471,
+  "sandboxes": {
+    "read-only": {
+      "sandboxId": "d542748e897513775cdb63f0041a7863",
+      "messages": 11
+    },
+    "duplicate-credit": {
+      "sandboxId": "e3cf283b77583731a8c35e4cdc54ccf0",
+      "messages": 1
+    },
+    "remember-plan": {
+      "sandboxId": "793204c6633e13869bb4de6054f77791",
+      "messages": 2
+    },
+    "remember-credit": {
+      "sandboxId": "677748cd4c861313bcc6205fda7c55d2",
+      "messages": 2
+    }
+  },
+  "runDate": "2026-10-01T06:15:27.619Z",
+  "status": "complete",
+  "totalCases": 1,
+  "attemptedCases": 1,
+  "completedCases": 1,
+  "passedCases": 1,
+  "passRate": "1/1",
+  "usage": {
+    "inputTokens": 16257,
+    "outputTokens": 178,
+    "modelCalls": 6
+  },
+  "turnsPosted": 2,
+  "stopCode": null,
+  "cases": [
+    {
+      "id": "remember-credit",
+      "passed": true,
+      "issues": []
+    }
+  ]
+}

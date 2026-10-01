@@ -22,13 +22,17 @@ export function refusal(
     : { ok: false, status, code, message };
 }
 
-export function errorResponse(r: Refusal): Response {
-  const body: ErrorResponse = {
+/** The contract body of a refusal (ErrorResponse), for HTTP and for the chat channel. */
+export function errorBody(r: Refusal): ErrorResponse {
+  return {
     error: r.cap
       ? { code: r.code, message: r.message, cap: r.cap }
       : { code: r.code, message: r.message }
   };
-  return Response.json(body, { status: r.status });
+}
+
+export function errorResponse(r: Refusal): Response {
+  return Response.json(errorBody(r), { status: r.status });
 }
 
 export function notFound(): Response {
