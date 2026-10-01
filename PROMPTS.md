@@ -2506,7 +2506,7 @@ Outcome: Grader, regressions, all-recordings regrade, evals/README.md policy, re
 - Role: Agent fixes engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/07-agent-fixes.md
-- Outcome: (filled in at the end)
+- Outcome: grounding guard and five per-cause fixes on feat/agent-fixes, rebased onto evals PR #7; live local dev: failing-only rerun 6/7, full set 13/13 completed (stopped by the per-IP sandbox cap before 2 of 15), versus a 9/15 baseline; 53 model calls, about 4,531 estimated neurons; Codex rounds 1 and 2 each found one major (fixed), delta round approved; PR opened against main, depending on #7.
 
 ````text
 Role: agent fixes. Harness: Claude Code. Read AGENTS.md, docs/ARCHITECTURE.md and docs/DECISIONS.md first, and log this prompt in PROMPTS.md.
@@ -2691,7 +2691,7 @@ you suggest. End with:
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/07c-agent-fixes-review-r3-delta.md
-- Outcome: (filled in after the round)
+- Outcome: APPROVE, no findings in the delta; Codex traced approval, denial, tool-result, forged or stale approval and /turn paths and ran 430 passing tests. Review loop closed after two full rounds and one delta round.
 
 ````text
 You are the cross-reviewer for the agent-fixes branch `feat/agent-fixes` on
