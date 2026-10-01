@@ -171,3 +171,51 @@ vitest. After `npm ci` from the frozen lockfile (no package, lock or config chan
 
 VERIFIED: Two full Claude source reviews and corrected cardinal-label finding; third, delta-only review PASS with no source findings; gate-required rebase with preserved main prefixes and unchanged lane source; CI on 4dc3e9e; independent and gate-worktree 449-test normal/credential-free runs and typecheck; 430/449 collection with no disappearance; all earlier red-first/regrade/immutable-evidence proofs; zero model calls.
 NOT VERIFIED: Final PR CI on this documentation-only head until executed; exact generated gate prompts (not exposed); deployed/public evaluation, metered neurons and proposed agent/prompt fixes inherited from the local-dev run. No merge or deployment.
+
+## WSL restart recovery and main PR #9 merge
+
+Run 01M3TKGDQ50TB5190HDMM0VTT3 failed with `daemon crashed during execution`
+while monitoring CI. GitHub CI for its published ad782c5 had succeeded (run
+36805107743). The daemon was already running after WSL restarted; no forced
+restart or version update was used. Offered `no-mistakes axi sync` recovered
+ad782c5, retained under refs/no-mistakes/recover/evals-wsl-recovery-ad782c5.
+
+As Anna requested, merge commit 54f1086 adds main a5b05f7 (PR #9) to the
+published branch without rewriting history. The sole conflict was DECISIONS.md.
+Both complete branch suffixes are retained after main's canonical byte prefixes
+in DECISIONS.md and PROMPTS.md. Eval source, tests, recordings and results equal
+ad782c5; application and frozen-file contents equal current main.
+
+After the merge, all required commands were repeated:
+
+```text
+npm ci: exit 0
+added 571 packages, and audited 572 packages in 51s
+npm run typecheck: exit 0
+> tsc --noEmit && tsc --noEmit -p tests/agent
+npm test: exit 0
+Test Files 25 passed (25)
+Tests 462 passed (462)
+env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test: exit 0
+Test Files 25 passed (25)
+Tests 462 passed (462)
+```
+
+`npx vitest list --json` at current main a5b05f7 and recovered head collected
+443 and 462 tests, respectively: the same 19 added names listed above, zero
+disappeared, comparing project/relative path/full name. Normal test/collection
+runs emitted a sandbox read-only Wrangler-log warning but exited 0; the empty
+HOME run also passed. No credential, login, model or dev server was needed.
+All 41 replay checks pass against the unchanged committed results.
+
+Raw/corrected totals and all 39 recording digests are unchanged by recovery;
+zero new model calls or neurons. The completed source-review convergence remains
+two full rounds and the third delta-only round. Recovery auditing covers merge
+preservation and evidence only. Gate recovery delivery and final CI remain
+pending until the recovered run completes.
+
+VERIFIED: Recovered published gate commits; safety ref; owner-requested additive
+merge preserving both logs; unchanged eval/raw evidence; npm ci/typecheck; 462
+offline and credential-free tests; main443/head462 with 19 added and none gone.
+NOT VERIFIED: Recovered gate delivery/final CI until executed; exact generated
+review prompts; deployed performance and metered usage. No merge or deployment.
