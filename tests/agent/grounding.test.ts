@@ -308,3 +308,19 @@ describe("grounding guard on a turn", () => {
     expect(all).not.toContain("DRAFT");
   });
 });
+
+describe("grounding guard when the retry fails", () => {
+  it("sends the safe answer, not the draft, when the retry call throws", async () => {
+    const sb = await createSandbox();
+    // Two replies only: the retry finds the queue empty and the stubbed binding throws.
+    stubAi([
+      toolCall("getInvoice", { period: "2026-09" }),
+      text(`Your September bill is ${SEP_TOTAL}. It has 4 lines.`)
+    ]);
+    const body = await turnOk(sb.sandboxId, "Explain my September bill");
+    expect(body.text).toBe(
+      `Your September bill is ${SEP_TOTAL}.\n\n${OMITTED_NOTE}`
+    );
+    expect((await groundingOf(sb.sandboxId)).outcome).toBe("safe_answer");
+  });
+});

@@ -577,20 +577,27 @@ export class BillingAgent extends AIChatAgent<Env> {
               }
               // The context the model answered from, server checks included, then the correction.
               // No tools: the retry restates what this turn already fetched.
-              const retried = await generateText({
-                model,
-                system,
-                messages: [
-                  ...checks.withServerResults([
-                    ...messages,
-                    ...response.messages
-                  ]),
-                  { role: "user", content: correction }
-                ],
-                maxOutputTokens: config.MAX_OUTPUT_TOKENS,
-                temperature: 0,
-                abortSignal: options?.abortSignal
-              });
+              let retried;
+              try {
+                retried = await generateText({
+                  model,
+                  system,
+                  messages: [
+                    ...checks.withServerResults([
+                      ...messages,
+                      ...response.messages
+                    ]),
+                    { role: "user", content: correction }
+                  ],
+                  maxOutputTokens: config.MAX_OUTPUT_TOKENS,
+                  temperature: 0,
+                  abortSignal: options?.abortSignal
+                });
+              } catch (err) {
+                // A failed retry falls back to the safe answer; it never sends the draft.
+                console.error("grounding retry failed", err);
+                return null;
+              }
               return record.budgetRefusal ? null : retried.text;
             }
           });
