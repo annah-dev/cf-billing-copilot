@@ -2413,3 +2413,15 @@ API; origin/main's bundle failed the same check; not deployed.
 Merging main into feat/release in phase 2 is fine, and no rebase is needed since PRs are
 squash-merged. When main comes back in, keep one copy of each duplicated PROMPTS.md entry.
 ````
+
+## 37. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)
+
+- Timestamp: 2026-09-30T19:24:33-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06j-release-owner-pr9-merged.md
+- Outcome: (pending)
+
+````text
+Merged #9. You're right: the production fixes come in a separate agent-fixes PR, still to come.
+````
