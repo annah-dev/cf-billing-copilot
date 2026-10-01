@@ -1038,6 +1038,33 @@ tool-result frame goes red on the round-1 code.
 
 Decided by: Agent fixes engineer under standing orders.
 
+## ui: Production builds default to the live API
+
+`apiMode` (src/ui/api.ts) picks the backend: a production build talks to the live API, the dev
+server shows the fixture preview, and `VITE_BILLING_API_MODE=live` or `=fixture` overrides either.
+This supersedes the default in "ui: Fixture transport and live handoff". Reason: the release smoke
+test found the deployed site serving the fixture preview, because the handoff to live was an
+opt-in build variable that the deploy command did not set; production must not depend on
+remembering it, while `npm run dev` stays free of model calls.
+An approval link minted by the earlier fixture build still opens /admin, but its sandbox id
+was never admitted by the live API, so it gets 404 or 401 and the page shows the error; nothing
+is read or written, so links are not tagged with their mode.
+
+Decided by: Anna.
+
+## ui: Admin re-fetches until the Workflow finishes a decision
+
+After a decision the admin page re-fetches the list up to 5 times, 1 second apart, while the
+decided request is still `approved` or `pending_approval` with a recorded decision, and stops at
+the first terminal state or when the page unmounts. Every list read (initial, focus, Refresh and
+follow-up) goes through one serial queue, and the page stays busy until no read is queued, so
+reads never overlap and Approve cannot be clicked while an earlier read is outstanding. Reason: the Workflow applies or rejects a
+moment after the decision is recorded, so the single re-fetch left the card on "approved" in
+production; a bounded follow-up shows the outcome without polling against the 200-request daily
+cap ("ui: Approval links and refresh boundaries").
+
+Decided by: Anna (the fix); bounds by Release engineer under standing orders.
+
 ## evals: follow-up figure and simulation rules
 
 Ordinal words, including compound ordinal phrases, are labels rather than figures. Numerals
@@ -1080,3 +1107,17 @@ After the gate-required rebase, synchronized the local worktree to published 4dc
 Anna's worktree-sync authorization, preserving 7f552e7 under
 refs/no-mistakes/recover/evals-followup-pre-sync-7f552e7. The original pre-PR-7 sync ref remains.
 No published history was rewritten by this synchronization. Decided by: Anna.
+
+## evals: recover after WSL restart with an additive merge
+
+Use offered guarded sync to recover ad782c5, preserve it under
+refs/no-mistakes/recover/evals-wsl-recovery-ad782c5, then merge main a5b05f7
+into PR #10 while retaining both complete decision and prompt logs. Reason: the
+owner explicitly requested this recovery and merge, and the previous gate failed
+only while monitoring CI when WSL stopped. No published history rewrite.
+Decided by: Anna.
+
+Scope the recovery audit to merge preservation and evidence, with the already
+reviewed grader/data unchanged. Reason: the two full source reviews and third
+delta review completed before the crash; recovery is not another source-review
+round. Decided by: QA engineer under standing orders.

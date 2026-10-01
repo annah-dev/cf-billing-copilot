@@ -2719,6 +2719,235 @@ you suggest. End with:
 
     VERIFIED:     <what you checked and how>
     NOT VERIFIED: <what you could not check, and why>
+
+## 2026-09-30T18:31:21-07:00 - Owner answers to the release phase 1 report (typed mid-session)
+
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06e-release-owner-phase1-answers.md
+- Outcome: item A is this PR (#9): production builds default to the live API and /admin follows up a decision until the Workflow finishes. The other items are handled in the release PR (feat/release).
+
+````text
+A: put "live is the default for production builds" and the item 5 admin re-fetch fix into a
+small separate PR now, so it merges before the final deploy. No redeploy now; I deploy once,
+after the remaining PRs merge. B: items 2, 3 and the WebSocket finding go to the agent-fixes lane
+as a follow-up PR. Item 6: keep the README note; it resolves itself after October 2.
+C2, edits:
+- Replace "made the product, security and cost decisions" with "made the decisions reserved to
+  the owner (product scope, security model, cost and contract changes), each marked 'Decided by:
+  Anna' in docs/DECISIONS.md, while agents decided implementation details under the written
+  decision rights in AGENTS.md".
+- Keep "merged every pull request" only if it is still true when you open the release PR.
+- Add: "Planning, decision review and independent verification of each pull request were done in
+  a separate Claude conversation; see the note at the top of PROMPTS.md."
+D1, and annotate the 04l entry with what you find about it rather than removing it.
+E1. Also store the transcripts gzip-compressed (one .jsonl.gz per session) so the repository
+stays small, with every file under 50 MB. I will review scripts/scrub-terms.local.txt myself.
+Phase 2 starts when I tell you the agent PRs, the grader PR and your UI PR have merged and I
+have redeployed.
+````
+
+## 2026-09-30T18:40:16-07:00 - PR #9 cross-review, round 1
+
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06f-ui-live-review-r1.md
+- Outcome: CHANGES REQUESTED, 3 major and 2 minor. Fixed: refresh overlap, untested follow-up loop, missing prompt log, unmount cancellation. Rebutted: fixture approval links against the live API (404 or 401, nothing read or written).
+
+````text
+# PR #9 cross-review, round 1 (full)
+
+You are reviewing pull request #9 in this repository, branch `fix/ui-live-default`, authored by
+Claude Code (release engineer) at the owner's request. You are read-only: do not edit, commit,
+push, rebase or merge anything, and make no network calls or live model calls.
+
+The diff under review:
+
+    git diff origin/main...origin/fix/ui-live-default
+
+The PR body is reproduced at the end of this prompt. Check the change against:
+
+- prompt-history/prompts/00-assignment.md (acceptance criteria)
+- prompt-history/prompts/06e-release-owner-phase1-answers.md (the owner's instruction for this PR:
+  "live is the default for production builds" and the admin re-fetch after a decision)
+- AGENTS.md (hard rules and decision rights)
+- docs/agent/cross-review.md ("What the reviewer checks")
+- docs/agent/verification.md (done-contract)
+- docs/DECISIONS.md entries "ui: Fixture transport and live handoff", "ui: Approval links and
+  refresh boundaries" and the two new `ui:` entries at the end
+
+Focus on:
+
+1. Mode selection. Does `apiMode(import.meta.env)` give live for `vite build` and fixture for
+   `vite dev` with no variable set, and honour `VITE_BILLING_API_MODE`? Could any path still send a
+   fixture session to the live API or the reverse (separate storage keys)? Is the `?preview=`
+   scenario still restricted to the dev fixture preview?
+2. Admin follow-up. Is the loop bounded, does it stop at a terminal state and on unmount, can it
+   overlap a user-triggered refresh or a second decision, and does it respect the 200-request daily
+   cap rationale? Does `refresh` returning data change any existing behaviour (stale generation,
+   errors)?
+3. Tests. Do the five new tests check what the PR claims; can they fail; is anything claimed but
+   untested? The PR says browser evidence was produced with a mocked API: is the claim scoped
+   honestly in VERIFIED / NOT VERIFIED?
+4. Rules: no money arithmetic in the UI, no frozen file changed (src/contracts, wrangler.jsonc,
+   package files, vitest config, tsconfig, .github, AGENTS.md), plain ASCII in comments and docs,
+   DECISIONS entries appended only, with "Decided by".
+
+You may run `npm ci`, `npm run typecheck`, `npm test`, `npx vitest list` and `npx vite build` in a
+scratch copy if your sandbox allows it; say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each
+with severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest.
+End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+
+## PR body
+
+See `gh pr view 9` if available; otherwise rely on the diff and the commit message. The PR
+claims: typecheck, lint and tests pass (358 tests, 5 added); planted defects in `apiMode` and
+`awaitingWorkflow` turned the new tests red; a production bundle with no env var ran in live mode
+and the admin card reached "applied" 2.4 s after Approve with no manual refresh against a mocked
+API; origin/main's bundle failed the same check; not deployed.
+````
+
+## 2026-09-30T18:55:02-07:00 - PR #9 cross-review, round 2
+
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06g-ui-live-review-r2.md
+- Outcome: CHANGES REQUESTED, 1 major: a manual or focus refresh could leave a list read outstanding while Approve was enabled, so the follow-up overlapped it. Fixed with one serial queue for all admin list reads and busy held until the queue drains; round-1 items 2 to 4 held and the rebuttal of item 5 was accepted.
+
+````text
+# PR #9 cross-review, round 2 (full)
+
+You are reviewing pull request #9 again after the round-1 fixes in this repository, branch `fix/ui-live-default`, authored by
+Claude Code (release engineer) at the owner's request. You are read-only: do not edit, commit,
+push, rebase or merge anything, and make no network calls or live model calls.
+
+The diff under review:
+
+    git diff origin/main...origin/fix/ui-live-default
+
+The PR body is reproduced at the end of this prompt. Check the change against:
+
+- prompt-history/prompts/00-assignment.md (acceptance criteria)
+- prompt-history/prompts/06e-release-owner-phase1-answers.md (the owner's instruction for this PR:
+  "live is the default for production builds" and the admin re-fetch after a decision)
+- AGENTS.md (hard rules and decision rights)
+- docs/agent/cross-review.md ("What the reviewer checks")
+- docs/agent/verification.md (done-contract)
+- docs/DECISIONS.md entries "ui: Fixture transport and live handoff", "ui: Approval links and
+  refresh boundaries" and the two new `ui:` entries at the end
+
+Focus on:
+
+1. Mode selection. Does `apiMode(import.meta.env)` give live for `vite build` and fixture for
+   `vite dev` with no variable set, and honour `VITE_BILLING_API_MODE`? Could any path still send a
+   fixture session to the live API or the reverse (separate storage keys)? Is the `?preview=`
+   scenario still restricted to the dev fixture preview?
+2. Admin follow-up. Is the loop bounded, does it stop at a terminal state and on unmount, can it
+   overlap a user-triggered refresh or a second decision, and does it respect the 200-request daily
+   cap rationale? Does `refresh` returning data change any existing behaviour (stale generation,
+   errors)?
+3. Tests. Do the five new tests check what the PR claims; can they fail; is anything claimed but
+   untested? The PR says browser evidence was produced with a mocked API: is the claim scoped
+   honestly in VERIFIED / NOT VERIFIED?
+4. Rules: no money arithmetic in the UI, no frozen file changed (src/contracts, wrangler.jsonc,
+   package files, vitest config, tsconfig, .github, AGENTS.md), plain ASCII in comments and docs,
+   DECISIONS entries appended only, with "Decided by".
+
+You may run `npm ci`, `npm run typecheck`, `npm test`, `npx vitest list` and `npx vite build` in a
+scratch copy if your sandbox allows it; say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each
+with severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest.
+End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+
+## Round 1 and its dispositions
+
+Round 1 (prompt 06f) requested changes. The author answered:
+
+1. Follow-up reads could overlap a manual Refresh: fixed. Follow-up reads are quiet (they do not
+   clear `busy`), so Refresh stays disabled for the whole decision; the Refresh handler also
+   ignores clicks while a decision is in progress.
+2. Tests did not protect the follow-up loop: fixed. The loop moved into `followUpDecision`
+   (src/ui/api.ts) with injected read, sleep and active; six tests cover the retry bound, terminal
+   stop, failed read, unmount during a delay and unrelated unfinished requests. Removing the loop
+   fails 3 tests; removing the post-delay active check fails 1.
+3. Prompt history missing from this PR: fixed. The owner instruction (06e) and the review prompts
+   (06f, 06g) are committed here and appended to PROMPTS.md.
+4. Unmount did not cancel a delayed read: fixed. `active()` is checked after every delay, and
+   `refresh` returns early once the page is unmounted, so no read starts and no generation
+   advances after cleanup.
+5. Fragment credentials bypass mode separation: rebutted. An approval link minted by the old
+   fixture build carries a fixture sandbox id that the live API never admitted, so it gets 404 or
+   401 and the page shows the error; nothing is read or written. Noted in the DECISIONS entry.
+
+Re-check every round-1 finding against the new head, then review the whole diff again as a full
+round. Say for each round-1 item whether the fix holds.
+
+## PR body
+
+The PR claims: typecheck, lint and tests pass (364 tests, 11 added, none removed); planted
+defects turn the new tests red; a production bundle with no env var runs in live mode; after
+Approve the admin card reaches applied with no manual refresh, Refresh stays disabled during the
+follow-up and list reads never overlap (mocked API, Playwright); origin/main's bundle stays in
+fixture mode; not deployed.
+````
+
+## 2026-09-30T19:08:21-07:00 - PR #9 cross-review, round 3 (delta only)
+
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06h-ui-live-review-r3-delta.md
+- Outcome: APPROVE, no findings: all four read paths use the one queue, the queued-read counter keeps Approve disabled until reads drain, failures release the counter and queued reads check mounting first. Review loop for PR #9 complete; the owner merges.
+
+````text
+# PR #9 cross-review, round 3 (delta only)
+
+You are reviewing pull request #9 in this repository, branch `fix/ui-live-default`, authored by
+Claude Code (release engineer) at the owner's request. This is the third and last round and
+covers only the changes made after round 2. You are read-only: do not edit, commit, push, rebase
+or merge anything, and make no network calls or live model calls.
+
+The delta under review (round-2 head e4bb9d4e67e4718d365bafc6b43c5514c07b29f8):
+
+    git log --oneline origin/main..origin/fix/ui-live-default
+    git diff e4bb9d4e67e4718d365bafc6b43c5514c07b29f8..origin/fix/ui-live-default
+
+Round 2 (prompt-history/prompts/06g-ui-live-review-r2.md) requested one change: an earlier
+refresh (manual Refresh, then a window focus refresh) could clear `busy` while another list read
+was outstanding, so Approve became clickable and the decision follow-up overlapped that read.
+The author's fix:
+
+- `serialQueue` (src/ui/api.ts) runs tasks one at a time in call order; every admin list read
+  (initial, focus, Refresh, follow-up) goes through one queue.
+- `busy` is cleared only when no read is queued and no decision is in progress; a decision's
+  `finally` leaves the page busy while queued reads remain.
+- Two unit tests: no two reads at once with call order kept, and a failed read does not block
+  the next. Planting `const run = task();` (no waiting) fails the first.
+- Browser check reproducing your sequence (Refresh held 2 s, focus dispatched, then Approve):
+  on the round-1 head, peak concurrent reads 2 and Approve enabled while reads were queued; on
+  the new head, peak 1 and Approve disabled until the queue drained, then applied.
+- DECISIONS entry "ui: Admin re-fetches until the Workflow finishes a decision" amended inside
+  this PR (not yet merged) to describe the queue.
+
+Check: does the fix hold for the round-2 sequence and for any other ordering of initial, focus,
+Refresh and follow-up reads; can the queue deadlock or leak (a read after unmount, a stuck
+`busy`, a lost error); do the new tests check what is claimed; are VERIFIED / NOT VERIFIED
+honest. Do not re-review unchanged code except where the delta interacts with it.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each
+with severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest.
+End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
 ````
 
 ## 2026-09-30T18:32:32-07:00 - Evals figures and simulation follow-up
@@ -2819,3 +3048,18 @@ Harness: no-mistakes v1.41.2 (Claude)
 Run: 01M3TKGDQ50TB5190HDMM0VTT3
 Source: prompt-history/prompts/05g-evals-followup-review-r3.md (identifying log copied with a tool; exact generated prompt unavailable; supplied context is 05s-evals-followup-final-delta.md)
 Outcome: PASS; no source findings. Third and final review overall, delta only over 4dc3e9e..15520e0 (documentation/log evidence after the gate rebase). No fourth source review. Zero model calls.
+
+## 2026-09-30T23:06:30-07:00 - Evals WSL recovery
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05u-evals-wsl-recovery.md (copied with a tool)
+Outcome: (pending recovery validation)
+
+Recover PR #10 after WSL restarted. User instructed: every process is gone; check git status and branch against origin, redo interrupted steps, use docs/agent/no-mistakes.md recovery without --force, and if the PR conflicts merge main into the branch while keeping both sides of docs/DECISIONS.md. Then report where we are. Prior goal remains: ordinal words are not figures, cardinals/numerals are; require a matching successful simulation receipt so a coincidental current bill cannot pass; unit tests, regrade every recording, report changes, gate and PR then stop.
+
+Observed run 01M3TKGDQ50TB5190HDMM0VTT3 failed with daemon crashed during execution at CI after publishing ad782c5. GitHub CI for ad782c5 succeeded (run 36805107743). Guarded no-mistakes axi sync recovered published commits; safety ref refs/no-mistakes/recover/evals-wsl-recovery-ad782c5 preserves that head. Main is now a5b05f7 (PR #9); user explicitly requires a merge, not another published history rewrite. Resolve the only content conflict by preserving main's entire DECISIONS prefix and appending this lane's complete original suffix; do the same for PROMPTS. Main's PROMPTS also removed a final closing fence from the previous base; retain its canonical bytes rather than repairing unrelated prompt text. Incoming UI source/tests are exactly main, not lane edits. No grader, recording or results edits, no live calls.
+
+Recovery review scope ONLY: merge correctness, preservation of both append-only logs, unchanged already reviewed eval source/data, and accurate recovery evidence. Two full source reviews plus the third final delta already passed and are archived; do NOT conduct a fourth grader/source review. This recovery audit is distinct from the finished source-review convergence. Compare evals and original prompt files against ad782c5 for unchanged content, app/frozen files against origin/main for identical content, and both log suffixes against merge parents. Mandatory npm ci/typecheck/test and credential-free test plus main/head collection must run on recovered head. Existing 39-recording regrade and raw/corrected totals remain unchanged; zero new model calls or neurons.
+
+Recover through a fresh gate run after terminal failure; preserve the additive merge and all prior gate commits, never rebase/force-push published history. If dependency installation is missing, npm ci from frozen pins, never edit source/grades/recordings to fix test failures. Document phase must archive this recovery review identifying log in prompt-history/prompts/05g-evals-wsl-recovery-review.md, log role automated cross-review in PROMPTS with run id and outcome, mark exact generated prompt unavailable if not exposed. Supplied recovery context is copied/logged as 05u-evals-wsl-recovery.md. Refresh evals/followup-verification.md with actual post-merge command tails/collection counts/CI evidence and recovery state. Do not leave pending outcomes. Protected main log bytes must remain prefixes. Update existing PR #10; final description covers actual grader changes, all red-first evidence, raw/regraded totals, local-dev target/date/usage, correction reasons, test names, main/head collection, review history, crash recovery and additive merge. End VERIFIED/NOT VERIFIED. No merge, deploy, login, account, secret, contract or dependency changes; stop at checks-passed with PR open.
