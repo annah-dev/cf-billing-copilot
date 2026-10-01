@@ -795,3 +795,12 @@ static paths while `/api/*` and `/agents/*` went to the production Worker. Reaso
 production backend through the real UI code without a redeploy, which only the owner may run.
 
 Decided by: Release engineer under standing orders.
+
+## release: Transcripts stored gzip-compressed
+
+The export writes one `.jsonl.gz` per session (about 16 MB in total instead of about 70 MB of
+plain JSONL; the largest file is under 2 MB) and fails if any file reaches 50 MB. INDEX.md lists
+each file's raw and compressed size. This supersedes the size figure in "release: Transcripts are
+committed once, at the release PR". Reason: keep the repository small for reviewers who clone it.
+
+Decided by: Anna.

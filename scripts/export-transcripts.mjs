@@ -42,6 +42,7 @@ import {
 } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
+import { gunzipSync, gzipSync } from "node:zlib";
 
 const REPO_NAME = "cf-billing-copilot";
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), "..");
@@ -633,7 +634,10 @@ for (const s of sessions) {
   s.prompts = promptsOf(s, scrubbed);
   s.output = scrubbed.map((d) => JSON.stringify(d)).join("\n") + "\n";
   s.leftovers = leftovers(s.output);
+  s.gz = gzipSync(s.output, { level: 9 });
 }
+// Every committed file must stay well under GitHub's limits.
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
 const { entries, unmatched, gate } = crossCheck(sessions);
 const rel = (p) => relative(ROOT, p);
@@ -642,15 +646,15 @@ const fmtBytes = (n) => `${(n / 1024).toFixed(0)} KiB`;
 const index = [
   "# Session transcripts",
   "",
-  `Raw Claude Code and Codex session transcripts for this repo, exported by \`node scripts/export-transcripts.mjs\` on ${new Date().toISOString()}. One JSONL file per session, in start order, scrubbed as described in the script header: harness context that is not a prompt is replaced by \`<omitted: ...>\` markers, home paths by \`~\`, emails by \`<email>\` and secrets or tokens by \`<redacted:kind>\`. Sessions that started before ${SINCE.toISOString()} (the first commit) are not included.`,
+  `Raw Claude Code and Codex session transcripts for this repo, exported by \`node scripts/export-transcripts.mjs\` on ${new Date().toISOString()}. One gzip-compressed JSONL file per session (read with \`gzip -dc <file>\`), in start order, scrubbed as described in the script header: harness context that is not a prompt is replaced by \`<omitted: ...>\` markers, home paths by \`~\`, emails by \`<email>\` and secrets or tokens by \`<redacted:kind>\`. Sessions that started before ${SINCE.toISOString()} (the first commit) are not included.`,
   "",
   "Times are UTC. Cross-check results are in [CROSS-CHECK.md](CROSS-CHECK.md).",
   "",
-  "| File | Harness | Lane | Started | Ended | Size | Prompts | Why included |",
+  "| File | Harness | Lane | Started | Ended | Size (raw / gzip) | Prompts | Why included |",
   "|---|---|---|---|---|---|---|---|",
   ...sessions.map(
     (s) =>
-      `| [${s.id}.jsonl](${s.harness}/${s.id}.jsonl) | ${s.harness}${s.subagent ? " (subagent)" : ""} | ${s.lane} | ${s.started.toISOString().slice(0, 19)} | ${s.ended.toISOString().slice(0, 19)} | ${fmtBytes(s.output.length)} | ${s.subagent ? "n/a" : s.prompts.length} | ${s.reason.replace(/\|/g, "/")} |`
+      `| [${s.id}.jsonl.gz](${s.harness}/${s.id}.jsonl.gz) | ${s.harness}${s.subagent ? " (subagent)" : ""} | ${s.lane} | ${s.started.toISOString().slice(0, 19)} | ${s.ended.toISOString().slice(0, 19)} | ${fmtBytes(s.output.length)} / ${fmtBytes(s.gz.length)} | ${s.subagent ? "n/a" : s.prompts.length} | ${s.reason.replace(/\|/g, "/")} |`
   ),
   ""
 ].join("\n");
@@ -710,17 +714,25 @@ if (!CHECK_ONLY) {
     rmSync(join(OUT, h), { recursive: true, force: true });
   for (const s of sessions) {
     mkdirSync(join(OUT, s.harness), { recursive: true });
-    writeFileSync(join(OUT, s.harness, `${s.id}.jsonl`), s.output);
+    writeFileSync(join(OUT, s.harness, `${s.id}.jsonl.gz`), s.gz);
   }
   writeFileSync(join(OUT, "INDEX.md"), index);
   writeFileSync(join(OUT, "CROSS-CHECK.md"), scrubString(check));
   console.log(`wrote ${rel(OUT)}/`);
   // Verify what is on disk, not what is in memory.
   // INDEX.md and CROSS-CHECK.md name sessions with ids that look like random tokens.
-  const scan = (f) =>
-    leftovers(readFileSync(f, "utf8")).filter(
-      (x) => !(f.endsWith(".md") && x.startsWith("random-token"))
+  const scan = (f) => {
+    const bytes = readFileSync(f);
+    const text = (f.endsWith(".gz") ? gunzipSync(bytes) : bytes).toString(
+      "utf8"
     );
+    return [
+      ...(bytes.length >= MAX_FILE_BYTES ? ["file over 50 MB"] : []),
+      ...leftovers(text).filter(
+        (x) => !(f.endsWith(".md") && x.startsWith("random-token"))
+      )
+    ];
+  };
   const bad = walk(OUT, () => true).filter((f) => scan(f).length);
   if (bad.length) {
     console.error(
