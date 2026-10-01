@@ -123,3 +123,4 @@ Generated from each entry's timestamp by `node scripts/export-transcripts.mjs`; 
 | 117 | 2026-10-01 07:46 | [61. Test timeouts PR cross-review, round 3 (delta only)](../../PROMPTS.md#61-test-timeouts-pr-cross-review-round-3-delta-only) | `prompt-history/prompts/06p-test-timeouts-review-r3-delta.md` |
 | 118 | 2026-10-01 08:03 | [58. Release PR #14 cross-review, round 1](../../PROMPTS.md#58-release-pr-14-cross-review-round-1) | `prompt-history/prompts/06b-release-review-r1.md` |
 | 119 | 2026-10-01 08:20 | [62. Release PR #14 cross-review, round 2](../../PROMPTS.md#62-release-pr-14-cross-review-round-2) | `prompt-history/prompts/06c-release-review-r2.md` |
+| 120 | 2026-10-01 08:32 | [63. Release PR #14 cross-review, round 3 (delta only)](../../PROMPTS.md#63-release-pr-14-cross-review-round-3-delta-only) | `prompt-history/prompts/06d-release-review-r3-delta.md` |
