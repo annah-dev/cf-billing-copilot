@@ -119,3 +119,29 @@ only `regradedAt`: no issue added or removed and no verdict changed.
 All response bytes, raw grades, target/date and usage are unchanged. This follow-up made zero
 model calls and did not modify src/agent. Capture totals remain 79 calls and estimated 6,686
 neurons; results still describe local dev, not deployment.
+
+## Deployed run (release lane)
+
+One full run against the deployed demo, `https://cf-billing-copilot.anna-hester.workers.dev`,
+after PRs #9 to #12 merged and the owner redeployed main. Run date: 2026-10-01 UTC
+(`run-2026-10-01T07-35-39.703Z.json`). This is the pass rate the public README reports.
+
+| Run (UTC)          | Coverage           | Grade         | Model calls | Input / output tokens | Estimated neurons |
+| ------------------ | ------------------ | ------------- | ----------- | --------------------- | ----------------- |
+| 07:35:39 full set  | 15 cases, 17 turns | 11/15 (73.3%) | 43          | 125,702 / 2,126       | 3,797             |
+
+No rerun was made. The explicit all-recordings regrade then updated `replay.json`, which now
+describes this deployed snapshot; the two local-dev runs above are unchanged apart from their
+`regradedAt` time, and their recordings stay archived under `recordings/runs/`.
+
+The four failing cases, from the recordings (no new model call):
+
+| Case                      | Grader issue                                     | What the answer said                                                    |
+| ------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------- |
+| september-invoice         | missing $0.00; missing meaning "spike" or "unusual" | "with no credits"; "a critical anomaly ... 5x ... $11.60" on September 18 |
+| august-invoice            | missing $0.00                                    | "with no credits"                                                       |
+| request-tiers             | missing 102000                                   | tiers of 100,000 and 2,000 requests, no total quantity                  |
+| august-september-change   | missing meaning "spike" or "unusual"                | "a critical anomaly ... 5x ... $11.60" on September 18                  |
+
+The grader was not changed to pass these; whether "critical anomaly" and "no credits" should
+count is a grading decision for the evals owner, not the release lane.

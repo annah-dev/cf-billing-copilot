@@ -2064,6 +2064,7 @@ claude exited pid=137713 status=success
 - Harness: no-mistakes v1.41.2 (Claude), run 01M3R4YFDC2775KN88HGKXBJDV
 - Source: prompt-history/prompts/04l-ui-seed-document-log.md
 - Outcome: round-2 provenance was added by the gate; these exact instructions were omitted and are now recorded. Both full reviews completed, routing regression fixed, 146 tests passed normally and credential-free, browser checks and CI passed. No live model calls, deployment or merge.
+- Release annotation (2026-09-30, Reviewer and release engineer, from the exported transcripts; the entry above is unchanged): this text was written by the UI lane's Codex session (prompt-history/transcripts/codex, session 01a0efe2) at 2026-09-30T03:28:05Z, saved to a temporary file and passed to the gate with `no-mistakes axi respond --action fix` on run 01M3R4YFDC2775KN88HGKXBJDV; the same text was the prompt of a Codex subagent started at that moment (session 01a0f04a). Claude received it inside the gate's fix prompt in the no-mistakes worktree of run 01M3R5XQG8RXG4F1HVZZSJ3CHV, first at 2026-09-30T03:32:29Z (session 5c4428b5), not in run 01M3R4YFDC2775KN88HGKXBJDV as the Harness line says. The full generated fix prompt is in those gate transcripts.
 
 ````text
 Keep the original supplied gate intent verbatim: its count was accurate before review added the regression test. The present evidence accurately reports 146 tests, 113 baseline and 33 UI. Do not rewrite historical prompts or relax any checks.
@@ -3539,3 +3540,583 @@ each with severity, file and line, what is wrong and the fix. End with:
     VERIFIED:     <what you ran and observed>
     NOT VERIFIED: <what you did not exercise, and why>
 ````
+
+## 48. Release lane phase note
+
+- Timestamp: 2026-09-30T16:58:44-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06a-release-phase-note.md
+- Outcome: Phase 1: reviewed main (no secrets, no money math outside the engine, auth on every route); smoke-tested the live site by curl and, because the deployed UI was a fixture build, through a live-mode bundle against production; drafted the README; built the transcript export. Production findings went to PR #9 (UI) and PR #12 (agent). Phase 2 is the owner's phase 2 start note (entry 44, 06m).
+
+````text
+Note first, then follow prompt-history/prompts/06-release.md as your lane prompt, including logging it in PROMPTS.md.
+
+Note: I am away for about five hours. Do not wait on me: take your recommended option on anything within your decision rights and log it. For anything reserved to me (merge, deploy, login, secrets, force-push to main, account changes, contract changes), add it to a FOR ANNA list and keep going with everything it does not block. If wrangler authentication fails, do not try to log in.
+You work in two phases because the evals PR and an agent-fixes lane are still in flight.
+Phase 1, now: Main is deployed at https://cf-billing-copilot.anna-hester.workers.dev; I ran npm run deploy just before leaving. Review main, then smoke-test the live site: the duplicate-charge credit flow end to end through the UI (request, pending, approve in admin, credit applied, audit visible) and by curl, with fewer than 20 model calls. Record anything that fails only in production; if the fix belongs in src/agent, describe it for me instead of changing it. Draft the README. Build the prompt-history export; gate review sessions live under ~/.claude/projects/-home-annah-dev--no-mistakes-worktrees-*/ with no repo name in the path, so include them explicitly (match by time and content), scrubbed of secrets and home paths. Do not change src/agent or evals/.
+Phase 2, after I tell you the evals and agent-fixes PRs have merged: I redeploy, you rerun eval:live against the deployed URL once, put that pass rate and its date in the README, finish the export and the PROMPTS.md cross-check, and open the release PR.
+````
+
+## 49. Release lane kickoff
+
+- Timestamp: 2026-09-30T16:58:44-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06-release.md
+- Outcome: Release PR #14: README with every assignment section, deployed eval run (11/15 on 2026-10-01), scrubbed transcripts with the PROMPTS.md cross-check and time-order index, late entries 54 to 60. At the owner's request also PR #9 (UI live default, admin follow-up) and PR #13 (30 s test timeouts). Cross-review rounds for #14 follow this entry.
+
+````text
+# 06 - Release lane kickoff
+
+Role: Reviewer and release engineer. Harness: Claude Code. You start last, after the evals lane
+has merged. You work alone in this worktree (~/projects/wt/cf-billing-copilot-release, branch
+feat/release, cut from that main). You see this prompt, the assignment and the repo; nothing else.
+
+## Read first, in this order
+
+1. prompt-history/prompts/00-assignment.md: the deliverables and acceptance criteria you check.
+2. AGENTS.md: the rules, including Decision rights. They bind you.
+3. docs/agent/plan.md, section "release"; docs/agent/verification.md; docs/agent/cross-review.md.
+4. README.md, PROMPTS.md, docs/ARCHITECTURE.md, docs/DECISIONS.md, evals results.
+
+At session start, append this prompt to PROMPTS.md by copying this file with a tool (not by
+retyping), with an ISO-8601 timestamp with offset, role, harness "Claude Code", source path and
+outcome "(pending)". Fill in the outcome at the end.
+
+## Scope
+
+You own `README.md`, `scripts/export-transcripts.*`, `prompt-history/transcripts/` and the final
+PROMPTS.md pass, plus the append-only files. Application code is read only: a defect you find goes
+back to its owning lane as a small fix PR from that lane, or to the owner if no lane is open.
+
+Do, in order:
+
+1. **Reviewer pass over the whole repo**: no secrets or tokens anywhere (code, fixtures, recordings,
+   history); every tool input validated; no money math outside `src/engine/` and `formatUsd`;
+   approver-token and admission checks on every route; README claims match the code; no real
+   customer, employer or personal data; the only personal information is the owner's name as author.
+2. **README** with every section the assignment lists: pitch; how each of the four required
+   Cloudflare components is used; the architecture diagram; "the LLM never does money math"; the
+   demo script (5 clicks or questions covering every user story); local setup; deploy commands for
+   the owner; eval results with the live run's pass rate and date; known limitations and what a
+   production billing platform needs next; an honest note that it was built with AI-assisted
+   coding under the owner's direction; the Llama 3.3 streaming finding (docs/DECISIONS.md DEV-16
+   and D-14): with native streaming the tool arguments arrived garbled (quote the evidence
+   recorded in DEV-16), on both the pinned and the newest provider versions, and the fix is the AI
+   SDK's simulated streaming. Keep the existing "Cost and abuse controls" section (D-13) and the
+   scope line about duplicated debits versus refunds.
+   Put the demo URL at the top once the owner gives it to you.
+3. **Release checklist** in the README: deploy steps the owner runs, the smoke test of the credit
+   flow end to end, and the off switch: disable the workers.dev route in the Cloudflare dashboard,
+   which takes the demo offline without deleting data.
+4. **Transcript export**: a script that exports the raw Claude Code and Codex session transcripts
+   for this repo and its worktrees into prompt-history/transcripts/, scrubbed of secrets, tokens,
+   email addresses and home-directory paths, and cross-checks PROMPTS.md against them (every prompt
+   in a transcript is in PROMPTS.md and the other way round). Report any mismatch rather than
+   editing history.
+5. **PROMPTS.md**: complete, in order, every outcome filled in.
+
+README claims about the owner or about results are the owner's decision (AGENTS.md, Decision
+rights item 3): draft them, then put them in one batched question with a recommendation each.
+
+## Definition of done
+
+Every assignment acceptance box is checked with its evidence, or listed as not done with the
+reason. `npm run typecheck` and `npm test` pass.
+
+## Rules that are easy to miss
+
+- When web docs and the installed type definitions disagree, the installed types win.
+- No `wrangler deploy`, `wrangler secret put`, `wrangler login` or `gh pr merge`: give the owner the
+  exact command and stop.
+- Decisions go at the end of docs/DECISIONS.md headed `## release: <decision>` with "Decided by:
+  Release engineer under standing orders".
+- Plain ASCII in docs and comments. Small conventional commits, no co-author footers.
+
+## Review loop and finishing
+
+1. Rebase on origin/main, run the done-contract commands, push `feat/release` to origin and open
+   the PR with the evidence from docs/agent/verification.md, ending with VERIFIED and NOT VERIFIED
+   lines.
+2. Codex reviews it headless (docs/agent/cross-review.md): write the review prompt to
+   `prompt-history/prompts/06b-release-review-r1.md` (then `06c-...-r2`, `06d-...-r3`), log it in
+   PROMPTS.md with role "automated cross-review", and run
+   `codex exec -c model_reasoning_effort=high -o <scratch>/review-r1.md "$(cat <prompt-file>)"`.
+3. Fix or rebut each finding, push, post the round summary on the PR. Two full rounds, a third on
+   the delta only, then stop. Anything still disputed goes to the owner as a FOR ANNA list with
+   both positions.
+4. Never merge; the owner merges.
+````
+
+## 50. Owner answer: merge main, do not rebase (typed mid-session)
+
+- Timestamp: 2026-09-30T19:01:42-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06i-release-owner-merge-not-rebase.md
+- Outcome: Main was merged into feat/release (no rebase, no force-push) after #9, #11 and #12; duplicated entries kept once, in main's form.
+
+````text
+Merging main into feat/release in phase 2 is fine, and no rebase is needed since PRs are
+squash-merged. When main comes back in, keep one copy of each duplicated PROMPTS.md entry.
+````
+
+## 51. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)
+
+- Timestamp: 2026-09-30T19:24:33-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06j-release-owner-pr9-merged.md
+- Outcome: Acknowledged; the production agent fixes arrived as PR #12.
+
+````text
+Merged #9. You're right: the production fixes come in a separate agent-fixes PR, still to come.
+````
+
+## 52. Owner: WSL restart recovery (typed mid-session)
+
+- Timestamp: 2026-09-30T23:00:59-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06k-release-owner-wsl-restart.md
+- Outcome: Recovered: the merge commit had landed; checks rerun (443 passed, credential-free too) and pushed; this lane had no gate run; PR #10's interrupted gate run and conflict were reported to the owner.
+
+````text
+WSL restarted while you were working, so every process you started is gone: dev servers,
+background terminals and any no-mistakes run in progress. Before continuing, check git status and
+your branch against origin, redo any step that was cut off, and check any gate run with the
+recovery steps in docs/agent/no-mistakes.md rather than restarting the daemon with --force. If
+your open PR conflicts with main, merge main into your branch and keep both sides of
+docs/DECISIONS.md. Then report where you are.
+````
+
+## 53. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)
+
+- Timestamp: 2026-09-30T23:14:09-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06l-release-owner-pr10-pr11.md
+- Outcome: PR #10 left to the evals lane; after #11 merged, the README cost section notes the per-IP cap of 20 and why the monthly estimate does not change.
+
+````text
+A1: the evals lane handles #10. #11 is merged, so update the README cost section and its estimate
+in phase 2.
+````
+
+## 54. UI owner answer: preserve the old head and synchronize (typed mid-session, logged late)
+
+- Timestamp: 2026-09-30T03:09:35.508Z
+- Role: Frontend engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/06q-late-ui-owner-sync-answer.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T01-16_codex_ui_01a0efe2`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+<send_user_message_question_reply>
+[{"answer":"Yes, preserve the old head and synchronize (Recommended)","question":"The gate already rebased PR #5 onto the engine merge, but this clean worktree still has the old history. Its guarded sync refuses the diverged histories. I verified that the UI changes are preserved; the new head adds the merged engine and its logs. May I preserve the old local head in a safety ref and move this worktree to the gate's published head, 056a7a4? AGENTS.md reserves history changes for you, and the no-mistakes skill requires resolving a blocked sync before local commits.","questionItemId":"[\"request_user_input_async\",\"call_NaIO97YSQyKW4iMNja9izNPY\",0]"}]
+</send_user_message_question_reply>
+````
+
+## 55. Evals owner answer: base URL, local dev and budget (typed mid-session, logged late)
+
+- Timestamp: 2026-09-30T20:31:39.302Z
+- Role: QA / evals engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/06r-late-evals-owner-base-url-answer.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T03-34_codex_evals_01a0f060`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+<send_user_message_question_reply>
+[{"answer":"It is not deployed yet; the deploy happens in the release lane after the ui PR merges. Yes, use\nlocal dev with real Workers AI for now: record the replay fixtures and a first pass rate from it.\nMake the base URL a parameter (for example EVAL_BASE_URL, defaulting to local dev), and write the\nbase URL, date and model call count into every results file. Label this run \"local dev\". The\npass rate in the README will come from a rerun against\nhttps://cf-billing-copilot.anna-hester.workers.dev after deploy, done by the release lane.\nBudget: one full run, then reruns of failing questions only, no loops; report the total model\ncalls and estimated neurons. If the set needs more messages than one sandbox's daily cap, spread\nthe questions across sandboxes rather than raising the cap.","question":"What base URL should I use for the live eval run? The repo has no deployed demo URL configured. If it is not deployed yet, may I use local dev with real Workers AI instead?","questionItemId":"[\"request_user_input_async\",\"call_ZKaiKMN1BHUV11M0J2kMsvHo\",0]"}]
+</send_user_message_question_reply>
+````
+
+## 56. Agent fixes owner answer A1 (typed mid-session, logged late)
+
+- Timestamp: 2026-10-01T01:34:36.299Z
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06t-late-agent-fixes-owner-a1.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T23-57_claude_agent-fixes_3a287bd5`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+A1. Yes, those instructions are mine. Force-push feat/agent-fixes, run the two questions once, and start the second PR after #8 merges.
+````
+
+## 57. Agent fixes: release-lane pointers pasted by the owner (typed mid-session, logged late)
+
+- Timestamp: 2026-10-01T02:00:37.251Z
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06u-late-agent-fixes-release-pointers.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T23-57_claude_agent-fixes_3a287bd5`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+<pasted_content id="62fd">
+Pointers from the release lane for your second PR (hints, not decisions; verify them):
+- Error after confirming a credit: the raw error is masked by toolErrorText; log it in the
+  onError handlers in src/agent/billing-agent.ts, reproduce, then fix the cause.
+- Invented invoice id: validate the invoice before the confirmation is shown, or take a period and
+  look the id up server-side; add a prompt rule to look up the invoice before startCreditRequest.
+- Uncounted WebSocket writes: the client's cf_agent_chat_messages frames reach storage without
+  passing the message cap; check the cap before the SDK saves anything.
+</pasted_content id="62fd">
+````
+
+## 58. Agent fixes owner answer A3: merge main, remember-credit run (typed mid-session, logged late)
+
+- Timestamp: 2026-10-01T06:12:46.274Z
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06v-late-agent-fixes-owner-a3.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T23-57_claude_agent-fixes_3a287bd5`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+A3. #11 is merged. Merge main into fix/prod-chat, then run remember-credit once now under the new
+cap of 20 in local dev, and include its result in PR B. Then continue PR B's Codex review and live
+UI recheck, and open it when done.
+````
+
+## 59. Evals owner note: recover the PR #10 gate run after the WSL restart (typed mid-session, logged late)
+
+- Timestamp: 2026-10-01T06:13:43.476Z
+- Role: QA / evals engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/06s-late-evals-owner-wsl-recovery.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T03-34_codex_evals_01a0f060`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+Your gate run for PR #10 was cut off by the WSL restart ("daemon crashed during execution"). Check
+it with no-mistakes axi status and recover it with the steps in docs/agent/no-mistakes.md, without
+restarting the daemon with --force. Merge main into fix/evals-figures-simulation, keeping both sides
+of docs/DECISIONS.md, rerun the gate, and tell me when #10 is ready.
+````
+
+## 60. Agent fixes owner note: guard follows the grader's ordinal rule (typed mid-session, logged late)
+
+- Timestamp: 2026-10-01T06:38:35.547Z
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06w-late-agent-fixes-owner-guard-ordinals.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T23-57_claude_agent-fixes_3a287bd5`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+#10 is merged: the grader no longer treats ordinal words such as "first" or "second" as figures.
+Make the guard follow the same rule in fix/prod-chat (merge main in first), with a test, and keep
+the guard-versus-grader agreement test passing.
+````
+
+## Release note: outcomes recorded in later entries
+
+Seven entries above still read "Outcome: (pending)". Their lanes kept PROMPTS.md append-only and
+recorded the outcome in a later entry instead, so the release pass leaves those lines as written and
+points to where each outcome is:
+
+| Entry still marked pending | Outcome recorded in |
+|---|---|
+| 2026-09-29T17:25:01-07:00 - Engine lane kickoff | Engine lane kickoff - final outcome |
+| 2026-09-29T18:44:47-07:00 - Engine seed realism and gate prompt recovery | Engine seed realism and gate prompt recovery - final outcome |
+| 2026-09-29T20:35:34-07:00 - Evals early-start note | Evals early-start preparation - checkpoint outcome |
+| 2026-09-29T20:35:34-07:00 - Evals lane kickoff | Evals early-start preparation - checkpoint outcome, then 2026-09-30T14:21:35-07:00 - Evals final grading and gate-start outcome |
+| 2026-09-30T13:31:37-07:00 - Evals live capture and count grounding | 2026-09-30T14:04:40-07:00 - Evals local capture outcome |
+| 2026-09-30T13:33:04-07:00 - Evals local dev target and budget | 2026-09-30T14:04:40-07:00 - Evals local capture outcome |
+| 2026-09-30T14:54:53-07:00 - Evals harness verdict tests and failure analysis | 2026-09-30T15:11:47-07:00 - Verdict-test redesign outcome before gate |
+
+## 61. Release PR #14 cross-review, round 1
+
+- Timestamp: 2026-10-01T01:03:08-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06b-release-review-r1.md
+- Outcome: CHANGES REQUESTED, 2 major and 1 minor: unrelated owner context left in the export (environment blocks, Codex harness settings, a project alias), the README's "every prompt" claim before PR #13's review prompts were logged, and a jq filter that lost the panel context. All fixed.
+
+````text
+# PR #14 (release) cross-review, round 1 (full)
+
+You are reviewing pull request #14, branch `feat/release`, authored by Claude Code (reviewer and
+release engineer). You are read-only: do not edit, commit, push, rebase or merge anything, and make
+no network calls or live model calls (do not run `npm run dev`, `npm run eval:live` or anything that
+reaches Workers AI or the deployed site).
+
+The diff under review:
+
+    git diff origin/main...origin/feat/release
+
+Check it against prompt-history/prompts/00-assignment.md (acceptance criteria), the lane prompt
+prompt-history/prompts/06-release.md and the owner's notes 06a, 06e and 06i to 06m, AGENTS.md,
+docs/agent/cross-review.md ("What the reviewer checks"), docs/agent/verification.md and
+docs/agent/plan.md (lane "release"). The PR body (`gh pr view 14`, if your sandbox has network;
+otherwise say so) claims every acceptance box with evidence.
+
+Focus on:
+
+1. README accuracy. Every claim must match the code, docs/DECISIONS.md and the eval results:
+   the four components and the files named, caps and cost figures (wrangler.jsonc vars, D-7, the
+   D-7 amendment, D-13), the five-step demo and which user story each covers, setup and deploy
+   commands (the UI's API mode default after PR #9), the release checklist (including the off
+   switch), the eval result (evals/results/run-2026-10-01T07-35-39.703Z.json, replay.json) and the
+   description of its four misses, the Llama 3.3 streaming finding against DEV-16 and D-14, the five
+   owner calls in "How this was built" against the linked DECISIONS entries and PROMPTS.md entries
+   (do the anchors resolve?), and that repository and deployment URLs appear only in the Links
+   block. Claims about the owner are the owner's to make; flag any that the repository does not
+   support.
+2. The transcript export (scripts/export-transcripts.mjs and prompt-history/transcripts/). Could
+   it leak secrets, tokens, emails, home paths, account ids or the owner's unrelated projects?
+   Sample several .jsonl.gz files (`gzip -dc`). Is selection correct (this repo's worktrees and
+   gate runs only)? Does the cross-check report honestly, and does the PROMPTS index link
+   correctly? The private term list is git-ignored by design; check it is not committed.
+3. PROMPTS.md and docs/DECISIONS.md: append-only respected (diff against origin/main must remove
+   no line), late entries 51 to 57 match their prompt files and their transcript source, entry 24's
+   annotation is factual, every DECISIONS entry ends with "Decided by", and the eval result files
+   changed only as the evals README's regrade procedure allows (recordings replaced by the deployed
+   run, earlier runs archived, older run files changing only `regradedAt`).
+4. Rules: no application code changed (src/, tests/ except none, wrangler.jsonc and other frozen
+   files untouched), plain ASCII in docs (verbatim prompt text exempt), done-contract evidence,
+   and VERIFIED / NOT VERIFIED honesty.
+
+You may run `npm ci`, `npm run typecheck`, `npm test`, `npx vitest list` and
+`node scripts/export-transcripts.mjs --prompts-index` (read-only) in a scratch copy if your
+sandbox allows; do not run the export itself, which writes files. Say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
+severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 62. Release PR #14 cross-review, round 2
+
+- Timestamp: 2026-10-01T01:20:19-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06c-release-review-r2.md
+- Outcome: APPROVE, no new findings: all three round-1 items resolved; 119 transcripts (25,536 records) scanned and sampled with nothing personal or secret found; 514 tests pass normally and credential-free.
+
+````text
+# PR #14 (release) cross-review, round 2 (full)
+
+You are reviewing pull request #14, branch `feat/release`, again after the round-1 fixes. You are
+read-only: do not edit, commit, push, rebase or merge anything, and make no network calls or live
+model calls (do not run `npm run dev`, `npm run eval:live`, the transcript export itself, or
+anything that reaches Workers AI or the deployed site).
+
+The diff under review:
+
+    git diff origin/main...origin/feat/release
+
+Check it against the same documents as round 1 (prompt-history/prompts/06b-release-review-r1.md):
+the assignment, the lane prompt 06-release.md and the owner's notes, AGENTS.md,
+docs/agent/cross-review.md, docs/agent/verification.md and docs/agent/plan.md (lane "release").
+
+Round 1 requested changes; the author's dispositions:
+
+1. Unrelated owner context in the export (major): fixed. Every `<environment_context>` block is
+   omitted in any string; Codex `turn_context` keeps only turn id, root turn id, cwd, date,
+   timezone, model and effort; `world_state` and `thread_settings_applied` payloads are omitted;
+   the git-ignored private term list gained the project alias you found. Remaining mentions of
+   the owner's own skills repository path are inside real tool outputs (an agent printing session
+   JSON while investigating) and are left as tool output.
+2. "Every prompt is in PROMPTS.md" before PR #13's review prompts were logged (major): fixed. The
+   three PR #13 review prompt files (06n, 06o, 06p) and their entries (59 to 61) are on this
+   branch, identical to PR #13's; the cross-check now reports 0 in both directions; the
+   chronological index was regenerated and moved to the end of PROMPTS.md.
+3. jq filter losing the panel context (minor): fixed with your suggested filter.
+
+Re-check each round-1 item, then review the whole diff again as a full round, including a fresh
+sample of the transcripts (`gzip -dc`) for anything personal, unrelated or secret. Report a
+verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with severity
+(blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 63. Release PR #14 cross-review, round 3 (delta only)
+
+- Timestamp: 2026-10-01T01:32:50-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06d-release-review-r3-delta.md
+- Outcome: APPROVE, no findings: the delta is records only; logged prompts match their files byte for byte; both indexes match the generator; the changed transcripts carry no personal, unrelated or secret content. Review loop for PR #14 complete; the owner merges.
+
+````text
+# PR #14 (release) cross-review, round 3 (delta only)
+
+You are reviewing pull request #14, branch `feat/release`, for the third and last round,
+covering only the changes since round 2. You are read-only: do not edit, commit, push, rebase or
+merge anything, and make no network or live model calls (do not run the transcript export).
+
+Round 2 (prompt-history/prompts/06c-release-review-r2.md) reviewed head 5503af33b7fe9672cab159d89b01e033689021d1 and approved with no
+findings. The delta under review:
+
+    git diff 5503af33b7fe9672cab159d89b01e033689021d1..origin/feat/release
+
+It should contain only records: the round-2 outcome and this round-3 entry in PROMPTS.md, the
+regenerated chronological index, this prompt file, and the re-exported transcripts and
+cross-check (which now include the round-2 review session). Check that the delta changes no code,
+configuration, test or README text; that the logged prompts match their files byte for byte; that
+the index matches `node scripts/export-transcripts.mjs --prompts-index`; that the cross-check
+reports nothing missing except this round-3 prompt if its session ran after the export; and sample
+the new or changed transcripts (`gzip -dc`) for anything personal, unrelated or secret.
+
+Report a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
+severity, file and line, what is wrong and the fix. End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 64. Owner: C1 A1 B1 with changes, and the architecture diagram (typed mid-session)
+
+- Timestamp: 2026-10-01T03:07:31-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06x-release-owner-c1-a1-b1-diagram.md
+- Outcome: (pending)
+
+````text
+C1 A1 B1, with changes.
+
+C1: I merged #13. Merge origin/main into feat/release (merge, not rebase). Keep both sides of the PROMPTS.md and DECISIONS.md conflicts, with #13's entries once. Push and tell me when CI is green on #14.
+
+After I merge #14, open one follow-up PR from a fresh origin/main covering A, B and the diagram, with the usual three-round Codex review:
+
+A1: after the customer confirms a credit, refresh the panel on a short bounded schedule (at most 5 reads) until the request leaves "requested". Keep the focus refresh. Remove the manual Refresh from README demo steps 4 and 5 and from the release checklist.
+
+B1, but pass { idempotent: false }, not true. Reason: the SDK's idempotent mode matches callback and payload and ignores the time. When idleSweep runs from the alarm, its own row still exists until the callback returns, so an idempotent re-arm would return that row and the sandbox would never be swept again. armIdleSweep already keeps exactly one pending row; false only silences the warning. Add a test that fires the sweep through the alarm path with recent activity and checks that one future idleSweep remains.
+
+Diagram: copy cf-billing-copilot-architecture.excalidraw and cf-billing-copilot-architecture.svg from my Windows Downloads folder into docs/ as architecture.excalidraw and architecture.svg (chmod 644). Embed the SVG in the README Architecture section and at the top of docs/ARCHITECTURE.md, keeping the Mermaid. Note that the source opens at excalidraw.com. Check every label against the code and list anything wrong rather than editing the SVG. Log it in PROMPTS.md as drawn with Claude (Cowork); my prompt was "I'd like to include an architecture diagram built in excalidraw for the project. Build it for me".
+
+End the PR with one final transcript export so the prompt history covers this work too.
+````
+
+## Chronological index
+
+Every entry in this file in time order (UTC), generated by `node scripts/export-transcripts.mjs --prompts-index` at the release pass. Lanes appended in parallel, so file order is not time order.
+
+| # | Time (UTC) | Entry | Source |
+|---|---|---|---|
+| 1 | 2026-09-29 21:26 | [1. Assignment](#1-assignment) | `prompt-history/prompts/00-assignment.md` |
+| 2 | 2026-09-29 21:30 | [2. Architect kickoff (Stop 1 and Stop 2)](#2-architect-kickoff-stop-1-and-stop-2) | `prompt-history/prompts/01-architect.md` |
+| 3 | 2026-09-29 22:46 | [3. Stop 1 decisions and standing orders (typed mid-session)](#3-stop-1-decisions-and-standing-orders-typed-mid-session) | `prompt-history/prompts/01a-stop1-decisions.md` |
+| 4 | 2026-09-29 22:48 | [4. PR #1 cross-review, round 1](#4-pr-1-cross-review-round-1) | `prompt-history/prompts/01b-review-pr1-r1.md` |
+| 5 | 2026-09-29 22:56 | [5. PR #1 cross-review, round 2](#5-pr-1-cross-review-round-2) | `prompt-history/prompts/01c-review-pr1-r2.md` |
+| 6 | 2026-09-29 23:04 | [6. PR #1 cross-review, round 3 (delta only)](#6-pr-1-cross-review-round-3-delta-only) | `prompt-history/prompts/01d-review-pr1-r3.md` |
+| 7 | 2026-09-29 23:16 | [7. D-13 answer and Stop 2 go (typed mid-session)](#7-d-13-answer-and-stop-2-go-typed-mid-session) | `prompt-history/prompts/01e-stop2-go.md` |
+| 8 | 2026-09-29 23:42 | [8. PR #2 cross-review, round 1](#8-pr-2-cross-review-round-1) | `prompt-history/prompts/01f-review-pr2-r1.md` |
+| 9 | 2026-09-29 23:55 | [9. PR #2 cross-review, round 2](#9-pr-2-cross-review-round-2) | `prompt-history/prompts/01g-review-pr2-r2.md` |
+| 10 | 2026-09-30 00:04 | [10. PR #2 cross-review, round 3 (delta only)](#10-pr-2-cross-review-round-3-delta-only) | `prompt-history/prompts/01h-review-pr2-r3.md` |
+| 11 | 2026-09-30 00:14 | [11. PR #2 billing semantics round (typed mid-session)](#11-pr-2-billing-semantics-round-typed-mid-session) | `prompt-history/prompts/01i-pr2-billing-semantics.md` |
+| 12 | 2026-09-30 00:16 | [12. PR #2 cross-review, owner round (delta only)](#12-pr-2-cross-review-owner-round-delta-only) | `prompt-history/prompts/01j-review-pr2-delta.md` |
+| 13 | 2026-09-30 00:25 | [2026-09-29T17:25:01-07:00 - Engine lane kickoff](#2026-09-29t172501-0700---engine-lane-kickoff) | `prompt-history/prompts/02-engine.md` |
+| 14 | 2026-09-30 00:25 | [13. Agent lane kickoff](#13-agent-lane-kickoff) | `prompt-history/prompts/03-agent.md` |
+| 15 | 2026-09-30 00:49 | [2026-09-29T17:49:03-07:00 - Engine gate review round 1](#2026-09-29t174903-0700---engine-gate-review-round-1) | `prompt-history/prompts/02g-engine-gate-review-r1.md` |
+| 16 | 2026-09-30 00:56 | [2026-09-29T17:56:42-07:00 - Engine gate review round 2](#2026-09-29t175642-0700---engine-gate-review-round-2) | `prompt-history/prompts/02g-engine-gate-review-r2.md` |
+| 17 | 2026-09-30 00:58 | [2026-09-29T17:58:21-07:00 - Engine gate review round 3 (final, delta only)](#2026-09-29t175821-0700---engine-gate-review-round-3-final-delta-only) | `prompt-history/prompts/02g-engine-gate-review-r3.md` |
+| 18 | (none) | [Engine lane kickoff - final outcome](#engine-lane-kickoff---final-outcome) | `prompt-history/prompts/02-engine.md` |
+| 19 | 2026-09-30 01:08 | [14. Agent PR #4 cross-review, round 1](#14-agent-pr-4-cross-review-round-1) | `prompt-history/prompts/03b-agent-review-r1.md` |
+| 20 | 2026-09-30 01:17 | [13. UI restart after duplicate launches](#13-ui-restart-after-duplicate-launches) | `prompt-history/prompts/04a-ui-restart.md` |
+| 21 | 2026-09-30 01:17 | [14. UI lane kickoff](#14-ui-lane-kickoff) | `prompt-history/prompts/04-ui.md` |
+| 22 | 2026-09-30 01:29 | [15. Agent PR #4 cross-review, round 2](#15-agent-pr-4-cross-review-round-2) | `prompt-history/prompts/03c-agent-review-r2.md` |
+| 23 | 2026-09-30 01:37 | [15. UI gate review, round 1](#15-ui-gate-review-round-1) | `prompt-history/prompts/04g-ui-gate-review-r1.md` |
+| 24 | 2026-09-30 01:40 | [16. UI gate fix instruction, round 1](#16-ui-gate-fix-instruction-round-1) | `prompt-history/prompts/04b-ui-gate-fix-r1.md` |
+| 25 | 2026-09-30 01:43 | [17. UI gate review, round 2](#17-ui-gate-review-round-2) | `prompt-history/prompts/04g-ui-gate-review-r2.md` |
+| 26 | 2026-09-30 01:43 | [18. UI gate test setup instruction](#18-ui-gate-test-setup-instruction) | `prompt-history/prompts/04c-ui-gate-test-setup.md` |
+| 27 | 2026-09-30 01:44 | [2026-09-29T18:44:47-07:00 - Engine seed realism and gate prompt recovery](#2026-09-29t184447-0700---engine-seed-realism-and-gate-prompt-recovery) | `prompt-history/prompts/02c-engine-seed-realism-followup.md` |
+| 28 | 2026-09-30 01:44 | [2026-09-29T18:44:47-07:00 - Recovered engine gate review round 1](#2026-09-29t184447-0700---recovered-engine-gate-review-round-1) | `prompt-history/prompts/02g-engine-gate-review-r1.md` |
+| 29 | 2026-09-30 01:44 | [2026-09-29T18:44:47-07:00 - Recovered engine gate review round 2](#2026-09-29t184447-0700---recovered-engine-gate-review-round-2) | `prompt-history/prompts/02g-engine-gate-review-r2.md` |
+| 30 | 2026-09-30 01:44 | [2026-09-29T18:44:47-07:00 - Recovered engine gate review round 3](#2026-09-29t184447-0700---recovered-engine-gate-review-round-3) | `prompt-history/prompts/02g-engine-gate-review-r3.md` |
+| 31 | 2026-09-30 01:47 | [16. Agent PR #4 cross-review, round 3 (delta only)](#16-agent-pr-4-cross-review-round-3-delta-only) | `prompt-history/prompts/03d-agent-review-r3.md` |
+| 32 | 2026-09-30 01:55 | [2026-09-29T18:55:18-07:00 - Engine gate review round 4 (seed realism follow-up)](#2026-09-29t185518-0700---engine-gate-review-round-4-seed-realism-follow-up) | `prompt-history/prompts/02g-engine-gate-review-r4.md` |
+| 33 | (none) | [Engine seed realism and gate prompt recovery - final outcome](#engine-seed-realism-and-gate-prompt-recovery---final-outcome) | `prompt-history/prompts/02c-engine-seed-realism-followup.md` |
+| 34 | 2026-09-30 02:26 | [17. Misdirected paste (engine lane text, typed mid-session)](#17-misdirected-paste-engine-lane-text-typed-mid-session) | `prompt-history/prompts/03e-agent-misdirected-engine-paste.md` |
+| 35 | 2026-09-30 02:26 | [18. /turn confirmation answer (A3) and live evidence (typed mid-session)](#18-turn-confirmation-answer-a3-and-live-evidence-typed-mid-session) | `prompt-history/prompts/03f-agent-owner-turn-confirm-and-live.md` |
+| 36 | 2026-09-30 02:29 | [19. Contract PR #6 cross-review (turn confirm, D-20)](#19-contract-pr-6-cross-review-turn-confirm-d-20) | `prompt-history/prompts/03g-agent-contract-pr6-review.md` |
+| 37 | 2026-09-30 02:35 | [20. Agent PR #4 cross-review, round 4 (delta only, owner-requested)](#20-agent-pr-4-cross-review-round-4-delta-only-owner-requested) | `prompt-history/prompts/03h-agent-review-r4-delta.md` |
+| 38 | 2026-09-30 03:09 | [54. UI owner answer: preserve the old head and synchronize (typed mid-session, logged late)](#54-ui-owner-answer-preserve-the-old-head-and-synchronize-typed-mid-session-logged-late) | `prompt-history/prompts/06q-late-ui-owner-sync-answer.md` |
+| 39 | 2026-09-30 03:10 | [19. UI shared-seed follow-up](#19-ui-shared-seed-follow-up) | `prompt-history/prompts/04d-ui-seed-followup.md` |
+| 40 | 2026-09-30 03:14 | [20. UI shared-seed gate intent](#20-ui-shared-seed-gate-intent) | `prompt-history/prompts/04h-ui-seed-gate-intent.md` |
+| 41 | 2026-09-30 03:20 | [21. UI shared-seed gate review, round 1](#21-ui-shared-seed-gate-review-round-1) | `prompt-history/prompts/04j-ui-seed-review-r1.md` |
+| 42 | 2026-09-30 03:20 | [22. UI shared-seed gate fix instruction, round 1](#22-ui-shared-seed-gate-fix-instruction-round-1) | `prompt-history/prompts/04i-ui-seed-review-fix-r1.md` |
+| 43 | 2026-09-30 03:21 | [23. UI shared-seed gate review, round 2](#23-ui-shared-seed-gate-review-round-2) | `prompt-history/prompts/04k-ui-seed-review-r2.md` |
+| 44 | 2026-09-30 03:31 | [24. UI shared-seed documentation instruction record](#24-ui-shared-seed-documentation-instruction-record) | `prompt-history/prompts/04l-ui-seed-document-log.md` |
+| 45 | 2026-09-30 03:31 | [25. UI shared-seed third review, delta only](#25-ui-shared-seed-third-review-delta-only) | `prompt-history/prompts/04m-ui-seed-delta-review.md` |
+| 46 | 2026-09-30 03:35 | [2026-09-29T20:35:34-07:00 - Evals early-start note](#2026-09-29t203534-0700---evals-early-start-note) | `prompt-history/prompts/05a-evals-early-start.md` |
+| 47 | 2026-09-30 03:35 | [2026-09-29T20:35:34-07:00 - Evals lane kickoff](#2026-09-29t203534-0700---evals-lane-kickoff) | `prompt-history/prompts/05-evals.md` |
+| 48 | 2026-09-30 03:36 | [26. UI shared-seed gate test setup instruction](#26-ui-shared-seed-gate-test-setup-instruction) | `prompt-history/prompts/04n-ui-seed-gate-test-setup-final.md` |
+| 49 | 2026-09-30 03:41 | [21. Anomaly determinism and final review (typed mid-session)](#21-anomaly-determinism-and-final-review-typed-mid-session) | `prompt-history/prompts/03i-agent-owner-anomaly-and-final-review.md` |
+| 50 | 2026-09-30 03:41 | [22. Agent PR #4 cross-review, round 5 (final, delta only, owner-requested)](#22-agent-pr-4-cross-review-round-5-final-delta-only-owner-requested) | `prompt-history/prompts/03j-agent-review-r5-delta.md` |
+| 51 | 2026-09-30 03:56 | [2026-09-29T20:56:49-07:00 - Evals gate review context](#2026-09-29t205649-0700---evals-gate-review-context) | `prompt-history/prompts/05b-evals-review-context.md` |
+| 52 | 2026-09-30 20:28 | [27. UI rebase after agent merge](#27-ui-rebase-after-agent-merge) | `prompt-history/prompts/04o-ui-agent-merge-rebase.md` |
+| 53 | 2026-09-30 20:28 | [28. UI agent-merge gate intent](#28-ui-agent-merge-gate-intent) | `prompt-history/prompts/04p-ui-agent-merge-gate-intent.md` |
+| 54 | 2026-09-30 20:31 | [29. UI agent-merge rebase conflict fix instruction](#29-ui-agent-merge-rebase-conflict-fix-instruction) | `prompt-history/prompts/04q-ui-agent-merge-rebase-fix.md` |
+| 55 | 2026-09-30 20:31 | [2026-09-30T13:31:37-07:00 - Evals live capture and count grounding](#2026-09-30t133137-0700---evals-live-capture-and-count-grounding) | `prompt-history/prompts/05c-evals-live-and-counts.md` |
+| 56 | 2026-09-30 20:31 | [2026-09-30T13:31:37-07:00 - Evals historical gate review round 1](#2026-09-30t133137-0700---evals-historical-gate-review-round-1) | `prompt-history/prompts/05g-evals-gate-review-r1.md` |
+| 57 | 2026-09-30 20:31 | [2026-09-30T13:31:37-07:00 - Evals historical gate review round 2](#2026-09-30t133137-0700---evals-historical-gate-review-round-2) | `prompt-history/prompts/05g-evals-gate-review-r2.md` |
+| 58 | 2026-09-30 20:31 | [2026-09-30T13:31:37-07:00 - Evals historical gate review round 3](#2026-09-30t133137-0700---evals-historical-gate-review-round-3) | `prompt-history/prompts/05g-evals-gate-review-r3.md` |
+| 59 | 2026-09-30 20:31 | [55. Evals owner answer: base URL, local dev and budget (typed mid-session, logged late)](#55-evals-owner-answer-base-url-local-dev-and-budget-typed-mid-session-logged-late) | `prompt-history/prompts/06r-late-evals-owner-base-url-answer.md` |
+| 60 | 2026-09-30 20:33 | [2026-09-30T13:33:04-07:00 - Evals local dev target and budget](#2026-09-30t133304-0700---evals-local-dev-target-and-budget) | `prompt-history/prompts/05d-evals-local-dev-budget.md` |
+| 61 | 2026-09-30 20:46 | [30. UI agent-merge evidence refresh instruction](#30-ui-agent-merge-evidence-refresh-instruction) | `prompt-history/prompts/04r-ui-agent-merge-evidence-fix.md` |
+| 62 | 2026-09-30 20:46 | [31. UI agent-merge delta review provenance](#31-ui-agent-merge-delta-review-provenance) | `prompt-history/prompts/04s-ui-agent-merge-review.md` |
+| 63 | 2026-09-30 21:04 | [2026-09-30T14:04:40-07:00 - Evals local capture outcome](#2026-09-30t140440-0700---evals-local-capture-outcome) |  |
+| 64 | 2026-09-30 21:07 | [2026-09-30T14:07:30-07:00 - Live evals source review context](#2026-09-30t140730-0700---live-evals-source-review-context) | `prompt-history/prompts/05f-evals-live-review-context.md` |
+| 65 | 2026-09-30 21:21 | [2026-09-30T14:21:35-07:00 - Evals final grading and gate-start outcome](#2026-09-30t142135-0700---evals-final-grading-and-gate-start-outcome) |  |
+| 66 | 2026-09-30 21:54 | [2026-09-30T14:54:53-07:00 - Evals harness verdict tests and failure analysis](#2026-09-30t145453-0700---evals-harness-verdict-tests-and-failure-analysis) | `prompt-history/prompts/05h-evals-verdict-tests.md` |
+| 67 | 2026-09-30 22:08 | [2026-09-30T15:08:42-07:00 - Evals harness cross-review context](#2026-09-30t150842-0700---evals-harness-cross-review-context) | `prompt-history/prompts/05i-evals-harness-review-context.md` |
+| 68 | 2026-09-30 22:11 | [2026-09-30T15:11:47-07:00 - Verdict-test redesign outcome before gate](#2026-09-30t151147-0700---verdict-test-redesign-outcome-before-gate) | `prompt-history/prompts/05h-evals-verdict-tests.md` |
+| 69 | 2026-09-30 22:18 | [2026-09-30T15:18:56-07:00 - Evals gate rebase fix](#2026-09-30t151856-0700---evals-gate-rebase-fix) | `prompt-history/prompts/05j-evals-gate-rebase-fix.md` |
+| 70 | 2026-09-30 22:25 | [2026-09-30T15:25:59-07:00 - Evals harness gate review round 1](#2026-09-30t152559-0700---evals-harness-gate-review-round-1) | `prompt-history/prompts/05g-evals-harness-review-r1.md` |
+| 71 | 2026-09-30 22:25 | [2026-09-30T15:25:59-07:00 - Evals gate F2 fix](#2026-09-30t152559-0700---evals-gate-f2-fix) | `prompt-history/prompts/05k-evals-gate-F2-fix.md` |
+| 72 | 2026-09-30 23:46 | [2026-09-30T16:46:29-07:00 - Evals owner grounding rule](#2026-09-30t164629-0700---evals-owner-grounding-rule) | `prompt-history/prompts/05l-evals-owner-grounding-rule.md` |
+| 73 | 2026-09-30 23:52 | [2026-09-30T16:52:08-07:00 - Evals harness gate review round 2](#2026-09-30t165208-0700---evals-harness-gate-review-round-2) | `prompt-history/prompts/05g-evals-harness-review-r2.md` |
+| 74 | 2026-09-30 23:52 | [2026-09-30T16:52:08-07:00 - Evals gate grounding fix](#2026-09-30t165208-0700---evals-gate-grounding-fix) | `prompt-history/prompts/05m-evals-gate-grounding-fix.md` |
+| 75 | 2026-09-30 23:57 | [32. Agent fixes kickoff](#32-agent-fixes-kickoff) | `prompt-history/prompts/07-agent-fixes.md` |
+| 76 | 2026-09-30 23:58 | [48. Release lane phase note](#48-release-lane-phase-note) | `prompt-history/prompts/06a-release-phase-note.md` |
+| 77 | 2026-09-30 23:58 | [49. Release lane kickoff](#49-release-lane-kickoff) | `prompt-history/prompts/06-release.md` |
+| 78 | 2026-10-01 00:00 | [2026-09-30T17:00:13-07:00 - Evals harness gate review round 3 (grounding delta only)](#2026-09-30t170013-0700---evals-harness-gate-review-round-3-grounding-delta-only) | `prompt-history/prompts/05n-evals-grounding-delta-review.md` |
+| 79 | 2026-10-01 00:00 | [2026-09-30T17:00:13-07:00 - Evals away standing orders](#2026-09-30t170013-0700---evals-away-standing-orders) | `prompt-history/prompts/05o-evals-away-standing-orders.md` |
+| 80 | 2026-10-01 00:26 | [33. Agent fixes cross-review, round 1](#33-agent-fixes-cross-review-round-1) | `prompt-history/prompts/07a-agent-fixes-review-r1.md` |
+| 81 | 2026-10-01 00:41 | [34. Agent fixes cross-review, round 2](#34-agent-fixes-cross-review-round-2) | `prompt-history/prompts/07b-agent-fixes-review-r2.md` |
+| 82 | 2026-10-01 00:57 | [35. Agent fixes cross-review, round 3 (delta only)](#35-agent-fixes-cross-review-round-3-delta-only) | `prompt-history/prompts/07c-agent-fixes-review-r3-delta.md` |
+| 83 | 2026-10-01 01:31 | [2026-09-30T18:31:21-07:00 - Owner answers to the release phase 1 report (typed mid-session)](#2026-09-30t183121-0700---owner-answers-to-the-release-phase-1-report-typed-mid-session) | `prompt-history/prompts/06e-release-owner-phase1-answers.md` |
+| 84 | 2026-10-01 01:32 | [2026-09-30T18:32:32-07:00 - Evals figures and simulation follow-up](#2026-09-30t183232-0700---evals-figures-and-simulation-follow-up) | `prompt-history/prompts/05p-evals-figures-simulation-followup.md` |
+| 85 | 2026-10-01 01:34 | [56. Agent fixes owner answer A1 (typed mid-session, logged late)](#56-agent-fixes-owner-answer-a1-typed-mid-session-logged-late) | `prompt-history/prompts/06t-late-agent-fixes-owner-a1.md` |
+| 86 | 2026-10-01 01:40 | [2026-09-30T18:40:16-07:00 - PR #9 cross-review, round 1](#2026-09-30t184016-0700---pr-9-cross-review-round-1) | `prompt-history/prompts/06f-ui-live-review-r1.md` |
+| 87 | 2026-10-01 01:42 | [2026-09-30T18:42:41-07:00 - Evals follow-up cross-review context](#2026-09-30t184241-0700---evals-follow-up-cross-review-context) | `prompt-history/prompts/05q-evals-followup-gate-context.md` |
+| 88 | 2026-10-01 01:47 | [36. Production chat fixes and rebase instructions (owner, mid-session)](#36-production-chat-fixes-and-rebase-instructions-owner-mid-session) | `prompt-history/prompts/08-prod-chat-fixes.md` |
+| 89 | 2026-10-01 01:51 | [37. Sandbox per-IP cap (owner, mid-session)](#37-sandbox-per-ip-cap-owner-mid-session) | `prompt-history/prompts/08a-sandbox-ip-cap.md` |
+| 90 | 2026-10-01 01:51 | [2026-09-30T18:51:14-07:00 - Evals follow-up review round 1](#2026-09-30t185114-0700---evals-follow-up-review-round-1) | `prompt-history/prompts/05g-evals-followup-review-r1.md` |
+| 91 | 2026-10-01 01:51 | [2026-09-30T18:51:14-07:00 - Evals follow-up cardinal-before-ordinal-label fix](#2026-09-30t185114-0700---evals-follow-up-cardinal-before-ordinal-label-fix) | `prompt-history/prompts/05r-evals-followup-cardinal-fix.md` |
+| 92 | 2026-10-01 01:55 | [2026-09-30T18:55:02-07:00 - PR #9 cross-review, round 2](#2026-09-30t185502-0700---pr-9-cross-review-round-2) | `prompt-history/prompts/06g-ui-live-review-r2.md` |
+| 93 | 2026-10-01 02:00 | [57. Agent fixes: release-lane pointers pasted by the owner (typed mid-session, logged late)](#57-agent-fixes-release-lane-pointers-pasted-by-the-owner-typed-mid-session-logged-late) | `prompt-history/prompts/06u-late-agent-fixes-release-pointers.md` |
+| 94 | 2026-10-01 02:01 | [50. Owner answer: merge main, do not rebase (typed mid-session)](#50-owner-answer-merge-main-do-not-rebase-typed-mid-session) | `prompt-history/prompts/06i-release-owner-merge-not-rebase.md` |
+| 95 | 2026-10-01 02:02 | [38. Sandbox IP cap cross-review, round 1](#38-sandbox-ip-cap-cross-review-round-1) | `prompt-history/prompts/08b-config-ip-cap-review-r1.md` |
+| 96 | 2026-10-01 02:07 | [2026-09-30T19:07:24-07:00 - Evals follow-up review round 2](#2026-09-30t190724-0700---evals-follow-up-review-round-2) | `prompt-history/prompts/05g-evals-followup-review-r2.md` |
+| 97 | 2026-10-01 02:07 | [2026-09-30T19:07:24-07:00 - Evals follow-up final delta review](#2026-09-30t190724-0700---evals-follow-up-final-delta-review) | `prompt-history/prompts/05s-evals-followup-final-delta.md` |
+| 98 | 2026-10-01 02:08 | [2026-09-30T19:08:21-07:00 - PR #9 cross-review, round 3 (delta only)](#2026-09-30t190821-0700---pr-9-cross-review-round-3-delta-only) | `prompt-history/prompts/06h-ui-live-review-r3-delta.md` |
+| 99 | 2026-10-01 02:13 | [2026-09-30T19:13:43-07:00 - Evals follow-up test-phase install fix](#2026-09-30t191343-0700---evals-follow-up-test-phase-install-fix) | `prompt-history/prompts/05t-evals-followup-install-fix.md` |
+| 100 | 2026-10-01 02:16 | [39. Sandbox IP cap cross-review, round 2](#39-sandbox-ip-cap-cross-review-round-2) | `prompt-history/prompts/08b-config-ip-cap-review-r2.md` |
+| 101 | 2026-10-01 02:20 | [2026-09-30T19:20:00-07:00 - Evals follow-up review round 3 (delta only)](#2026-09-30t192000-0700---evals-follow-up-review-round-3-delta-only) | `prompt-history/prompts/05g-evals-followup-review-r3.md` |
+| 102 | 2026-10-01 02:22 | [40. Sandbox IP cap cross-review, round 3 (delta only)](#40-sandbox-ip-cap-cross-review-round-3-delta-only) | `prompt-history/prompts/08b-config-ip-cap-review-r3-delta.md` |
+| 103 | 2026-10-01 02:24 | [51. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)](#51-owner-pr-9-merged-production-agent-fixes-in-a-later-pr-typed-mid-session) | `prompt-history/prompts/06j-release-owner-pr9-merged.md` |
+| 104 | 2026-10-01 06:00 | [52. Owner: WSL restart recovery (typed mid-session)](#52-owner-wsl-restart-recovery-typed-mid-session) | `prompt-history/prompts/06k-release-owner-wsl-restart.md` |
+| 105 | 2026-10-01 06:06 | [2026-09-30T23:06:30-07:00 - Evals WSL recovery](#2026-09-30t230630-0700---evals-wsl-recovery) | `prompt-history/prompts/05u-evals-wsl-recovery.md` |
+| 106 | 2026-10-01 06:12 | [58. Agent fixes owner answer A3: merge main, remember-credit run (typed mid-session, logged late)](#58-agent-fixes-owner-answer-a3-merge-main-remember-credit-run-typed-mid-session-logged-late) | `prompt-history/prompts/06v-late-agent-fixes-owner-a3.md` |
+| 107 | 2026-10-01 06:13 | [59. Evals owner note: recover the PR #10 gate run after the WSL restart (typed mid-session, logged late)](#59-evals-owner-note-recover-the-pr-10-gate-run-after-the-wsl-restart-typed-mid-session-logged-late) | `prompt-history/prompts/06s-late-evals-owner-wsl-recovery.md` |
+| 108 | 2026-10-01 06:14 | [53. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)](#53-owner-pr-10-to-the-evals-lane-readme-cost-update-in-phase-2-typed-mid-session) | `prompt-history/prompts/06l-release-owner-pr10-pr11.md` |
+| 109 | 2026-10-01 06:17 | [41. Production chat fixes cross-review, round 1](#41-production-chat-fixes-cross-review-round-1) | `prompt-history/prompts/08c-prod-chat-review-r1.md` |
+| 110 | 2026-10-01 06:18 | [2026-09-30T23:18:03-07:00 - Evals WSL recovery review](#2026-09-30t231803-0700---evals-wsl-recovery-review) | `prompt-history/prompts/05g-evals-wsl-recovery-review.md` |
+| 111 | 2026-10-01 06:32 | [42. Production chat fixes cross-review, round 2](#42-production-chat-fixes-cross-review-round-2) | `prompt-history/prompts/08c-prod-chat-review-r2.md` |
+| 112 | 2026-10-01 06:38 | [60. Agent fixes owner note: guard follows the grader's ordinal rule (typed mid-session, logged late)](#60-agent-fixes-owner-note-guard-follows-the-graders-ordinal-rule-typed-mid-session-logged-late) | `prompt-history/prompts/06w-late-agent-fixes-owner-guard-ordinals.md` |
+| 113 | 2026-10-01 06:42 | [43. Production chat fixes cross-review, round 3 (delta only)](#43-production-chat-fixes-cross-review-round-3-delta-only) | `prompt-history/prompts/08c-prod-chat-review-r3-delta.md` |
+| 114 | 2026-10-01 07:06 | [44. Owner: start release phase 2 (typed mid-session)](#44-owner-start-release-phase-2-typed-mid-session) | `prompt-history/prompts/06m-release-phase2-start.md` |
+| 115 | 2026-10-01 07:33 | [45. Test timeouts PR cross-review, round 1](#45-test-timeouts-pr-cross-review-round-1) | `prompt-history/prompts/06n-test-timeouts-review-r1.md` |
+| 116 | 2026-10-01 07:40 | [46. Test timeouts PR cross-review, round 2](#46-test-timeouts-pr-cross-review-round-2) | `prompt-history/prompts/06o-test-timeouts-review-r2.md` |
+| 117 | 2026-10-01 07:46 | [47. Test timeouts PR cross-review, round 3 (delta only)](#47-test-timeouts-pr-cross-review-round-3-delta-only) | `prompt-history/prompts/06p-test-timeouts-review-r3-delta.md` |
+| 118 | 2026-10-01 08:03 | [61. Release PR #14 cross-review, round 1](#61-release-pr-14-cross-review-round-1) | `prompt-history/prompts/06b-release-review-r1.md` |
+| 119 | 2026-10-01 08:20 | [62. Release PR #14 cross-review, round 2](#62-release-pr-14-cross-review-round-2) | `prompt-history/prompts/06c-release-review-r2.md` |
+| 120 | 2026-10-01 08:32 | [63. Release PR #14 cross-review, round 3 (delta only)](#63-release-pr-14-cross-review-round-3-delta-only) | `prompt-history/prompts/06d-release-review-r3-delta.md` |
+| 121 | 2026-10-01 10:07 | [64. Owner: C1 A1 B1 with changes, and the architecture diagram (typed mid-session)](#64-owner-c1-a1-b1-with-changes-and-the-architecture-diagram-typed-mid-session) | `prompt-history/prompts/06x-release-owner-c1-a1-b1-diagram.md` |

@@ -1267,3 +1267,69 @@ headroom keeps the current concurrency and run time. A frozen file, so this is i
 (AGENTS.md hard rule 4).
 
 Decided by: Anna (make npm test reliable); the timeout value by Release engineer under standing orders.
+
+## release: Transcript export scope and scrubbing
+
+`scripts/export-transcripts.mjs` exports every Claude Code and Codex session for this repo: the
+project directories of the main checkout and its `cf-billing-copilot-*` worktrees (with their
+subagent transcripts), the no-mistakes gate runs whose Claude project directory names only a repo
+id (included when that id's bare repo has this repo's origin, the run started after the first
+commit, and its content names the repo), and Codex sessions by cwd or, outside the repo, by time
+and content. Harness context that is not a prompt (system prompts, skill, tool and agent listings,
+MCP instructions, account and org ids, the owner's global agent rules, sandbox roots outside the
+repo, encrypted reasoning, inline images) is replaced by `<omitted: ...>` markers; home paths,
+emails and token shapes are scrubbed; the owner's private terms come from a git-ignored
+`scripts/scrub-terms.local.txt` so the list itself never enters the repo. The script rescans what
+it wrote and fails if anything is left. Reason: the transcripts carry the owner's unrelated
+projects, connectors and account context, which the assignment forbids in the repo, while the
+prompts and the agents' work must stay verbatim.
+
+Decided by: Release engineer under standing orders.
+
+## release: Transcripts are committed once, at the release PR
+
+Phase 1 commits only the script; the export (about 70 MB of JSONL) is regenerated and committed
+once, after the evals and agent-fixes lanes finish, so the repo history carries one copy instead
+of one per run. Reason: lanes still in flight keep appending to their sessions.
+
+Decided by: Release engineer under standing orders.
+
+## release: UI smoke test against production through a live-mode bundle
+
+The deployed UI was built without `VITE_BILLING_API_MODE=live`, so it serves the fixture preview
+and never calls the deployed agent or Ledger. The release smoke test therefore drove the UI flow
+with a local live-mode build of the same commit, served by Playwright route interception for the
+static paths while `/api/*` and `/agents/*` went to the production Worker. Reason: it exercises the
+production backend through the real UI code without a redeploy, which only the owner may run.
+
+Decided by: Release engineer under standing orders.
+
+## release: Transcripts stored gzip-compressed
+
+The export writes one `.jsonl.gz` per session (about 16 MB in total instead of about 70 MB of
+plain JSONL; the largest file is under 2 MB) and fails if any file reaches 50 MB. INDEX.md lists
+each file's raw and compressed size. This supersedes the size figure in "release: Transcripts are
+committed once, at the release PR". Reason: keep the repository small for reviewers who clone it.
+
+Decided by: Anna.
+
+## release: Bring main into feat/release by merge, not rebase
+
+In phase 2 the release branch takes main with `git merge origin/main`, not a rebase, so the pushed
+branch is never force-pushed; PRs are squash-merged, so the merge commit does not reach main's
+history. PROMPTS.md entries present on both sides (the owner's phase 1 answers and the PR #9
+review prompts, logged here and in PR #9) are kept once, in main's form.
+
+Decided by: Anna.
+
+## release: Late PROMPTS.md entries for owner messages found only in transcripts
+
+The release cross-check found seven messages the owner typed to other lanes (answers to agent
+questions, a WSL recovery note, release-lane pointers pasted into the agent-fixes session) in the
+exported transcripts but not in PROMPTS.md. They are appended as entries 54 to 60, each marked
+"logged late", with the text copied from the scrubbed transcript into its own
+prompt-history/prompts/06q to 06w file and the session it came from. No existing entry was
+changed. Reason: PROMPTS.md must hold every prompt, and history is completed by appending, not
+by editing other lanes' entries (owner answer D1).
+
+Decided by: Anna.
