@@ -211,11 +211,24 @@ All 41 replay checks pass against the unchanged committed results.
 Raw/corrected totals and all 39 recording digests are unchanged by recovery;
 zero new model calls or neurons. The completed source-review convergence remains
 two full rounds and the third delta-only round. Recovery auditing covers merge
-preservation and evidence only. Gate recovery delivery and final CI remain
-pending until the recovered run completes.
+preservation and evidence only.
+
+Fresh recovery gate run 01M3V196CVJCWVV5X97QQ2PBJK: the recovery review passed
+with no actionable findings (archived in
+prompt-history/prompts/05g-evals-wsl-recovery-review.md). Its test step first
+failed with `sh: 1: vitest: not found` in the new gate worktree; once frozen
+dependencies were installed, without source, grade, recording or results edits,
+`npm test` passed:
+
+```text
+Test Files  25 passed (25)
+     Tests  462 passed (462)
+```
 
 VERIFIED: Recovered published gate commits; safety ref; owner-requested additive
 merge preserving both logs; unchanged eval/raw evidence; npm ci/typecheck; 462
-offline and credential-free tests; main443/head462 with 19 added and none gone.
-NOT VERIFIED: Recovered gate delivery/final CI until executed; exact generated
-review prompts; deployed performance and metered usage. No merge or deployment.
+offline and credential-free tests; main443/head462 with 19 added and none gone;
+recovery review PASS and gate-worktree 462-test run.
+NOT VERIFIED: Recovered gate push and final PR CI on this head until executed;
+exact generated review prompts; deployed performance and metered usage. No merge
+or deployment.

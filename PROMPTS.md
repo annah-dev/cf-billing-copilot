@@ -2968,7 +2968,7 @@ re-grade every recording, report any verdict changes, gate, PR. Then stop.
 Role: automated cross-review
 Harness: no-mistakes v1.41.2 (Claude)
 Source: prompt-history/prompts/05q-evals-followup-gate-context.md (copied with a tool)
-Outcome: (pending gate)
+Outcome: Supplied context for run 01M3TJ4KE1N1TBVAW6THCD3NZT; review round 1 found the cardinal-label warning (fixed), round 2 PASS, and the third delta-only round in run 01M3TKGDQ50TB5190HDMM0VTT3 PASS (entries below).
 
 Follow-up to merged PR #7, on fresh fix/evals-figures-simulation from main 8c943bd. Anna explicitly requests: ordinal words such as first/second are not figures; only numerals and spelled-out cardinal numbers are. Implement the proposed Scale simulation receipt rule so coincidental current-invoice amounts cannot pass. Add independent grader tests for both, regrade every recording, report every verdict change, gate and open one small PR, then stop; never merge/deploy or change src/agent/contracts/frozen configs/pins.
 
@@ -3054,7 +3054,7 @@ Outcome: PASS; no source findings. Third and final review overall, delta only ov
 Role: QA / evals engineer
 Harness: Codex CLI
 Source: prompt-history/prompts/05u-evals-wsl-recovery.md (copied with a tool)
-Outcome: (pending recovery validation)
+Outcome: Supplied context for recovery gate run 01M3V196CVJCWVV5X97QQ2PBJK. Additive merge 54f1086 of main a5b05f7 kept both log prefixes; recovery review PASS (logged below); after npm ci, typecheck and normal and credential-free npm test passed 25 files / 462 tests; main443/head462, 19 added, none gone. Zero model calls.
 
 Recover PR #10 after WSL restarted. User instructed: every process is gone; check git status and branch against origin, redo interrupted steps, use docs/agent/no-mistakes.md recovery without --force, and if the PR conflicts merge main into the branch while keeping both sides of docs/DECISIONS.md. Then report where we are. Prior goal remains: ordinal words are not figures, cardinals/numerals are; require a matching successful simulation receipt so a coincidental current bill cannot pass; unit tests, regrade every recording, report changes, gate and PR then stop.
 
@@ -3063,3 +3063,11 @@ Observed run 01M3TKGDQ50TB5190HDMM0VTT3 failed with daemon crashed during execut
 Recovery review scope ONLY: merge correctness, preservation of both append-only logs, unchanged already reviewed eval source/data, and accurate recovery evidence. Two full source reviews plus the third final delta already passed and are archived; do NOT conduct a fourth grader/source review. This recovery audit is distinct from the finished source-review convergence. Compare evals and original prompt files against ad782c5 for unchanged content, app/frozen files against origin/main for identical content, and both log suffixes against merge parents. Mandatory npm ci/typecheck/test and credential-free test plus main/head collection must run on recovered head. Existing 39-recording regrade and raw/corrected totals remain unchanged; zero new model calls or neurons.
 
 Recover through a fresh gate run after terminal failure; preserve the additive merge and all prior gate commits, never rebase/force-push published history. If dependency installation is missing, npm ci from frozen pins, never edit source/grades/recordings to fix test failures. Document phase must archive this recovery review identifying log in prompt-history/prompts/05g-evals-wsl-recovery-review.md, log role automated cross-review in PROMPTS with run id and outcome, mark exact generated prompt unavailable if not exposed. Supplied recovery context is copied/logged as 05u-evals-wsl-recovery.md. Refresh evals/followup-verification.md with actual post-merge command tails/collection counts/CI evidence and recovery state. Do not leave pending outcomes. Protected main log bytes must remain prefixes. Update existing PR #10; final description covers actual grader changes, all red-first evidence, raw/regraded totals, local-dev target/date/usage, correction reasons, test names, main/head collection, review history, crash recovery and additive merge. End VERIFIED/NOT VERIFIED. No merge, deploy, login, account, secret, contract or dependency changes; stop at checks-passed with PR open.
+
+## 2026-09-30T23:18:03-07:00 - Evals WSL recovery review
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3V196CVJCWVV5X97QQ2PBJK
+Source: prompt-history/prompts/05g-evals-wsl-recovery-review.md (identifying log copied with a tool; exact generated prompt unavailable; supplied context is 05u-evals-wsl-recovery.md)
+Outcome: PASS; no actionable findings. Recovery-only scope: merge 54f1086 correctness, both append-only log prefixes, eval source/data unchanged from ad782c5, and recovery evidence. One pipeline-owned delivery finding was deferred by the gate to its push/PR/CI steps. Not a fourth source review. Zero model calls.
