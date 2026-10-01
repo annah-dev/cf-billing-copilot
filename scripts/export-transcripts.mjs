@@ -587,7 +587,13 @@ function crossCheck(sessions) {
           logged: md.includes(run),
           length: n.length
         });
-      } else if (!hit.length && !md.includes(head)) {
+      } else if (
+        !md.includes(head) &&
+        !hit.some((e) => e.n.includes(head) || n.includes(e.n.slice(0, 200)))
+      ) {
+        // A prompt counts as logged only when its own text is in PROMPTS.md; naming a logged
+        // file (a kickoff that says "follow prompt-history/prompts/...") marks that entry as
+        // seen, not the prompt itself.
         unmatched.push({ session: s.id, at: p.at, text: p.text });
       }
     }

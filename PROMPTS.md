@@ -3559,3 +3559,106 @@ in phase 2.
 - I may rename the repository to start with cf_ai_ before submitting; keep repository links in one
   place in the README.
 ````
+
+## 51. UI owner answer: preserve the old head and synchronize (typed mid-session, logged late)
+
+- Timestamp: 2026-09-30T03:09:35.508Z
+- Role: Frontend engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/06q-late-ui-owner-sync-answer.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T01-16_codex_ui_01a0efe2`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+<send_user_message_question_reply>
+[{"answer":"Yes, preserve the old head and synchronize (Recommended)","question":"The gate already rebased PR #5 onto the engine merge, but this clean worktree still has the old history. Its guarded sync refuses the diverged histories. I verified that the UI changes are preserved; the new head adds the merged engine and its logs. May I preserve the old local head in a safety ref and move this worktree to the gate's published head, 056a7a4? AGENTS.md reserves history changes for you, and the no-mistakes skill requires resolving a blocked sync before local commits.","questionItemId":"[\"request_user_input_async\",\"call_NaIO97YSQyKW4iMNja9izNPY\",0]"}]
+</send_user_message_question_reply>
+````
+
+## 52. Evals owner answer: base URL, local dev and budget (typed mid-session, logged late)
+
+- Timestamp: 2026-09-30T20:31:39.302Z
+- Role: QA / evals engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/06r-late-evals-owner-base-url-answer.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T03-34_codex_evals_01a0f060`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+<send_user_message_question_reply>
+[{"answer":"It is not deployed yet; the deploy happens in the release lane after the ui PR merges. Yes, use\nlocal dev with real Workers AI for now: record the replay fixtures and a first pass rate from it.\nMake the base URL a parameter (for example EVAL_BASE_URL, defaulting to local dev), and write the\nbase URL, date and model call count into every results file. Label this run \"local dev\". The\npass rate in the README will come from a rerun against\nhttps://cf-billing-copilot.anna-hester.workers.dev after deploy, done by the release lane.\nBudget: one full run, then reruns of failing questions only, no loops; report the total model\ncalls and estimated neurons. If the set needs more messages than one sandbox's daily cap, spread\nthe questions across sandboxes rather than raising the cap.","question":"What base URL should I use for the live eval run? The repo has no deployed demo URL configured. If it is not deployed yet, may I use local dev with real Workers AI instead?","questionItemId":"[\"request_user_input_async\",\"call_ZKaiKMN1BHUV11M0J2kMsvHo\",0]"}]
+</send_user_message_question_reply>
+````
+
+## 53. Agent fixes owner answer A1 (typed mid-session, logged late)
+
+- Timestamp: 2026-10-01T01:34:36.299Z
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06t-late-agent-fixes-owner-a1.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T23-57_claude_agent-fixes_3a287bd5`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+A1. Yes, those instructions are mine. Force-push feat/agent-fixes, run the two questions once, and start the second PR after #8 merges.
+````
+
+## 54. Agent fixes: release-lane pointers pasted by the owner (typed mid-session, logged late)
+
+- Timestamp: 2026-10-01T02:00:37.251Z
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06u-late-agent-fixes-release-pointers.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T23-57_claude_agent-fixes_3a287bd5`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+<pasted_content id="62fd">
+Pointers from the release lane for your second PR (hints, not decisions; verify them):
+- Error after confirming a credit: the raw error is masked by toolErrorText; log it in the
+  onError handlers in src/agent/billing-agent.ts, reproduce, then fix the cause.
+- Invented invoice id: validate the invoice before the confirmation is shown, or take a period and
+  look the id up server-side; add a prompt rule to look up the invoice before startCreditRequest.
+- Uncounted WebSocket writes: the client's cf_agent_chat_messages frames reach storage without
+  passing the message cap; check the cap before the SDK saves anything.
+</pasted_content id="62fd">
+````
+
+## 55. Agent fixes owner answer A3: merge main, remember-credit run (typed mid-session, logged late)
+
+- Timestamp: 2026-10-01T06:12:46.274Z
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06v-late-agent-fixes-owner-a3.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T23-57_claude_agent-fixes_3a287bd5`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+A3. #11 is merged. Merge main into fix/prod-chat, then run remember-credit once now under the new
+cap of 20 in local dev, and include its result in PR B. Then continue PR B's Codex review and live
+UI recheck, and open it when done.
+````
+
+## 56. Evals owner note: recover the PR #10 gate run after the WSL restart (typed mid-session, logged late)
+
+- Timestamp: 2026-10-01T06:13:43.476Z
+- Role: QA / evals engineer
+- Harness: Codex CLI
+- Source: prompt-history/prompts/06s-late-evals-owner-wsl-recovery.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T03-34_codex_evals_01a0f060`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+Your gate run for PR #10 was cut off by the WSL restart ("daemon crashed during execution"). Check
+it with no-mistakes axi status and recover it with the steps in docs/agent/no-mistakes.md, without
+restarting the daemon with --force. Merge main into fix/evals-figures-simulation, keeping both sides
+of docs/DECISIONS.md, rerun the gate, and tell me when #10 is ready.
+````
+
+## 57. Agent fixes owner note: guard follows the grader's ordinal rule (typed mid-session, logged late)
+
+- Timestamp: 2026-10-01T06:38:35.547Z
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06w-late-agent-fixes-owner-guard-ordinals.md
+- Outcome: logged late by the release lane on 2026-10-01: the release cross-check found this owner message in the exported transcript (`prompt-history/transcripts/`, session `2026-09-30T23-57_claude_agent-fixes_3a287bd5`) but not in PROMPTS.md. Text copied from the scrubbed transcript; what followed is in that lane's own entries and PR.
+
+````text
+#10 is merged: the grader no longer treats ordinal words such as "first" or "second" as figures.
+Make the guard follow the same rule in fix/prod-chat (merge main in first), with a test, and keep
+the guard-versus-grader agreement test passing.
+````

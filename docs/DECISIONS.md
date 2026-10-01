@@ -1308,3 +1308,15 @@ history. PROMPTS.md entries present on both sides (the owner's phase 1 answers a
 review prompts, logged here and in PR #9) are kept once, in main's form.
 
 Decided by: Anna.
+
+## release: Late PROMPTS.md entries for owner messages found only in transcripts
+
+The release cross-check found seven messages the owner typed to other lanes (answers to agent
+questions, a WSL recovery note, release-lane pointers pasted into the agent-fixes session) in the
+exported transcripts but not in PROMPTS.md. They are appended as entries 51 to 57, each marked
+"logged late", with the text copied from the scrubbed transcript into its own
+prompt-history/prompts/06q to 06w file and the session it came from. No existing entry was
+changed. Reason: PROMPTS.md must hold every prompt, and history is completed by appending, not
+by editing other lanes' entries (owner answer D1).
+
+Decided by: Anna.

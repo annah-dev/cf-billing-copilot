@@ -1,0 +1,3 @@
+<send_user_message_question_reply>
+[{"answer":"Yes, preserve the old head and synchronize (Recommended)","question":"The gate already rebased PR #5 onto the engine merge, but this clean worktree still has the old history. Its guarded sync refuses the diverged histories. I verified that the UI changes are preserved; the new head adds the merged engine and its logs. May I preserve the old local head in a safety ref and move this worktree to the gate's published head, 056a7a4? AGENTS.md reserves history changes for you, and the no-mistakes skill requires resolving a blocked sync before local commits.","questionItemId":"[\"request_user_input_async\",\"call_NaIO97YSQyKW4iMNja9izNPY\",0]"}]
+</send_user_message_question_reply>
