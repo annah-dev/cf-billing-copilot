@@ -5,6 +5,7 @@
 //
 //   node scripts/export-transcripts.mjs            export, scrub, verify, cross-check
 //   node scripts/export-transcripts.mjs --check    cross-check and verify only, write nothing
+//   node scripts/export-transcripts.mjs --prompts-index   print PROMPTS.md entries in time order
 //
 // Options: --since <ISO>   ignore sessions that started before this (default: first commit)
 //          --terms <file>  extra literal terms to redact, one per line (default:
@@ -56,6 +57,7 @@ const option = (name, fallback) => {
   return i >= 0 ? args[i + 1] : fallback;
 };
 const CHECK_ONLY = flag("--check");
+const INDEX_ONLY = flag("--prompts-index");
 const git = (...a) =>
   execFileSync("git", a, { cwd: ROOT, encoding: "utf8" }).trim();
 const SINCE = new Date(
@@ -623,6 +625,10 @@ function leftovers(serialized) {
 
 // ---------------------------------------------------------------- main
 
+if (INDEX_ONLY) {
+  console.log(promptsIndex());
+  process.exit(0);
+}
 const sessions = selectSessions();
 const stamp = (d) => d.toISOString().slice(0, 16).replace(":", "-");
 for (const s of sessions) {
@@ -643,6 +649,62 @@ for (const s of sessions) {
 }
 // Every committed file must stay well under GitHub's limits.
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
+
+// ---------------------------------------------------------------- PROMPTS.md index
+
+// GitHub's heading anchor: lowercase, punctuation other than "-" and "_" dropped, spaces to "-",
+// and "-1", "-2" for repeats. Headings inside fenced blocks are not headings.
+function promptsIndex() {
+  const lines = readFileSync(join(ROOT, "PROMPTS.md"), "utf8").split("\n");
+  const seen = new Map();
+  const entries = [];
+  let fence = null;
+  for (let i = 0; i < lines.length; i++) {
+    const f = lines[i].match(/^(`{3,})(\w*)\s*$/);
+    if (f) {
+      if (fence === null) fence = f[1];
+      else if (f[1] === fence && !f[2]) fence = null;
+      continue;
+    }
+    if (fence !== null || !lines[i].startsWith("## ")) continue;
+    const title = lines[i].slice(3).trim();
+    const base = title
+      .toLowerCase()
+      .replace(/[^\w\- ]/g, "")
+      .replace(/ /g, "-");
+    const n = seen.get(base) ?? 0;
+    seen.set(base, n + 1);
+    const anchor = n ? `${base}-${n}` : base;
+    let ts =
+      title.match(/^(\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2}))/)?.[1] ??
+      null;
+    let source = null;
+    for (const w of lines.slice(i + 1, i + 10)) {
+      if (w.startsWith("## ")) break;
+      ts ??= w.match(/^-?\s*Timestamp:\s*(\S+)/)?.[1] ?? null;
+      source ??= w.match(/^-?\s*Source:\s*(\S+)/)?.[1] ?? null;
+    }
+    if (ts || source) entries.push({ title, anchor, ts, source, order: i });
+  }
+  // An entry without a timestamp (an outcome note) keeps its place after the entry before it.
+  let last = 0;
+  for (const e of entries) {
+    const t = e.ts ? Date.parse(e.ts) : NaN;
+    e.sortKey = Number.isNaN(t) ? last + 1e-3 : t;
+    last = e.sortKey;
+  }
+  const sorted = [...entries].sort(
+    (a, b) => a.sortKey - b.sortKey || a.order - b.order
+  );
+  return [
+    "| # | Time (UTC) | Entry | Source |",
+    "|---|---|---|---|",
+    ...sorted.map(
+      (e, k) =>
+        `| ${k + 1} | ${e.ts ? new Date(e.sortKey).toISOString().slice(0, 16).replace("T", " ") : "(none)"} | [${e.title.replace(/\|/g, "/")}](#${e.anchor}) | ${e.source ? `\`${e.source}\`` : ""} |`
+    )
+  ].join("\n");
+}
 
 const { entries, unmatched, gate } = crossCheck(sessions);
 const rel = (p) => relative(ROOT, p);
@@ -723,6 +785,10 @@ if (!CHECK_ONLY) {
   }
   writeFileSync(join(OUT, "INDEX.md"), index);
   writeFileSync(join(OUT, "CROSS-CHECK.md"), scrubString(check));
+  writeFileSync(
+    join(OUT, "PROMPTS-INDEX.md"),
+    `# PROMPTS.md in time order\n\nGenerated from each entry's timestamp by \`node scripts/export-transcripts.mjs\`; links point into [PROMPTS.md](../../PROMPTS.md). Entries were appended by several lanes working in parallel, so file order is not time order.\n\n${promptsIndex().replace(/\]\(#/g, "](../../PROMPTS.md#")}\n`
+  );
   console.log(`wrote ${rel(OUT)}/`);
   // Verify what is on disk, not what is in memory.
   // INDEX.md and CROSS-CHECK.md name sessions with ids that look like random tokens.
