@@ -257,3 +257,13 @@ describe("empty answers after spent steps (remember-credit)", () => {
     expect(body.toolCalls[0].error).toBe(AWAITING_CONFIRMATION);
   });
 });
+
+describe("counts that do not match the listed entries (september-invoice)", () => {
+  it("tells the model to count the entries a tool result lists", async () => {
+    const { systemPrompt, EMPTY_MEMORY } =
+      await import("../../src/agent/prompt");
+    expect(systemPrompt(EMPTY_MEMORY, "2026-10-01")).toContain(
+      "A count (lines, invoices, tiers) is the number of entries the tool result lists"
+    );
+  });
+});
