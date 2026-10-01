@@ -2720,3 +2720,50 @@ you suggest. End with:
     VERIFIED:     <what you checked and how>
     NOT VERIFIED: <what you could not check, and why>
 ````
+
+## 36. Production chat fixes and rebase instructions (owner, mid-session)
+
+- Timestamp: 2026-09-30T18:47:16-07:00
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/08-prod-chat-fixes.md
+- Outcome: (filled in at the end)
+
+````text
+Merged #7. Rebase #8 onto main and force-push feat/agent-fixes (never main). A1: the daily limit
+reset at 00:00 UTC, so run the two unreached questions once now. B1: no contract change. On
+"first": the evals lane will change the grader so ordinal words are not figures; once that
+merges, make the guard follow the same rule.
+
+Then, on a NEW branch and PR after #8 merges (keep #8 as reviewed), fix what the release lane
+found against production:
+1. In the chat UI, the stream after the customer confirms a credit request fails with "An internal
+   error occurred" and the UI shows "Unable to connect". Log the raw error in toolErrorText,
+   reproduce it (local dev with VITE_BILLING_API_MODE=live, or wrangler tail against production),
+   and fix the cause.
+2. Never show the customer a confirmation for an invoice the server has not validated. The model
+   called startCreditRequest with an invented inv_1234567890 before any lookup. Resolve or
+   validate the invoice server-side before the confirmation appears.
+3. Chat messages over the WebSocket are not counted by the rate limiter or the daily caps, which
+   contradicts D-7. Count them exactly like /turn.
+4. Confirm tool inputs are schema-validated (by the SDK or inside the tool), and fix the D-14 and
+   model-settings drift in docs/DECISIONS.md.
+Same review loop, live checks under 20 model calls, then open the PR.
+````
+
+## 37. Sandbox per-IP cap and remember-credit run (owner, mid-session)
+
+- Timestamp: 2026-09-30T18:47:16-07:00
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/08a-sandbox-ip-cap.md
+- Outcome: (filled in at the end)
+
+````text
+A1 B1. Merging #8 now. You were right about the limit; my note got the UTC day wrong.
+Add one item to the second PR: raise the new-sandbox cap per IP from 5 to 20 per UTC day, and keep
+the global cap of 200 and the per-sandbox message cap. Reason: several reviewers behind one office
+or VPN address would otherwise lock each other out after five sandboxes, and a full eval run needs
+about five on its own. Update D-7, the cost estimate in docs/ARCHITECTURE.md and any doc that
+states the cap. Run remember-credit as part of that PR's live checks after 00:00 UTC.
+````
