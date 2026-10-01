@@ -891,3 +891,149 @@ of blocking other work; do not log in if wrangler authentication fails. Finish t
 gated push and PR, then stop. After the PR opens, preserve published feat/evals history for the
 agent-fixes lane unless the gate itself requires a rewrite, which must be reported. Reason: Anna
 is away for about five hours and merges on return. Decided by: Anna.
+
+## agent: runtime grounding guard
+
+Before a reply leaves the agent, `src/agent/guard.ts` checks it with the eval grader's rule (owner
+decision): every money amount, percentage, count and other number must appear in that turn's
+successful tool outputs (model-issued, server-issued anomaly checks, and a continuation's earlier
+steps after the last customer message); dates, billing periods and years may also come from the
+customer's message. `src/agent/grounding.ts` is a copy of the grader's tokenising
+(`evals/grounding.ts`, money, number words, counts against array lengths, named dates) because
+`src/` must not import `evals/`; it differs only in scoping evidence to the turn and in accepting
+the customer's dates.
+
+- The reply text is held back while the turn runs (tool parts still stream) and sent once checked.
+  With simulated streaming (D-14) each step's text arrived in one piece anyway.
+- An unsupported draft gets exactly one retry: the same context (server checks included), the
+  draft, and a user-role correction naming each unsupported figure, with no tools, so the retry
+  restates what the turn fetched and cannot start a new tool loop. It is one more budget-reserved
+  model call (worst case `MAX_STEPS + 2` per turn).
+- If the retry is still unsupported, empty or refused by the budget, the customer gets the reply
+  with every sentence carrying an unsupported figure removed plus a fixed note, or a fixed safe
+  answer (no figures) when nothing verifiable is left.
+- A turn that hit the neuron stop sends the fixed budget message unchecked (outcome `budget`).
+- The outcome (`grounded`, `corrected`, `safe_answer`, `budget`, with the unsupported figures of
+  the draft and the retry) is written as the assistant message's metadata, so it is stored with
+  the turn, and logged when not `grounded`. It is not in the `/turn` response: `TurnResponseSchema`
+  is a frozen contract (listed for the owner).
+
+Reason: the evals found ungrounded figures reaching customers (for example "7 lines" for a
+six-line invoice); a prompt rule alone does not stop them. Not chosen: retrying with tools (a
+second loop with its own grounding question) and silently dropping figures without a retry.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: unknown-id errors name the real ids
+
+In the evals Llama 3.3 called `explainLineItem` and `startCreditRequest` with invented ids
+(`inv_1234567890`, `inv_202609`) and then gave up. An unknown invoice id now gets an error listing
+the customer's invoice ids with their periods and pointing to `getInvoice`; an unknown line id gets
+the invoice's line ids with their descriptions. The prompt says to call `getInvoice` before
+`explainLineItem` and to retry with the listed ids. The ids are the customer's own, already
+returned by `getAccount`. Reason: give the model the exact value it needs to recover, instead of
+a dead end. Not chosen: guessing the intended invoice server-side (no reliable signal).
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: repair plan ids written in display case
+
+In the evals Llama 3.3 called `simulatePlan` with `plan_Pro` and `plan_Scale`; the contract's
+lowercase slug rejects them, and it repeated `plan_Scale` after `getAccount` had returned
+`plan_scale`. The agent now passes `experimental_repairToolCall` to `streamText`: a `simulatePlan`
+call that fails input validation is rewritten only when its `planId` names exactly one of the
+customer's available plans (from the Ledger's `account` read), ignoring case, spaces, hyphens and
+the `plan_` prefix, by id or by name. The repaired input is then validated with the contract
+schema as usual; no match, or two matches, stays a validation error. The prompt also asks for the
+id copied exactly, in lowercase. Reason: the intent is unambiguous and the mapping is a lookup, not
+a guess; the contract stays strict. Not chosen: loosening the schema (frozen contract) or relying
+on the prompt alone (it already said to use availablePlans).
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: comparisons trigger the server's anomaly check
+
+The evals' August-to-September comparison never mentioned the September spike: the server check
+(see "the server runs the anomaly check for every invoice a turn touches") only fired on
+`getInvoice` and `explainLineItem`. A `compareInvoices` result now triggers it for both months, the
+later month first, with the same once-per-period and retry rules; the prompt says to mention a
+reported spike when explaining a change. Reason: a spike in either month can explain the change,
+and the check costs no model call.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: the last step answers, and an empty reply is asked for once
+
+In the evals the credit turns ended with no text (remember-credit): Llama 3.3 spent all four steps
+on tool calls, including four identical `getCreditRequestStatus` calls. Now:
+
+- `prepareStep` gives a step no tools (`activeTools: []`) when it is the last allowed step, or when
+  the previous step only repeated calls already made in the turn (same tool and canonical input).
+  A tool call the model still emits on such a step is refused by the SDK and not executed.
+- An empty draft, unless the turn stopped at a credit proposal awaiting the customer's
+  confirmation, goes through the grounding guard's one retry with an "answer now" instruction. A
+  grounded answer is sent (outcome `completed`); an ungrounded one becomes the safe answer; an
+  empty one becomes a fixed "could not finish" message (outcome `incomplete`).
+- The prompt asks for the amount and approval status once a credit result is in, and not to
+  fetch the same result again.
+- This supersedes the extra answer step in "the server runs the anomaly check for every invoice a
+  turn touches": with no tools on the last step, no server check can arrive after it, so the
+  `MAX_STEPS + 1` allowance was unreachable and is removed. The cap per turn is `MAX_STEPS` steps
+  plus the guard's one retry. Two tests that scripted a tool call on the last step were rewritten
+  to the new guarantee, and a chat provenance test's script was reordered so its repeat comes last.
+
+Reason: a turn must end with an answer the customer can read, inside the same model-call cap.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: the guard follows the grader's final per-turn rule exactly
+
+After rebasing onto the evals PR, `src/agent/grounding.ts` mirrors the grader's final rule
+("evals: per-turn grounding with echoed dates"): tool dates and periods are kept apart from other
+numbers and ground only date-shaped tokens; the customer's message grounds ISO dates, periods and
+an echoed yearless date, never a bare year, money, percentage or count.
+`tests/agent/grounding-parity.test.ts` runs the guard and `evals/grounding.ts` over every committed
+recording (active and archived) and requires the same flagged figures on every turn; removing
+message dates from the guard turns seven of them red. Reason: "using the same rule as the grader"
+must be checked, not assumed, while the code exists in two copies.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: an answer step sends no tools field
+
+Found in the live rerun: with `activeTools: []` the AI SDK passes an empty tool list,
+`workers-ai-provider` forwards it, and Workers AI refuses the call (error 8007, "`tools` must not
+be an empty array"), so the answer step failed and remember-credit still ended empty. A model
+middleware (`noEmptyToolsMiddleware`) now drops an empty `tools` list and its `toolChoice` before
+the call. The test stub of the AI binding refuses `tools: []` the same way, so the tests catch a
+regression (three go red without the middleware). Reason: the offline stub accepted a request the
+real binding rejects; it now mirrors that constraint.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: guard evidence is server-owned, not read from history positions
+
+Codex review round 1 found that the guard took a continuation's earlier tool outputs from the
+messages after the last customer message, positions a client controls. Now a run that stops at
+a credit proposal stores its outputs server-side (`awaiting_evidence`, keyed by the proposed tool
+call ids); the next run uses them only if it is a continuation whose last assistant message holds
+one of those calls, and the stored row is cleared at the start of every run. Every other run cites
+only its own outputs. Observed while testing: the SDK's persistence currently merges a moved tool
+part back into its original message by call id, so the end-to-end replay did not reproduce;
+the rule no longer depends on that. Also from this round: a retry call that throws now falls back
+to the safe answer instead of erroring the turn.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: stored evidence needs the customer's answer to that proposal
+
+Codex review round 2 reproduced a continuation that was not a confirmation (a client
+`cf_agent_tool_result` frame putting the proposal into `output-error`) reusing the proposing run's
+stored evidence. Now `consumeAnsweredConfirmation` returns the consumed tool call id, and the
+stored evidence applies only when that id is one of the stored proposals and the run answers the
+same customer message (`userMessageId`); the stored question text is used for date evidence.
+The row is read and cleared at the very start of every run, before any cap refusal, so a refused,
+abandoned or unrelated run cannot leave it for a later one. An end-to-end WebSocket test with the
+tool-result frame goes red on the round-1 code.
+
+Decided by: Agent fixes engineer under standing orders.

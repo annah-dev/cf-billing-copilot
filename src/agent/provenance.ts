@@ -166,14 +166,17 @@ export class ToolProvenance {
   }
 
   /**
-   * Consume a server-issued credit confirmation that the customer just answered: true only for an
-   * `approval-responded` part the server issued, with an unchanged input, not consumed before.
+   * Consume a server-issued credit confirmation that the customer just answered: its tool call id
+   * only for an `approval-responded` part the server issued, with an unchanged input, not consumed
+   * before; otherwise null.
    */
-  async consumeAnsweredConfirmation(messages: UIMessage[]): Promise<boolean> {
+  async consumeAnsweredConfirmation(
+    messages: UIMessage[]
+  ): Promise<string | null> {
     const assistant = [...messages]
       .reverse()
       .find((m) => m.role === "assistant");
-    if (!assistant) return false;
+    if (!assistant) return null;
     const rows = this.rows();
     for (const part of toolParts(assistant)) {
       if (part.state !== "approval-responded") continue;
@@ -184,9 +187,9 @@ export class ToolProvenance {
         "UPDATE issued_tool_calls SET confirmation = 'consumed' WHERE id = ? AND confirmation = 'requested'",
         part.toolCallId
       ).rowsWritten;
-      if (updated > 0) return true;
+      if (updated > 0) return part.toolCallId;
     }
-    return false;
+    return null;
   }
 
   /** The conversation with every tool part the server did not produce removed or corrected. */

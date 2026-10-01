@@ -1,0 +1,531 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "remember-plan",
+  "turns": [
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "What would September 2026 have cost on Pro? Give actual total, simulated total and signed difference.",
+        "confirm": false
+      },
+      "response": {
+        "text": "September 2026 would have cost $359.17 on Pro. The actual total was $412.87, and the signed difference is -$53.70.",
+        "toolCalls": [
+          {
+            "name": "simulatePlan",
+            "input": {
+              "period": "2026-09",
+              "planId": "plan_pro"
+            },
+            "output": {
+              "customerId": "cus_1",
+              "period": "2026-09",
+              "actualPlanId": "plan_starter",
+              "simulatedPlanId": "plan_pro",
+              "actualTotal": {
+                "cents": 41287,
+                "display": "$412.87"
+              },
+              "simulatedTotal": {
+                "cents": 35917,
+                "display": "$359.17"
+              },
+              "difference": {
+                "cents": -5370,
+                "display": "-$53.70"
+              },
+              "simulatedLines": [
+                {
+                  "id": "line_419ca8b0aaddc1fd",
+                  "kind": "subscription",
+                  "description": "Pro fee: 2026-09-01 to 2026-10-01 (end exclusive); 30 of 30 days",
+                  "planId": "plan_pro",
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 5000,
+                    "display": "$50.00"
+                  },
+                  "tiers": []
+                },
+                {
+                  "id": "line_419ca7b0aaddc04a",
+                  "kind": "usage",
+                  "description": "Compute time on Pro: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_pro",
+                  "meterId": "meter_compute",
+                  "quantity": 7380,
+                  "amount": {
+                    "cents": 7380,
+                    "display": "$73.80"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 7380,
+                      "unitPrice": {
+                        "cents": 1,
+                        "display": "$0.01"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.01 per 1 CPU-minute",
+                      "amount": {
+                        "cents": 7380,
+                        "display": "$73.80"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca6b0aaddbe97",
+                  "kind": "usage",
+                  "description": "Edge requests on Pro: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_pro",
+                  "meterId": "meter_requests",
+                  "quantity": 102000,
+                  "amount": {
+                    "cents": 7100,
+                    "display": "$71.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 100000,
+                      "unitPrice": {
+                        "cents": 70,
+                        "display": "$0.70"
+                      },
+                      "perUnits": 1000,
+                      "rateDisplay": "$0.70 per 1,000 requests",
+                      "amount": {
+                        "cents": 7000,
+                        "display": "$70.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 2000,
+                      "unitPrice": {
+                        "cents": 50,
+                        "display": "$0.50"
+                      },
+                      "perUnits": 1000,
+                      "rateDisplay": "$0.50 per 1,000 requests",
+                      "amount": {
+                        "cents": 100,
+                        "display": "$1.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca5b0aaddbce4",
+                  "kind": "usage",
+                  "description": "Object storage on Pro: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_pro",
+                  "meterId": "meter_storage",
+                  "quantity": 1200,
+                  "amount": {
+                    "cents": 8200,
+                    "display": "$82.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 500,
+                      "unitPrice": {
+                        "cents": 8,
+                        "display": "$0.08"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.08 per 1 GB-day",
+                      "amount": {
+                        "cents": 4000,
+                        "display": "$40.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 700,
+                      "unitPrice": {
+                        "cents": 6,
+                        "display": "$0.06"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.06 per 1 GB-day",
+                      "amount": {
+                        "cents": 4200,
+                        "display": "$42.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca4b0aaddbb31",
+                  "kind": "usage",
+                  "description": "Data transfer on Pro: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_pro",
+                  "meterId": "meter_transfer",
+                  "quantity": 1500,
+                  "amount": {
+                    "cents": 5500,
+                    "display": "$55.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 1000,
+                      "unitPrice": {
+                        "cents": 4,
+                        "display": "$0.04"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.04 per 1 GB",
+                      "amount": {
+                        "cents": 4000,
+                        "display": "$40.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 500,
+                      "unitPrice": {
+                        "cents": 3,
+                        "display": "$0.03"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.03 per 1 GB",
+                      "amount": {
+                        "cents": 1500,
+                        "display": "$15.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca3b0aaddb97e",
+                  "kind": "tax",
+                  "description": "Sales tax: 825 basis points on $331.80",
+                  "planId": null,
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 2737,
+                    "display": "$27.37"
+                  },
+                  "tiers": []
+                }
+              ],
+              "assumptions": [
+                "Same daily usage; selected plan in force for the whole UTC calendar month.",
+                "Graduated tiers restart at zero; monthly fee is charged in full.",
+                "Same issued invoice discounts and customer tax rate; tax recomputed after discounts. Ledger credits affect balance only.",
+                "Actual total is the immutable issued invoice; actualPlanId identifies its closing plan when plans changed."
+              ]
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 4972,
+          "outputTokens": 62,
+          "modelCalls": 2
+        }
+      }
+    },
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "I have reopened the chat. Remind me which plan we just considered, its total, and the signed difference from my actual bill.",
+        "confirm": false
+      },
+      "response": {
+        "text": "The plan we just considered is Pro. The simulated total for September 2026 on Pro is $359.17, and the signed difference from your actual bill is -$53.70.",
+        "toolCalls": [
+          {
+            "name": "getAccount",
+            "input": {},
+            "output": {
+              "customerId": "cus_1",
+              "customerName": "Velvet Comet Workshop",
+              "plan": {
+                "planId": "plan_starter",
+                "name": "Starter"
+              },
+              "availablePlans": [
+                {
+                  "planId": "plan_pro",
+                  "name": "Pro"
+                },
+                {
+                  "planId": "plan_scale",
+                  "name": "Scale"
+                },
+                {
+                  "planId": "plan_starter",
+                  "name": "Starter"
+                }
+              ],
+              "balance": {
+                "cents": 82574,
+                "display": "$825.74"
+              },
+              "invoices": [
+                {
+                  "invoiceId": "inv_4321a03da32983a8",
+                  "period": "2026-07",
+                  "total": {
+                    "cents": 27359,
+                    "display": "$273.59"
+                  }
+                },
+                {
+                  "invoiceId": "inv_43219f3da32981f5",
+                  "period": "2026-08",
+                  "total": {
+                    "cents": 29918,
+                    "display": "$299.18"
+                  }
+                },
+                {
+                  "invoiceId": "inv_43219e3da3298042",
+                  "period": "2026-09",
+                  "total": {
+                    "cents": 41287,
+                    "display": "$412.87"
+                  }
+                }
+              ],
+              "openCreditRequests": []
+            },
+            "error": null
+          },
+          {
+            "name": "simulatePlan",
+            "input": {
+              "period": "2026-09",
+              "planId": "plan_pro"
+            },
+            "output": {
+              "customerId": "cus_1",
+              "period": "2026-09",
+              "actualPlanId": "plan_starter",
+              "simulatedPlanId": "plan_pro",
+              "actualTotal": {
+                "cents": 41287,
+                "display": "$412.87"
+              },
+              "simulatedTotal": {
+                "cents": 35917,
+                "display": "$359.17"
+              },
+              "difference": {
+                "cents": -5370,
+                "display": "-$53.70"
+              },
+              "simulatedLines": [
+                {
+                  "id": "line_419ca8b0aaddc1fd",
+                  "kind": "subscription",
+                  "description": "Pro fee: 2026-09-01 to 2026-10-01 (end exclusive); 30 of 30 days",
+                  "planId": "plan_pro",
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 5000,
+                    "display": "$50.00"
+                  },
+                  "tiers": []
+                },
+                {
+                  "id": "line_419ca7b0aaddc04a",
+                  "kind": "usage",
+                  "description": "Compute time on Pro: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_pro",
+                  "meterId": "meter_compute",
+                  "quantity": 7380,
+                  "amount": {
+                    "cents": 7380,
+                    "display": "$73.80"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 7380,
+                      "unitPrice": {
+                        "cents": 1,
+                        "display": "$0.01"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.01 per 1 CPU-minute",
+                      "amount": {
+                        "cents": 7380,
+                        "display": "$73.80"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca6b0aaddbe97",
+                  "kind": "usage",
+                  "description": "Edge requests on Pro: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_pro",
+                  "meterId": "meter_requests",
+                  "quantity": 102000,
+                  "amount": {
+                    "cents": 7100,
+                    "display": "$71.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 100000,
+                      "unitPrice": {
+                        "cents": 70,
+                        "display": "$0.70"
+                      },
+                      "perUnits": 1000,
+                      "rateDisplay": "$0.70 per 1,000 requests",
+                      "amount": {
+                        "cents": 7000,
+                        "display": "$70.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 2000,
+                      "unitPrice": {
+                        "cents": 50,
+                        "display": "$0.50"
+                      },
+                      "perUnits": 1000,
+                      "rateDisplay": "$0.50 per 1,000 requests",
+                      "amount": {
+                        "cents": 100,
+                        "display": "$1.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca5b0aaddbce4",
+                  "kind": "usage",
+                  "description": "Object storage on Pro: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_pro",
+                  "meterId": "meter_storage",
+                  "quantity": 1200,
+                  "amount": {
+                    "cents": 8200,
+                    "display": "$82.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 500,
+                      "unitPrice": {
+                        "cents": 8,
+                        "display": "$0.08"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.08 per 1 GB-day",
+                      "amount": {
+                        "cents": 4000,
+                        "display": "$40.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 700,
+                      "unitPrice": {
+                        "cents": 6,
+                        "display": "$0.06"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.06 per 1 GB-day",
+                      "amount": {
+                        "cents": 4200,
+                        "display": "$42.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca4b0aaddbb31",
+                  "kind": "usage",
+                  "description": "Data transfer on Pro: 2026-09-01 to 2026-10-01 (end exclusive)",
+                  "planId": "plan_pro",
+                  "meterId": "meter_transfer",
+                  "quantity": 1500,
+                  "amount": {
+                    "cents": 5500,
+                    "display": "$55.00"
+                  },
+                  "tiers": [
+                    {
+                      "tierIndex": 0,
+                      "units": 1000,
+                      "unitPrice": {
+                        "cents": 4,
+                        "display": "$0.04"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.04 per 1 GB",
+                      "amount": {
+                        "cents": 4000,
+                        "display": "$40.00"
+                      }
+                    },
+                    {
+                      "tierIndex": 1,
+                      "units": 500,
+                      "unitPrice": {
+                        "cents": 3,
+                        "display": "$0.03"
+                      },
+                      "perUnits": 1,
+                      "rateDisplay": "$0.03 per 1 GB",
+                      "amount": {
+                        "cents": 1500,
+                        "display": "$15.00"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "line_419ca3b0aaddb97e",
+                  "kind": "tax",
+                  "description": "Sales tax: 825 basis points on $331.80",
+                  "planId": null,
+                  "meterId": null,
+                  "quantity": null,
+                  "amount": {
+                    "cents": 2737,
+                    "display": "$27.37"
+                  },
+                  "tiers": []
+                }
+              ],
+              "assumptions": [
+                "Same daily usage; selected plan in force for the whole UTC calendar month.",
+                "Graduated tiers restart at zero; monthly fee is charged in full.",
+                "Same issued invoice discounts and customer tax rate; tax recomputed after discounts. Ledger credits affect balance only.",
+                "Actual total is the immutable issued invoice; actualPlanId identifies its closing plan when plans changed."
+              ]
+            },
+            "error": null
+          }
+        ],
+        "usage": {
+          "inputTokens": 7692,
+          "outputTokens": 86,
+          "modelCalls": 3
+        }
+      }
+    }
+  ],
+  "source": "live",
+  "recordedAt": "2026-10-01T00:21:41.652Z",
+  "baseUrl": "http://127.0.0.1:5174",
+  "environment": "local dev"
+}

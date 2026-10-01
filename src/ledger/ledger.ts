@@ -594,9 +594,13 @@ export class Ledger extends DurableObject<Env> {
       (i) => i.id === invoiceId && i.customerId === customerId
     );
     if (!invoice) {
+      // The model invents ids (evals: inv_1234567890); name the real ones so it can recover.
+      const known = this.loadStatics()
+        .invoices.filter((i) => i.customerId === customerId)
+        .map((i) => `${i.id} (${i.period})`);
       throw new EngineError(
         "not_found",
-        `No invoice ${invoiceId} for this customer`
+        `No invoice ${invoiceId} for this customer. Use an invoice id exactly as a tool returned it: ${known.join(", ")}. Call getInvoice with the period (YYYY-MM) for its line ids.`
       );
     }
     return invoice;
@@ -672,7 +676,14 @@ export class Ledger extends DurableObject<Env> {
 
   explainLine(customerId: string, invoiceId: string, lineId: string) {
     return this.read(() => {
-      this.ownedInvoice(customerId, invoiceId);
+      const invoice = this.ownedInvoice(customerId, invoiceId);
+      if (!invoice.lines.some((l) => l.id === lineId)) {
+        const known = invoice.lines.map((l) => `${l.id} (${l.description})`);
+        throw new EngineError(
+          "not_found",
+          `No line ${lineId} on invoice ${invoiceId}. Its lines are: ${known.join(", ")}.`
+        );
+      }
       return engine.explainLineItem(this.dataset(), invoiceId, lineId);
     });
   }

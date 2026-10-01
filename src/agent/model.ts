@@ -125,6 +125,19 @@ export function budgetMiddleware(
   };
 }
 
+/**
+ * Workers AI rejects `tools: []` (error 8007, "must not be an empty array"), and
+ * workers-ai-provider sends whatever list the AI SDK passes. A step whose tools were taken away
+ * (`activeTools: []`, billing-agent.ts mustAnswer) must send no tools at all.
+ */
+export const noEmptyToolsMiddleware: LanguageModelMiddleware = {
+  specificationVersion: "v3",
+  transformParams: async ({ params }) =>
+    params.tools && params.tools.length === 0
+      ? { ...params, tools: undefined, toolChoice: undefined }
+      : params
+};
+
 export function billingModel(
   env: Env,
   stats: TurnStats,
@@ -136,6 +149,7 @@ export function billingModel(
     // First is outermost: the simulated stream calls doGenerate, which the budget check wraps.
     middleware: [
       simulateStreamingMiddleware(),
+      noEmptyToolsMiddleware,
       budgetMiddleware(env, stats, limits)
     ]
   });

@@ -2500,6 +2500,29 @@ Run: 01M3T67AVMBTC9CJV9A0HGDQYH
 Source: prompt-history/prompts/05m-evals-gate-grounding-fix.md (fix context copied verbatim with a tool)
 Outcome: Grader, regressions, all-recordings regrade, evals/README.md policy, results README corrections/failure analysis and verification evidence updated. Normal and credential-free npm test: 22 files, 353 tests passed; typecheck exit 0; main 21a8069 collects 223, head 353, zero disappeared, 130 added. Recordings and initialGrading identical to 9fa01a8. src/agent, contracts, configs and pins unchanged; zero Workers AI calls. Any source review of this delta must be a third, delta-only round.
 
+## 32. Agent fixes kickoff
+
+- Timestamp: 2026-09-30T16:57:35-07:00
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/07-agent-fixes.md
+- Outcome: grounding guard and five per-cause fixes on feat/agent-fixes, rebased onto evals PR #7; live local dev: failing-only rerun 6/7, full set 13/13 completed (stopped by the per-IP sandbox cap before 2 of 15), versus a 9/15 baseline; 53 model calls, about 4,531 estimated neurons; Codex rounds 1 and 2 each found one major (fixed), delta round approved; PR opened against main, depending on #7.
+
+````text
+Role: agent fixes. Harness: Claude Code. Read AGENTS.md, docs/ARCHITECTURE.md and docs/DECISIONS.md first, and log this prompt in PROMPTS.md.
+
+I am away for about five hours. Do not wait on me: take your recommended option on anything within your decision rights and log it. For anything reserved to me (merge, deploy, login, secrets, force-push to main, account changes, contract changes), add it to a FOR ANNA list and keep going with everything it does not block. If wrangler authentication fails, do not try to log in; continue offline and list it.
+
+Context: the evals lane measured the copilot on 15 scripted questions in local dev: 9 of 15 pass. Its harness, recordings and per-question failure analysis are on the unmerged branch feat/evals (worktree ~/projects/wt/cf-billing-copilot-evals, file evals/results/README.md). It is finishing a grader rule I decided: money amounts, percentages and counts must come from the turn's tool results; dates and billing periods may also come from the customer's own message.
+
+Goal: raise the real pass rate by fixing the product, never the grader.
+1. Runtime grounding guard: before a reply is sent, check every money amount, percentage and count in it against that turn's tool results, and dates and periods against the tool results or the customer's message, using the same rule as the grader. If something is unsupported, retry once with a correction naming it; if it still fails, send a safe answer without the unsupported figure. Record the guard outcome on the turn. Add tests that go red without the guard. This part needs no harness; start it now on this branch.
+2. Once the evals PR is open, rebase onto feat/evals so you can run the harness, then fix the other failures the analysis attributes to the agent or its prompt, one commit per cause. When the evals PR merges, rebase onto main.
+3. Do not change evals/ or src/contracts. If a failure is the grader's fault, list it for me.
+Measure: rerun only the failing questions live against your local dev, once each, then the full set once. Report pass rate before and after, model calls and neurons. No loops.
+Review: Codex headless per AGENTS.md (two full rounds, one delta). Open the PR against main, marked as depending on the evals PR.
+````
+
 ## 2026-09-30T17:00:13-07:00 - Evals harness gate review round 3 (grounding delta only)
 
 Role: automated cross-review
@@ -2529,3 +2552,171 @@ with everything it does not block. If wrangler authentication fails, do not try 
 Finish the grading rule, the gated push and the PR, then stop; I merge when I am back. The
 agent-fixes lane will build on feat/evals, so after the PR is open, do not rewrite its history
 unless the gate requires it, and say so if it does.
+
+## 33. Agent fixes cross-review, round 1
+
+- Timestamp: 2026-09-30T17:26:26-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/07a-agent-fixes-review-r1.md
+- Outcome: CHANGES REQUESTED, one major finding: guard evidence for a continuation was read from client-controlled history positions. Fixed in 7282254 (server-stored evidence, continuationEvidence tests that go red on the old rule). Codex verified evals/ and src/contracts unchanged, 422 tests passing, live verdicts matching the manifests.
+
+````text
+You are the cross-reviewer for the agent-fixes branch `feat/agent-fixes` on
+annah-dev/cf-billing-copilot, round 1 of 2 full rounds. The work was written by Claude Code (the
+agent fixes engineer). You are Codex, running read-only: do not edit, commit, push or comment
+anywhere; your whole output is your review. You may run `npm run typecheck` and `npm test` if the
+sandbox allows (both are offline).
+
+The branch depends on the open evals PR #7 (`origin/feat/evals`) and is rebased onto it, so review
+this branch's own changes: `git diff origin/feat/evals...HEAD` and
+`git log origin/feat/evals..HEAD`. `evals/` and `src/contracts/` must be identical to
+`origin/feat/evals` (check it). The frozen files in AGENTS.md hard rule 4 must be unchanged.
+
+Check against: prompt-history/prompts/00-assignment.md, the kickoff
+prompt-history/prompts/07-agent-fixes.md, AGENTS.md, docs/agent/cross-review.md,
+docs/agent/verification.md, docs/ARCHITECTURE.md, and the new docs/DECISIONS.md entries headed
+"agent:" at the end of the file.
+
+What the branch claims, each to be verified:
+
+1. A runtime grounding guard (src/agent/grounding.ts, src/agent/guard.ts, wired in
+   src/agent/billing-agent.ts): before a reply is sent, every money amount, percentage, count and
+   number must come from that turn's successful tool outputs; dates and periods may also come from
+   the customer's message, using the same rule as evals/grounding.ts. Unsupported: one retry with
+   a correction naming the figures (no tools), then a safe answer without them. The outcome is
+   stored as assistant message metadata. Check: can unsupported text reach the client before the
+   check (WebSocket chat and /turn), including on errors, aborts, continuations after a credit
+   confirmation and budget refusals; is the evidence really scoped to the turn; is the retry
+   budget-reserved and counted; does tests/agent/grounding-parity.test.ts really prove agreement
+   with the grader; can the safe answer still contain an unsupported figure.
+2. One commit per cause from evals/results/README.md's failure analysis: unknown-id errors list
+   the real ids (src/ledger/ledger.ts); simulatePlan plan-id repair (src/agent/repair.ts); the
+   server anomaly check for compareInvoices; the last step and any step after a pure repeat get no
+   tools, an empty reply is asked for once (billing-agent.ts mustAnswer, guard.ts), and an empty
+   tool list is never sent to Workers AI (model.ts noEmptyToolsMiddleware). Check each for
+   correctness, for ways it could start a credit request or a write without confirmation (D-20),
+   leak another customer's data, or loop.
+3. Tests: tests/agent/grounding.test.ts, tests/agent/recovery.test.ts, the parity test, and the
+   rewritten tests in agent.test.ts and chat.test.ts. The PR says each fix's tests go red without
+   it; plant the defect where you can and confirm. Two tests were removed and rewritten (the
+   unreachable MAX_STEPS + 1 extra step): judge whether coverage was lost.
+4. Live evidence in tests/agent/evidence/live-evals/: do the claims in its README match run.json
+   and the recordings? Is anything in it a secret, token or real personal data?
+5. Money rule (AGENTS.md hard rule 1): no arithmetic on amounts outside src/engine and formatUsd.
+
+Report defects in or caused by this branch. Mark anything you cannot verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 34. Agent fixes cross-review, round 2
+
+- Timestamp: 2026-09-30T17:41:32-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/07b-agent-fixes-review-r2.md
+- Outcome: CHANGES REQUESTED, one major finding: stored evidence could be reused by a continuation that was not the customer's answer (client tool-result frame). Fixed in 7ecfd88 (consumed confirmation id and question must match; row cleared before caps; end-to-end WebSocket test red on the round-1 code). Codex verified 426 tests, unchanged evals/ and contracts, and the live evidence totals.
+
+````text
+You are the cross-reviewer for the agent-fixes branch `feat/agent-fixes` on
+annah-dev/cf-billing-copilot, round 2 of 2 full rounds. The work was written by Claude Code (the
+agent fixes engineer). You are Codex, running read-only: do not edit, commit, push or comment
+anywhere; your whole output is your review. You may run `npm run typecheck` and `npm test` if the
+sandbox allows (both are offline).
+
+The branch depends on the open evals PR #7 (`origin/feat/evals`) and is rebased onto it, so review
+this branch's own changes: `git diff origin/feat/evals...HEAD` and
+`git log origin/feat/evals..HEAD`. `evals/` and `src/contracts/` must be identical to
+`origin/feat/evals` (check it). The frozen files in AGENTS.md hard rule 4 must be unchanged.
+
+Check against: prompt-history/prompts/00-assignment.md, the kickoff
+prompt-history/prompts/07-agent-fixes.md, AGENTS.md, docs/agent/cross-review.md,
+docs/agent/verification.md, docs/ARCHITECTURE.md, and the new docs/DECISIONS.md entries headed
+"agent:" at the end of the file.
+
+What the branch claims, each to be verified:
+
+1. A runtime grounding guard (src/agent/grounding.ts, src/agent/guard.ts, wired in
+   src/agent/billing-agent.ts): before a reply is sent, every money amount, percentage, count and
+   number must come from that turn's successful tool outputs; dates and periods may also come from
+   the customer's message, using the same rule as evals/grounding.ts. Unsupported: one retry with
+   a correction naming the figures (no tools), then a safe answer without them. The outcome is
+   stored as assistant message metadata. Check: can unsupported text reach the client before the
+   check (WebSocket chat and /turn), including on errors, aborts, continuations after a credit
+   confirmation and budget refusals; is the evidence really scoped to the turn; is the retry
+   budget-reserved and counted; does tests/agent/grounding-parity.test.ts really prove agreement
+   with the grader; can the safe answer still contain an unsupported figure.
+2. One commit per cause from evals/results/README.md's failure analysis: unknown-id errors list
+   the real ids (src/ledger/ledger.ts); simulatePlan plan-id repair (src/agent/repair.ts); the
+   server anomaly check for compareInvoices; the last step and any step after a pure repeat get no
+   tools, an empty reply is asked for once (billing-agent.ts mustAnswer, guard.ts), and an empty
+   tool list is never sent to Workers AI (model.ts noEmptyToolsMiddleware). Check each for
+   correctness, for ways it could start a credit request or a write without confirmation (D-20),
+   leak another customer's data, or loop.
+3. Tests: tests/agent/grounding.test.ts, tests/agent/recovery.test.ts, the parity test, and the
+   rewritten tests in agent.test.ts and chat.test.ts. The PR says each fix's tests go red without
+   it; plant the defect where you can and confirm. Two tests were removed and rewritten (the
+   unreachable MAX_STEPS + 1 extra step): judge whether coverage was lost.
+4. Live evidence in tests/agent/evidence/live-evals/: do the claims in its README match run.json
+   and the recordings? Is anything in it a secret, token or real personal data?
+5. Money rule (AGENTS.md hard rule 1): no arithmetic on amounts outside src/engine and formatUsd.
+
+Round 1 (prompt-history/prompts/07a-agent-fixes-review-r1.md) found one major defect: the
+guard read a continuation's earlier tool outputs from client-controlled history positions. The
+fix is commit "fix(agent): keep grounding evidence server-owned across a credit confirmation"
+(`continuationEvidence` and the `awaiting_evidence` key in src/agent/billing-agent.ts). Verify the
+fix, including stale or concurrent runs, a continuation that is not a credit confirmation, and
+whether a client can make a stored row apply to the wrong run; then review the whole branch again,
+not only the fix. A commit after round 1 also made a thrown retry fall back to the safe answer.
+
+Report defects in or caused by this branch. Mark anything you cannot verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 35. Agent fixes cross-review, round 3 (delta only)
+
+- Timestamp: 2026-09-30T17:57:01-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/07c-agent-fixes-review-r3-delta.md
+- Outcome: APPROVE, no findings in the delta; Codex traced approval, denial, tool-result, forged or stale approval and /turn paths and ran 430 passing tests. Review loop closed after two full rounds and one delta round.
+
+````text
+You are the cross-reviewer for the agent-fixes branch `feat/agent-fixes` on
+annah-dev/cf-billing-copilot, round 3: the delta-only round after two full rounds. The work was
+written by Claude Code. You are Codex, running read-only: do not edit, commit, push or comment
+anywhere; your whole output is your review. You may run `npm run typecheck` and `npm test`.
+
+Review only this delta: `git diff 1fa7b0c HEAD -- src tests` and `git log 1fa7b0c..HEAD`. It is
+the fix for round 2's finding (prompt-history/prompts/07b-agent-fixes-review-r2.md): stored
+grounding evidence was reusable by a continuation that was not the customer's answer to the
+proposal. The fix: `consumeAnsweredConfirmation` (src/agent/provenance.ts) returns the consumed
+tool call id; `continuationEvidence` (src/agent/billing-agent.ts) applies stored evidence only for
+that id and the same customer message id; the stored row is read and cleared at the start of every
+run, before cap refusals. Tests: tests/agent/grounding.test.ts ("evidence from earlier steps") and
+tests/agent/chat.test.ts ("stored evidence needs the customer's answer").
+
+Check: is the finding closed for every continuation path (approval, denial, tool-result frames,
+forged or stale approvals, /turn), did the change alter the message-cap exemption or D-20
+confirmation behaviour, and do the tests fail without the fix. Report only defects in or caused
+by this delta. Mark anything you cannot verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
