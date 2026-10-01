@@ -16,5 +16,6 @@ restart) showed a confirmation for `inv_123456789`, a failed tool call after con
 confirmation, and a UI stuck on "Checking billing records..." after the client sent both the
 approval frame and a full chat request. That sequence is described in docs/DECISIONS.md.
 
-Model calls: about 4 for this recheck (two steps before the confirmation, two after), from the
-streamed steps in `ui-log.txt`; the dev server logs no per-call count.
+Model calls: 4 for this recheck, one per streamed step in `ui-log.txt` (getInvoice and the
+proposal before the confirmation; the status lookup and the answer after; detectAnomalies is
+run by the server, not the model). The dev log shows no grounding retry.
