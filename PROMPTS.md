@@ -3975,7 +3975,7 @@ severity, file and line, what is wrong and the fix. End with:
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06x-release-owner-c1-a1-b1-diagram.md
-- Outcome: (pending)
+- Outcome: C1: main merged into feat/release, #13's entries kept once, CI green on #14 (merged). A1, B1 and the diagram: follow-up PR #15 (panel follow-up after a credit confirmation, idleSweep with idempotent false and an alarm-path test, the Excalidraw diagram embedded with a label check against the code), three Codex review rounds, final transcript export.
 
 ````text
 C1 A1 B1, with changes.
@@ -3999,7 +3999,7 @@ End the PR with one final transcript export so the prompt history covers this wo
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06y-release-owner-followup-start.md
-- Outcome: (pending)
+- Outcome: both files copied unchanged into docs/ (mode 644) and included in PR #15.
 
 ````text
 A1: both files are now in C:\Users\anna_\Downloads under the exact names (cf-billing-copilot-architecture.excalidraw and cf-billing-copilot-architecture.svg). #14 is merged. Start the follow-up PR from a fresh origin/main as planned, with the diagram included.
@@ -4147,7 +4147,7 @@ with:
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/06zc-followup-review-r3-delta.md
-- Outcome: (pending)
+- Outcome: APPROVE, no findings: records-only delta; logged prompts match byte for byte; indexes match the generator; the changed transcripts carry no personal, unrelated or secret content. Review loop for PR #15 complete; the owner merges.
 
 ````text
 # PR #15 (fix/panel-sweep-diagram) cross-review, round 3 (delta only)
