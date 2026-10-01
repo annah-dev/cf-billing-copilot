@@ -1093,6 +1093,63 @@ live capture with honest capacity results") describe the cap as it was when they
 
 Decided by: Anna.
 
+## evals: follow-up figure and simulation rules
+
+Ordinal words, including compound ordinal phrases, are labels rather than figures. Numerals
+(including numeral ordinals) and spelled-out cardinal numbers still require tool evidence.
+Simulation turns require a successful simulatePlan result for the requested plan and period,
+including plan-memory turns; coincidental current-invoice amounts cannot prove a simulation.
+Reason: Anna explicitly requested both grader changes in the post-PR-7 follow-up.
+Decided by: Anna.
+
+## evals: simulation receipt identity and local safety ref
+
+Derive the required simulation plan/period from the engine-backed case scaffold and match both
+successful tool input and output plus customer identity. Reason: a valid simulation for another
+plan or month cannot establish the requested scenario. Decided by: QA engineer under standing orders.
+
+Anna authorized local synchronization after merging PR #7. Preserved local 9fa01a8 under
+refs/no-mistakes/recover/evals-owner-sync-post-pr7 before moving feat/evals to published e893baa;
+then created fix/evals-figures-simulation from merged main 8c943bd. The merged remote branch
+was deleted, so the confirmed PR head was used. No published history was rewritten.
+Decided by: Anna.
+
+## evals: cardinal before an ordinal label
+
+A spelled-out cardinal followed by whitespace and an ordinal used as a label (`first-time`,
+`second-hand`, or spaced `first time`/`second hand`) stays a checked figure; hyphenated
+compound ordinals such as twenty-first and one hundred and second remain excluded. Ambiguous
+prose such as "twenty first time" is therefore checked as 20. Reason: conservative handling
+keeps real quantities under the every-number rule rather than erasing them. Decided by: QA
+engineer under standing orders.
+
+## evals: final evidence after the gate rebase
+
+Keep PR #10's final review identifiers and refreshed validation in one documentation-only
+commit, reviewed as the third, delta-only round against 4dc3e9e. Reason: agent-fixes PR #8
+merged during delivery, so the gate rebased to main 5b288f3 and the earlier 372-test evidence
+predates that base. No grader, expected value, recording or result changes in this final delta.
+Decided by: QA engineer under standing orders.
+
+After the gate-required rebase, synchronized the local worktree to published 4dc3e9e using
+Anna's worktree-sync authorization, preserving 7f552e7 under
+refs/no-mistakes/recover/evals-followup-pre-sync-7f552e7. The original pre-PR-7 sync ref remains.
+No published history was rewritten by this synchronization. Decided by: Anna.
+
+## evals: recover after WSL restart with an additive merge
+
+Use offered guarded sync to recover ad782c5, preserve it under
+refs/no-mistakes/recover/evals-wsl-recovery-ad782c5, then merge main a5b05f7
+into PR #10 while retaining both complete decision and prompt logs. Reason: the
+owner explicitly requested this recovery and merge, and the previous gate failed
+only while monitoring CI when WSL stopped. No published history rewrite.
+Decided by: Anna.
+
+Scope the recovery audit to merge preservation and evidence, with the already
+reviewed grader/data unchanged. Reason: the two full source reviews and third
+delta review completed before the crash; recovery is not another source-review
+round. Decided by: QA engineer under standing orders.
+
 ## agent: the chat UI confirms a credit through the SDK's approval frame only
 
 Production report: after the customer confirmed a credit request the stream failed ("An internal
