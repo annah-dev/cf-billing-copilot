@@ -97,6 +97,82 @@ export interface StoragePort {
 }
 export const SESSION_KEY = "billing-copilot.session.v2.fixture";
 export type SessionMode = "fixture" | "live";
+/**
+ * Which backend the UI talks to. A production build defaults to the live API; the dev server
+ * defaults to the fixture preview, which makes no model calls. VITE_BILLING_API_MODE set to
+ * "live" or "fixture" overrides either default.
+ */
+export function apiMode(env: {
+  VITE_BILLING_API_MODE?: string;
+  DEV?: boolean;
+}): SessionMode {
+  const mode = env.VITE_BILLING_API_MODE;
+  if (mode === "live" || mode === "fixture") return mode;
+  return env.DEV ? "fixture" : "live";
+}
+/**
+ * True while a decided credit request is still being finished by the Workflow: approved but not
+ * yet applied, or a decision recorded while the status still reads pending_approval.
+ */
+export function awaitingWorkflow(request: {
+  status: string;
+  decision: unknown;
+}): boolean {
+  return (
+    request.status === "approved" ||
+    (request.status === "pending_approval" && request.decision != null)
+  );
+}
+/**
+ * Runs async tasks one at a time in call order: a task starts only after the previous one has
+ * settled, whether it resolved or failed.
+ */
+export function serialQueue() {
+  let tail: Promise<unknown> = Promise.resolve();
+  return <T>(task: () => Promise<T>): Promise<T> => {
+    const run = tail.then(task);
+    tail = run.catch(() => undefined);
+    return run;
+  };
+}
+type DecisionList = {
+  requests: { id: string; status: string; decision: unknown }[];
+};
+/**
+ * After a decision, read the list once, then again every `delayMs` (at most `attempts` more
+ * reads) while the Workflow has not finished `requestId`. Stops at a terminal state, at a failed
+ * read (`read` returns null) or when `active()` turns false, which is checked again after every
+ * delay. Returns the number of reads made.
+ */
+export async function followUpDecision({
+  requestId,
+  read,
+  sleep,
+  active,
+  attempts,
+  delayMs
+}: {
+  requestId: string;
+  read: () => Promise<DecisionList | null | undefined>;
+  sleep: (ms: number) => Promise<void>;
+  active: () => boolean;
+  attempts: number;
+  delayMs: number;
+}): Promise<number> {
+  const unfinished = (list: DecisionList | null | undefined) =>
+    list?.requests.some((r) => r.id === requestId && awaitingWorkflow(r)) ??
+    false;
+  if (!active()) return 0;
+  let latest = await read();
+  let reads = 1;
+  for (let i = 0; i < attempts && unfinished(latest); i++) {
+    await sleep(delayMs);
+    if (!active()) break;
+    latest = await read();
+    reads++;
+  }
+  return reads;
+}
 const sessionKey = (mode: SessionMode) =>
   mode === "fixture" ? SESSION_KEY : "billing-copilot.session.v1.live";
 export function readSession(

@@ -3,7 +3,11 @@ import { z } from "zod";
 import {
   ApiError,
   adminLink,
+  apiMode,
+  awaitingWorkflow,
   createApi,
+  followUpDecision,
+  serialQueue,
   parseAdminFragment,
   readSession,
   saveSession,
@@ -186,5 +190,147 @@ describe("error presentation", () => {
       title: "Unable to connect",
       code: null
     });
+  });
+});
+
+describe("backend mode", () => {
+  it("talks to the live API in a production build by default", () => {
+    expect(apiMode({ DEV: false })).toBe("live");
+    expect(apiMode({ DEV: false, VITE_BILLING_API_MODE: "" })).toBe("live");
+  });
+  it("keeps the fixture preview on the dev server by default", () => {
+    expect(apiMode({ DEV: true })).toBe("fixture");
+  });
+  it("lets VITE_BILLING_API_MODE override either default", () => {
+    expect(apiMode({ DEV: true, VITE_BILLING_API_MODE: "live" })).toBe("live");
+    expect(apiMode({ DEV: false, VITE_BILLING_API_MODE: "fixture" })).toBe(
+      "fixture"
+    );
+    expect(apiMode({ DEV: false, VITE_BILLING_API_MODE: "preview" })).toBe(
+      "live"
+    );
+  });
+});
+
+describe("admin follow-up after a decision", () => {
+  const decision = {
+    decision: "approve",
+    reason: "verified",
+    actor: "approver:x",
+    at: "2026-10-01T00:00:00.000Z"
+  };
+  it("waits while the Workflow has not finished a decided request", () => {
+    expect(awaitingWorkflow({ status: "approved", decision })).toBe(true);
+    expect(awaitingWorkflow({ status: "pending_approval", decision })).toBe(
+      true
+    );
+  });
+  it("stops at a terminal state or when no decision is recorded", () => {
+    for (const status of ["applied", "rejected", "expired"])
+      expect(awaitingWorkflow({ status, decision })).toBe(false);
+    expect(
+      awaitingWorkflow({ status: "pending_approval", decision: null })
+    ).toBe(false);
+    expect(awaitingWorkflow({ status: "requested", decision: null })).toBe(
+      false
+    );
+  });
+});
+
+describe("admin follow-up loop", () => {
+  const decision = { decision: "approve" };
+  const list = (status: string) => ({
+    requests: [
+      { id: "cr_1", status, decision },
+      { id: "cr_other", status: "approved", decision }
+    ]
+  });
+  function run(
+    statuses: (string | null)[],
+    {
+      active = (): boolean => true,
+      attempts = 5
+    }: { active?: () => boolean; attempts?: number } = {}
+  ) {
+    const sleeps: number[] = [];
+    let reads = 0;
+    const done = followUpDecision({
+      requestId: "cr_1",
+      read: async () => {
+        const status = statuses[Math.min(reads++, statuses.length - 1)];
+        return status === null ? null : list(status);
+      },
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+      active,
+      attempts,
+      delayMs: 1000
+    });
+    return done.then((count) => ({ count, sleeps, reads }));
+  }
+  it("re-reads until the Workflow applies the credit, then stops", async () => {
+    const r = await run(["approved", "approved", "applied", "applied"]);
+    expect(r).toEqual({ count: 3, sleeps: [1000, 1000], reads: 3 });
+  });
+  it("reads once when the decision is already terminal", async () => {
+    expect((await run(["rejected"])).count).toBe(1);
+  });
+  it("never makes more than one read plus the attempt limit", async () => {
+    const r = await run(["approved"], { attempts: 5 });
+    expect(r.count).toBe(6);
+    expect(r.sleeps).toHaveLength(5);
+  });
+  it("stops after a failed read", async () => {
+    expect((await run(["approved", null, "applied"])).count).toBe(2);
+  });
+  it("makes no read after the page unmounts during a delay", async () => {
+    let alive = true;
+    const r = await run(["approved", "approved", "applied"], {
+      active: () => {
+        const was = alive;
+        alive = false;
+        return was;
+      }
+    });
+    expect(r.count).toBe(1);
+    expect(r.reads).toBe(1);
+  });
+  it("ignores other requests that are still unfinished", async () => {
+    expect((await run(["applied"])).count).toBe(1);
+  });
+});
+
+describe("serial read queue", () => {
+  it("never runs two reads at once and keeps call order", async () => {
+    const enqueue = serialQueue();
+    let running = 0;
+    let peak = 0;
+    const order: number[] = [];
+    const task = (n: number, ms: number) => () =>
+      new Promise<number>((done) => {
+        running++;
+        peak = Math.max(peak, running);
+        setTimeout(() => {
+          running--;
+          order.push(n);
+          done(n);
+        }, ms);
+      });
+    const results = await Promise.all([
+      enqueue(task(1, 30)),
+      enqueue(task(2, 5)),
+      enqueue(task(3, 1))
+    ]);
+    expect(results).toEqual([1, 2, 3]);
+    expect(order).toEqual([1, 2, 3]);
+    expect(peak).toBe(1);
+  });
+  it("starts the next read after a failed one", async () => {
+    const enqueue = serialQueue();
+    const failed = enqueue(() => Promise.reject(new Error("network")));
+    const next = enqueue(async () => "ok");
+    await expect(failed).rejects.toThrow("network");
+    await expect(next).resolves.toBe("ok");
   });
 });
