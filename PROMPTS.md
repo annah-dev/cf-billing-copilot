@@ -2400,3 +2400,16 @@ claims: typecheck, lint and tests pass (358 tests, 5 added); planted defects in 
 and the admin card reached "applied" 2.4 s after Approve with no manual refresh against a mocked
 API; origin/main's bundle failed the same check; not deployed.
 ````
+
+## 36. Owner answer: merge main, do not rebase (typed mid-session)
+
+- Timestamp: 2026-09-30T19:01:42-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06i-release-owner-merge-not-rebase.md
+- Outcome: (pending)
+
+````text
+Merging main into feat/release in phase 2 is fine, and no rebase is needed since PRs are
+squash-merged. When main comes back in, keep one copy of each duplicated PROMPTS.md entry.
+````

@@ -804,3 +804,12 @@ each file's raw and compressed size. This supersedes the size figure in "release
 committed once, at the release PR". Reason: keep the repository small for reviewers who clone it.
 
 Decided by: Anna.
+
+## release: Bring main into feat/release by merge, not rebase
+
+In phase 2 the release branch takes main with `git merge origin/main`, not a rebase, so the pushed
+branch is never force-pushed; PRs are squash-merged, so the merge commit does not reach main's
+history. PROMPTS.md entries present on both sides (the owner's phase 1 answers and the PR #9
+review prompts, logged here and in PR #9) are kept once, in main's form.
+
+Decided by: Anna.
