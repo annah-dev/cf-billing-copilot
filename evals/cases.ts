@@ -5,6 +5,7 @@ import {
   type Money,
   type ToolCallRecord,
   type ToolName,
+  type ToolInput,
   type TurnRequest
 } from "../src/contracts";
 
@@ -19,6 +20,7 @@ export interface EvalTurn {
   request: TurnRequest;
   expected: string[];
   phrases: RegExp[];
+  requiredSimulation?: ToolInput<"simulatePlan">;
   fixture: { text: string; toolCalls: ToolCallRecord[] };
 }
 export interface EvalCase {
@@ -60,6 +62,11 @@ export function buildCases(): EvalCase[] {
       request: TurnRequestSchema.parse({ message, confirm }),
       expected,
       phrases,
+      requiredSimulation: toolCalls.some((item) => item.name === "simulatePlan")
+        ? ToolSchemas.simulatePlan.input.parse(
+            toolCalls.find((item) => item.name === "simulatePlan")!.input
+          )
+        : undefined,
       fixture: { text: `${detail} ${expected.join("; ")}.`.trim(), toolCalls }
     };
   };

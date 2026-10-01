@@ -1037,3 +1037,24 @@ abandoned or unrelated run cannot leave it for a later one. An end-to-end WebSoc
 tool-result frame goes red on the round-1 code.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## evals: follow-up figure and simulation rules
+
+Ordinal words, including compound ordinal phrases, are labels rather than figures. Numerals
+(including numeral ordinals) and spelled-out cardinal numbers still require tool evidence.
+Simulation turns require a successful simulatePlan result for the requested plan and period,
+including plan-memory turns; coincidental current-invoice amounts cannot prove a simulation.
+Reason: Anna explicitly requested both grader changes in the post-PR-7 follow-up.
+Decided by: Anna.
+
+## evals: simulation receipt identity and local safety ref
+
+Derive the required simulation plan/period from the engine-backed case scaffold and match both
+successful tool input and output plus customer identity. Reason: a valid simulation for another
+plan or month cannot establish the requested scenario. Decided by: QA engineer under standing orders.
+
+Anna authorized local synchronization after merging PR #7. Preserved local 9fa01a8 under
+refs/no-mistakes/recover/evals-owner-sync-post-pr7 before moving feat/evals to published e893baa;
+then created fix/evals-figures-simulation from merged main 8c943bd. The merged remote branch
+was deleted, so the confirmed PR head was used. No published history was rewritten.
+Decided by: Anna.

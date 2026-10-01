@@ -18,8 +18,9 @@ Both root test projects prohibit global fetch. Harness unit tests use an injecte
 Replay validates the recording envelope and successful tool inputs/outputs, the question/customer/
 confirmation flag, engine display strings and required meanings. Every numeric claim is
 checked: currency, scalar numbers, percentages, multipliers, written integer words, natural
-calendar dates and counts. Array lengths ground counts and ordered entries ground list
-positions. An invoice count must match its actual line array; an unrelated scalar seven does
+calendar dates and counts. Array lengths ground counts and ordered entries ground numeral list
+positions. Ordinal words such as "first", "second" and "twenty-first" are labels,
+not figures; numerals (including "2nd") and spelled-out cardinal numbers remain checked. An invoice count must match its actual line array; an unrelated scalar seven does
 not excuse "seven lines". Money amounts, percentages, counts and other numbers need the
 current turn's successful tool outputs; evidence resets every turn, so an amount the customer
 typed or an earlier turn's result cannot ground them. Dates and billing periods may come from
@@ -28,7 +29,10 @@ formats ("September 18" and 2026-09-18). Message dates ground only whole date-sh
 never a count, percentage, bare year or day number, and a day is never assembled from separate
 parts. A yearless date takes its year only from one matching period; otherwise it must echo the
 same yearless date from the message. Rejected calls must have null output and provide no
-evidence; a later valid call can recover. Confirmed credit turns require a successful request receipt. The report explicitly
+evidence; a later valid call can recover. Confirmed credit turns require a successful request receipt. Simulation turns, including
+plan-memory turns, require a successful simulatePlan call whose input and output match the
+requested plan and period and whose output matches the customer. Current-invoice amounts
+that happen to match a simulation cannot supply that receipt. The report explicitly
 counts live versus synthetic recordings.
 
 Recordings are immutable model evidence. The active snapshot contains the latest captured

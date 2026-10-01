@@ -89,6 +89,7 @@
       "id": "pro-simulation",
       "passed": false,
       "issues": [
+        "Turn 0: missing successful simulation for plan_pro in 2026-09",
         "Turn 0: missing expected $412.87",
         "Turn 0: missing expected $359.17",
         "Turn 0: missing expected -$53.70"
@@ -97,7 +98,10 @@
     {
       "id": "scale-simulation",
       "passed": false,
-      "issues": ["Turn 0: missing meaning /Scale/i"]
+      "issues": [
+        "Turn 0: missing successful simulation for plan_scale in 2026-09",
+        "Turn 0: missing meaning /Scale/i"
+      ]
     },
     {
       "id": "september-anomaly",
@@ -236,7 +240,7 @@
     "passRate": "4/15",
     "passedCases": 4
   },
-  "regradedAt": "2026-09-30T23:48:40.658Z",
+  "regradedAt": "2026-10-01T01:40:00.107Z",
   "gradingHistory": [
     {
       "cases": [
@@ -442,6 +446,107 @@
       "passedCases": 9,
       "passRate": "9/15",
       "gradedAt": "2026-09-30T22:12:52.165Z"
+    },
+    {
+      "cases": [
+        {
+          "id": "september-invoice",
+          "passed": false,
+          "issues": [
+            "Turn 0: ungrounded count 7 lines",
+            "Turn 0: ungrounded number 7"
+          ]
+        },
+        {
+          "id": "august-invoice",
+          "passed": true,
+          "issues": []
+        },
+        {
+          "id": "request-tiers",
+          "passed": true,
+          "issues": []
+        },
+        {
+          "id": "tax-line",
+          "passed": true,
+          "issues": []
+        },
+        {
+          "id": "midmonth-plan",
+          "passed": true,
+          "issues": []
+        },
+        {
+          "id": "zero-tax-invoice",
+          "passed": true,
+          "issues": []
+        },
+        {
+          "id": "august-september-change",
+          "passed": false,
+          "issues": [
+            "Turn 0: missing expected 2026-09-18",
+            "Turn 0: missing expected 5x",
+            "Turn 0: missing meaning /spike|unusual/i"
+          ]
+        },
+        {
+          "id": "july-august-change",
+          "passed": true,
+          "issues": []
+        },
+        {
+          "id": "pro-simulation",
+          "passed": false,
+          "issues": [
+            "Turn 0: missing expected $412.87",
+            "Turn 0: missing expected $359.17",
+            "Turn 0: missing expected -$53.70"
+          ]
+        },
+        {
+          "id": "scale-simulation",
+          "passed": false,
+          "issues": ["Turn 0: missing meaning /Scale/i"]
+        },
+        {
+          "id": "september-anomaly",
+          "passed": true,
+          "issues": []
+        },
+        {
+          "id": "duplicate-credit",
+          "passed": false,
+          "issues": [
+            "Turn 0: missing expected $412.87",
+            "Turn 0: missing meaning /pending|requested|await/i",
+            "Turn 0: missing meaning /approv/i"
+          ]
+        },
+        {
+          "id": "remember-plan",
+          "passed": true,
+          "issues": []
+        },
+        {
+          "id": "remember-credit",
+          "passed": false,
+          "issues": [
+            "Turn 0: missing expected $412.87",
+            "Turn 0: missing meaning /pending|requested|await/i",
+            "Turn 0: missing meaning /approv/i"
+          ]
+        },
+        {
+          "id": "expired-credit-history",
+          "passed": true,
+          "issues": []
+        }
+      ],
+      "passedCases": 9,
+      "passRate": "9/15",
+      "gradedAt": "2026-09-30T23:48:40.658Z"
     }
   ]
 }

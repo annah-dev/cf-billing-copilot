@@ -2720,3 +2720,33 @@ you suggest. End with:
     VERIFIED:     <what you checked and how>
     NOT VERIFIED: <what you could not check, and why>
 ````
+
+## 2026-09-30T18:32:32-07:00 - Evals figures and simulation follow-up
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05p-evals-figures-simulation-followup.md (copied with a tool)
+Outcome: Grader rules and 14 regressions implemented; six old-grader regressions and six exact-verdict comparisons observed red, then all 39 recordings regraded. No pass/fail change: corrected 9/15, 2/9, 8/15; raw retained. 367 tests pass with and without credentials; npm ci/typecheck pass. Safety ref retained, fresh main branch; zero model calls. Gated delivery pending.
+
+I merged #7. You may sync your worktree to the published head, keeping a safety ref. Then one
+small follow-up PR on a fresh branch from main: (1) ordinal words such as "first" or "second" are
+not figures; only numerals and spelled-out cardinal numbers are; (2) the scale-simulation rule you
+proposed, so a coincidental match with the current bill cannot pass it. Grader tests for both,
+re-grade every recording, report any verdict changes, gate, PR. Then stop.
+
+## 2026-09-30T18:42:41-07:00 - Evals follow-up cross-review context
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Source: prompt-history/prompts/05q-evals-followup-gate-context.md (copied with a tool)
+Outcome: (pending gate)
+
+Follow-up to merged PR #7, on fresh fix/evals-figures-simulation from main 8c943bd. Anna explicitly requests: ordinal words such as first/second are not figures; only numerals and spelled-out cardinal numbers are. Implement the proposed Scale simulation receipt rule so coincidental current-invoice amounts cannot pass. Add independent grader tests for both, regrade every recording, report every verdict change, gate and open one small PR, then stop; never merge/deploy or change src/agent/contracts/frozen configs/pins.
+
+Implementation: ordinal words and compound phrases are ignored by numeric normalization, while numeral ordinals/cardinals still require tool evidence. Preserve a standalone cardinal before a word such as second (one second). Simulation requirements for Pro/Scale and plan-memory turns are derived from engine-backed case inputs. Require a schema-valid successful simulatePlan whose input/output plan/period and output customer match the requested scenario. Existing known-good answers, seven-lines-for-six, per-turn financial and customer-date rules stay enforced. No per-answer overrides.
+
+Observed red first: six new grader regressions fail old grader (ordinal exclusion, coincidental bill-only Scale, rejected and mismatching simulations). After source fix replay rejects six old committed comparisons; explicitly regrade all 39 immutable active/archive responses using the same function. Only added issues are missing successful simulation for pro-simulation and scale-simulation on full/rerun/active; no removed issue and no changed pass boolean. Corrected full 9/15, rerun 2/9, latest 8/15; raw 4/15, 1/9, 5/15 and all grading history/digests/usage preserved. This follow-up makes zero Workers AI calls; historical local-dev capture remains 79 calls, estimated 6686 neurons, not deployed results. Scope evals/ plus append-only logs/new prompts, original report JSON updated solely by explicit shared generator.
+
+Run usual validation and Claude cross-review, logging generated review prompt if exposed; otherwise archive run/step/version lines and mark exact prompt unavailable. Preserve main PROMPTS/DECISIONS bytes as prefixes. Baseline collects 353, head 367, zero gone, 14 added. Command tails and added test names in evals/followup-verification.md. All result diffs and grader corrections must remain honest; tests compare exact committed bad verdicts and do not demand model perfection. If any test fails, never rewrite a recording or automatically relax/regrade model outcomes. Only documented shared grader fixes with unit evidence and explicit all-recording diffs may change results. Rebase/document/lint fixes remain within lane and standing orders. Two full review rounds maximum then third delta-only; no extra source-review loops. Any owner-reserved change goes FOR ANNA; continue unblocked work. Copy this exact context to a prompt file/log if changed or reused during review. No new model calls, login, secrets/account changes, merge or deploy.
+
+PR body must reflect this small final follow-up, not repeat stale PR #7 risk/309-test evidence. Include final command tails, new grader test names/red-first observations, 39-recording regrade and no verdict change, raw/corrected totals, collection comparison, immutable bytes/frozen scope, decisions and review evidence, zero new model calls, ending VERIFIED and NOT VERIFIED. Preserve the already merged feat/evals history. Push fresh feature branch and open PR, wait for CI checks-passed, then stop. Keep informational pre-existing formatter/evals-lint follow-ups visible rather than modifying tooling outside scope.

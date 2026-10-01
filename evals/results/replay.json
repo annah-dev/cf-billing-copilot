@@ -4,7 +4,7 @@
   "baseUrl": "http://127.0.0.1:5173",
   "environment": "local dev",
   "runDate": "2026-09-30T20:47:12.096Z",
-  "regradedAt": "2026-09-30T23:48:40.658Z",
+  "regradedAt": "2026-10-01T01:40:00.107Z",
   "modelCallCount": 79,
   "estimatedNeurons": 6686,
   "usageScope": "all captured attempts at this target",
@@ -216,6 +216,7 @@
       "id": "pro-simulation",
       "passed": false,
       "issues": [
+        "Turn 0: missing successful simulation for plan_pro in 2026-09",
         "Turn 0: missing expected $412.87",
         "Turn 0: missing expected $359.17",
         "Turn 0: missing expected -$53.70"
@@ -224,7 +225,10 @@
     {
       "id": "scale-simulation",
       "passed": false,
-      "issues": ["Turn 0: missing meaning /Scale/i"]
+      "issues": [
+        "Turn 0: missing successful simulation for plan_scale in 2026-09",
+        "Turn 0: missing meaning /Scale/i"
+      ]
     },
     {
       "id": "september-anomaly",
