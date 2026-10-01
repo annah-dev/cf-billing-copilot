@@ -190,16 +190,21 @@ function selectSessions() {
     if (!g) continue;
     const [, repoId, runId] = g;
     if (!gateRepoIds.includes(repoId)) continue;
+    // A run is confirmed when one of its sessions names this repo; a short fix session in the
+    // same run may not, but it belongs to the same worktree and branch.
+    const named = top.filter((f) => repoMention.test(readFileSync(f, "utf8")));
     for (const f of top) {
       const started = firstTimestamp(f);
-      const text = readFileSync(f, "utf8");
-      if (started < SINCE || !repoMention.test(text)) continue;
+      if (started < SINCE || !named.length) continue;
+      const how = named.includes(f)
+        ? "content names this repo"
+        : `another session of the run names this repo`;
       for (const s of withSubagents(f))
         sessions.push({
           ...s,
           harness: "claude",
           lane: `gate-${runId}`,
-          reason: `no-mistakes gate run ${runId}: repo ${repoId} has origin ${ORIGIN}, started ${started.toISOString()} (after ${SINCE.toISOString()}), content names this repo`
+          reason: `no-mistakes gate run ${runId}: repo ${repoId} has origin ${ORIGIN}, started ${started.toISOString()} (after ${SINCE.toISOString()}), ${how}`
         });
     }
   }
