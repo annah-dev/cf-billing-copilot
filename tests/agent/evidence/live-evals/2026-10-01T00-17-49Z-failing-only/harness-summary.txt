@@ -1,0 +1,3 @@
+local dev 2026-10-01T00:17:49.457Z http://127.0.0.1:5174: 6/7 planned cases passed, 7 completed; complete
+Reported model calls: 19. Estimated neurons: 1585. Tokens: 49871 input, 1225 output.
+(Written from run.json: vitest did not print the harness's console summary for a passing test file.)

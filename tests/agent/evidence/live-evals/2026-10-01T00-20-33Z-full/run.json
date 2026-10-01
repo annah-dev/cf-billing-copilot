@@ -1,0 +1,110 @@
+{
+  "formatVersion": 1,
+  "source": "live",
+  "baseUrl": "http://127.0.0.1:5174",
+  "environment": "local dev",
+  "modelCallCount": 34,
+  "estimatedNeurons": 2946,
+  "sandboxes": {
+    "read-only": {
+      "sandboxId": "d542748e897513775cdb63f0041a7863",
+      "messages": 11
+    },
+    "duplicate-credit": {
+      "sandboxId": "e3cf283b77583731a8c35e4cdc54ccf0",
+      "messages": 1
+    },
+    "remember-plan": {
+      "sandboxId": "793204c6633e13869bb4de6054f77791",
+      "messages": 2
+    }
+  },
+  "runDate": "2026-10-01T00:20:33.083Z",
+  "status": "stopped",
+  "totalCases": 15,
+  "attemptedCases": 14,
+  "completedCases": 13,
+  "passedCases": 13,
+  "passRate": "13/15",
+  "usage": {
+    "inputTokens": 96787,
+    "outputTokens": 1746,
+    "modelCalls": 34
+  },
+  "turnsPosted": 14,
+  "stopCode": "cap_reached",
+  "cases": [
+    {
+      "id": "september-invoice",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "august-invoice",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "request-tiers",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "tax-line",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "midmonth-plan",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "zero-tax-invoice",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "august-september-change",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "july-august-change",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "pro-simulation",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "scale-simulation",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "september-anomaly",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "duplicate-credit",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "remember-plan",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "remember-credit",
+      "passed": false,
+      "issues": [
+        "Run stopped: cap_reached"
+      ]
+    }
+  ]
+}
