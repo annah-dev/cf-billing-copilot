@@ -123,16 +123,61 @@ export function buildTools(
     fetch: (input: never) => Promise<ToolOutput<N>>
   ) {
     return guard(name, async (input: unknown): Promise<ToolOutput<N>> => {
-      const key = stableKey(name, input);
+      // The SDK validates against inputSchema before execute; the tool checks again, so no
+      // caller that reaches execute directly can skip the contract (AGENTS.md hard rule 2).
+      const checked = ToolSchemas[name].input.safeParse(input);
+      if (!checked.success) {
+        throw new ToolError(
+          `Invalid input for ${name}: ${checked.error.message}`
+        );
+      }
+      const key = stableKey(name, checked.data);
       if (cache.has(key)) return cache.get(key) as ToolOutput<N>;
       const output = ToolSchemas[name].output.parse(
-        await fetch(input as never)
+        await fetch(checked.data as never)
       ) as ToolOutput<N>;
       cache.set(key, output);
       host.remember(name, output);
       return output;
     });
   }
+
+  /** Chat calls that skipped the confirmation because the invoice check failed, with the reason. */
+  const unconfirmed = new Map<string, string>();
+  const startCredit = guard("startCreditRequest", async (input: unknown) => {
+    const checked = ToolSchemas.startCreditRequest.input.safeParse(input);
+    if (!checked.success) {
+      throw new ToolError(
+        `Invalid input for startCreditRequest: ${checked.error.message}`
+      );
+    }
+    const parsed = checked.data;
+    unwrap(await ledger.invoice(customerId, { invoiceId: parsed.invoiceId }));
+    const disputed = parsed.disputedLedgerEntryId ?? null;
+    const result = await host.startCreditRequest({
+      invoiceId: parsed.invoiceId,
+      disputedLedgerEntryId: disputed,
+      reason: parsed.reason,
+      // needsApproval on: execute runs only after the chat's approval step.
+      confirmedVia: options.confirmCredit ? "chat" : "turn",
+      idempotencyKey: await creditIdempotencyKey(
+        host.sandboxId,
+        customerId,
+        parsed.invoiceId,
+        disputed
+      )
+    });
+    if (!result.ok) throw new ToolError(result.message);
+    const output = ToolSchemas.startCreditRequest.output.parse({
+      request: summary(result.request),
+      existing: result.existing,
+      message: result.existing
+        ? `A credit request for this charge already exists (${result.request.id}, status ${result.request.status}). No new request was created.`
+        : `Credit request ${result.request.id} was recorded. The claim is checked against the ledger and a human approver decides; no credit is applied until then.`
+    });
+    host.remember("startCreditRequest", output);
+    return output;
+  });
 
   const tools: ToolSet = {
     getAccount: tool({
@@ -192,41 +237,46 @@ export function buildTools(
     startCreditRequest: tool({
       description: ToolSchemas.startCreditRequest.description,
       inputSchema: ToolSchemas.startCreditRequest.input,
-      needsApproval: options.confirmCredit,
-      execute: guard("startCreditRequest", async (input: unknown) => {
-        const parsed = ToolSchemas.startCreditRequest.input.parse(input);
-        const disputed = parsed.disputedLedgerEntryId ?? null;
-        const result = await host.startCreditRequest({
-          invoiceId: parsed.invoiceId,
-          disputedLedgerEntryId: disputed,
-          reason: parsed.reason,
-          // needsApproval on: execute runs only after the chat's approval step.
-          confirmedVia: options.confirmCredit ? "chat" : "turn",
-          idempotencyKey: await creditIdempotencyKey(
-            host.sandboxId,
-            customerId,
-            parsed.invoiceId,
-            disputed
-          )
-        });
-        if (!result.ok) throw new ToolError(result.message);
-        const output = ToolSchemas.startCreditRequest.output.parse({
-          request: summary(result.request),
-          existing: result.existing,
-          message: result.existing
-            ? `A credit request for this charge already exists (${result.request.id}, status ${result.request.status}). No new request was created.`
-            : `Credit request ${result.request.id} was recorded. The claim is checked against the ledger and a human approver decides; no credit is applied until then.`
-        });
-        host.remember("startCreditRequest", output);
-        return output;
-      })
+      // The customer is asked to confirm only a claim on an invoice the Ledger knows for this
+      // customer (production: the model proposed an invented inv_1234567890 before any lookup).
+      // An unknown invoice skips the confirmation and fails in execute, before any write, with
+      // the real invoice ids so the model can look one up and propose again.
+      needsApproval: options.confirmCredit
+        ? async (input: unknown, { toolCallId }: { toolCallId: string }) => {
+            const parsed =
+              ToolSchemas.startCreditRequest.input.safeParse(input);
+            if (!parsed.success) return true;
+            const known = await ledger.invoice(customerId, {
+              invoiceId: parsed.data.invoiceId
+            });
+            if (known.ok) return true;
+            unconfirmed.set(toolCallId, known.message);
+            return false;
+          }
+        : false,
+      execute: async (input: unknown, opts: { toolCallId?: string } = {}) => {
+        // A call that skipped the confirmation never writes, even if the invoice reads fine now
+        // (a transient failure must not turn into an unconfirmed credit request).
+        const refused = opts.toolCallId
+          ? unconfirmed.get(opts.toolCallId)
+          : undefined;
+        if (refused !== undefined) throw new ToolError(refused);
+        return startCredit(input);
+      }
     }),
     getCreditRequestStatus: tool({
       description: ToolSchemas.getCreditRequestStatus.description,
       inputSchema: ToolSchemas.getCreditRequestStatus.input,
       // Not cached: a status can change while the turn runs.
       execute: guard("getCreditRequestStatus", async (input: unknown) => {
-        const parsed = ToolSchemas.getCreditRequestStatus.input.parse(input);
+        const checked =
+          ToolSchemas.getCreditRequestStatus.input.safeParse(input);
+        if (!checked.success) {
+          throw new ToolError(
+            `Invalid input for getCreditRequestStatus: ${checked.error.message}`
+          );
+        }
+        const parsed = checked.data;
         return ToolSchemas.getCreditRequestStatus.output.parse(
           unwrap(await ledger.creditStatus(customerId, parsed.requestId))
         );

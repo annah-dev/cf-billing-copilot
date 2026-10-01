@@ -44,3 +44,15 @@ report; the scratch input marked it so, with the reason, and nothing under `eval
 
 Totals for this lane: 55 live model calls, about 4,725 estimated neurons. With the full run, 14 of
 15 questions pass and remember-credit has not run on the final code.
+
+## remember-credit under the new per-IP cap (2026-10-01, owner-authorized, PR "fix/prod-chat")
+
+After #11 raised the per-IP sandbox cap to 20, remember-credit ran once at 06:15:27 UTC against
+this branch's local dev: it passed (1/1, 6 model calls, 16,257 input and 178 output tokens, about
+471 estimated neurons). In turn 1 the model fetched the invoice before starting the request (the
+new prompt rule), and the turn answered with the amount and `pending_approval`; turn 2 answered
+from the status tool. The harness's prior report was the stopped completion run above, where
+remember-credit had not passed.
+
+With this run, all 15 questions have passed live on the agent-fixes code: 13 in the full run,
+expired-credit-history and remember-credit in the completion runs.

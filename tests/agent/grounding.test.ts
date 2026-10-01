@@ -161,6 +161,32 @@ describe("grounding rule", () => {
   });
 });
 
+describe("ordinal words are labels, not figures (grader rule from #10)", () => {
+  const none = collectEvidence([], "What should I do?");
+
+  it("does not flag ordinal words, single or compound", () => {
+    expect(
+      unsupportedFigures(
+        "First, I need your invoice. Second, I check the twenty-first line.",
+        none
+      )
+    ).toEqual([]);
+  });
+
+  it("still flags a numeral ordinal and a cardinal word without evidence", () => {
+    expect(unsupportedFigures("Your 3rd invoice", none)).toEqual(["3"]);
+    expect(unsupportedFigures("It has seven lines.", none)).toEqual([
+      "7 lines",
+      "7"
+    ]);
+  });
+
+  it("keeps a cardinal before an independent ordinal word as a figure", () => {
+    // "one second": the grader keeps "one" (a cardinal) and drops "second" (a label).
+    expect(unsupportedFigures("Give me one second.", none)).toEqual(["1"]);
+  });
+});
+
 describe("grounding guard on a turn", () => {
   it("sends a grounded reply unchanged without an extra model call", async () => {
     const sb = await createSandbox();
@@ -352,5 +378,16 @@ describe("evidence from earlier steps (PR review r1, r2)", () => {
 
   it("gives none when nothing was stored", () => {
     expect(continuationEvidence("call_credit", null, "u1")).toBeNull();
+  });
+});
+
+describe("ordinal words on a turn (grader rule from #10)", () => {
+  it("sends a reply that only uses ordinal words without a retry", async () => {
+    const sb = await createSandbox();
+    const ai = stubAi([text("First, I need to look up your invoice.")]);
+    const body = await turnOk(sb.sandboxId, "What should I do?");
+    expect(ai).toHaveBeenCalledTimes(1);
+    expect(body.text).toBe("First, I need to look up your invoice.");
+    expect((await groundingOf(sb.sandboxId)).outcome).toBe("grounded");
   });
 });

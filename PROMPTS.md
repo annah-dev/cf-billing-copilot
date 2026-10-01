@@ -2720,6 +2720,7 @@ you suggest. End with:
 
     VERIFIED:     <what you checked and how>
     NOT VERIFIED: <what you could not check, and why>
+````
 
 ## 2026-09-30T18:31:21-07:00 - Owner answers to the release phase 1 report (typed mid-session)
 
@@ -2949,6 +2950,36 @@ End with:
 
     VERIFIED:     <what you ran and observed>
     NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 36. Production chat fixes and rebase instructions (owner, mid-session)
+
+- Timestamp: 2026-09-30T18:47:16-07:00
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/08-prod-chat-fixes.md
+- Outcome: #8 rebased onto main and force-pushed (owner-authorized); the two unreached eval questions run (expired-credit-history passed; remember-credit passed later under the new cap); the four production issues fixed on fix/prod-chat with one commit each, reproduced and rechecked live in local dev (13 model calls), two full Codex rounds and one delta round; the guard follows the grader ordinal rule after #10.
+
+````text
+Merged #7. Rebase #8 onto main and force-push feat/agent-fixes (never main). A1: the daily limit
+reset at 00:00 UTC, so run the two unreached questions once now. B1: no contract change. On
+"first": the evals lane will change the grader so ordinal words are not figures; once that
+merges, make the guard follow the same rule.
+
+Then, on a NEW branch and PR after #8 merges (keep #8 as reviewed), fix what the release lane
+found against production:
+1. In the chat UI, the stream after the customer confirms a credit request fails with "An internal
+   error occurred" and the UI shows "Unable to connect". Log the raw error in toolErrorText,
+   reproduce it (local dev with VITE_BILLING_API_MODE=live, or wrangler tail against production),
+   and fix the cause.
+2. Never show the customer a confirmation for an invoice the server has not validated. The model
+   called startCreditRequest with an invented inv_1234567890 before any lookup. Resolve or
+   validate the invoice server-side before the confirmation appears.
+3. Chat messages over the WebSocket are not counted by the rate limiter or the daily caps, which
+   contradicts D-7. Count them exactly like /turn.
+4. Confirm tool inputs are schema-validated (by the SDK or inside the tool), and fix the D-14 and
+   model-settings drift in docs/DECISIONS.md.
+Same review loop, live checks under 20 model calls, then open the PR.
 ````
 
 ## 37. Sandbox per-IP cap (owner, mid-session)
@@ -3251,4 +3282,279 @@ in phase 2.
   the model, the deterministic anomaly check, and the per-IP cap change.
 - I may rename the repository to start with cf_ai_ before submitting; keep repository links in one
   place in the README.
+````
+
+## 2026-09-30T18:32:32-07:00 - Evals figures and simulation follow-up
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05p-evals-figures-simulation-followup.md (copied with a tool)
+Outcome: Grader rules and 14 regressions implemented; six old-grader regressions and six exact-verdict comparisons observed red, then all 39 recordings regraded. No pass/fail change: corrected 9/15, 2/9, 8/15; raw retained. 367 tests pass with and without credentials; npm ci/typecheck pass. Safety ref retained, fresh main branch; zero model calls. Gated delivery pending.
+
+I merged #7. You may sync your worktree to the published head, keeping a safety ref. Then one
+small follow-up PR on a fresh branch from main: (1) ordinal words such as "first" or "second" are
+not figures; only numerals and spelled-out cardinal numbers are; (2) the scale-simulation rule you
+proposed, so a coincidental match with the current bill cannot pass it. Grader tests for both,
+re-grade every recording, report any verdict changes, gate, PR. Then stop.
+
+## 2026-09-30T18:42:41-07:00 - Evals follow-up cross-review context
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Source: prompt-history/prompts/05q-evals-followup-gate-context.md (copied with a tool)
+Outcome: Supplied context for run 01M3TJ4KE1N1TBVAW6THCD3NZT; review round 1 found the cardinal-label warning (fixed), round 2 PASS, and the third delta-only round in run 01M3TKGDQ50TB5190HDMM0VTT3 PASS (entries below).
+
+Follow-up to merged PR #7, on fresh fix/evals-figures-simulation from main 8c943bd. Anna explicitly requests: ordinal words such as first/second are not figures; only numerals and spelled-out cardinal numbers are. Implement the proposed Scale simulation receipt rule so coincidental current-invoice amounts cannot pass. Add independent grader tests for both, regrade every recording, report every verdict change, gate and open one small PR, then stop; never merge/deploy or change src/agent/contracts/frozen configs/pins.
+
+Implementation: ordinal words and compound phrases are ignored by numeric normalization, while numeral ordinals/cardinals still require tool evidence. Preserve a standalone cardinal before a word such as second (one second). Simulation requirements for Pro/Scale and plan-memory turns are derived from engine-backed case inputs. Require a schema-valid successful simulatePlan whose input/output plan/period and output customer match the requested scenario. Existing known-good answers, seven-lines-for-six, per-turn financial and customer-date rules stay enforced. No per-answer overrides.
+
+Observed red first: six new grader regressions fail old grader (ordinal exclusion, coincidental bill-only Scale, rejected and mismatching simulations). After source fix replay rejects six old committed comparisons; explicitly regrade all 39 immutable active/archive responses using the same function. Only added issues are missing successful simulation for pro-simulation and scale-simulation on full/rerun/active; no removed issue and no changed pass boolean. Corrected full 9/15, rerun 2/9, latest 8/15; raw 4/15, 1/9, 5/15 and all grading history/digests/usage preserved. This follow-up makes zero Workers AI calls; historical local-dev capture remains 79 calls, estimated 6686 neurons, not deployed results. Scope evals/ plus append-only logs/new prompts, original report JSON updated solely by explicit shared generator.
+
+Run usual validation and Claude cross-review, logging generated review prompt if exposed; otherwise archive run/step/version lines and mark exact prompt unavailable. Preserve main PROMPTS/DECISIONS bytes as prefixes. Baseline collects 353, head 367, zero gone, 14 added. Command tails and added test names in evals/followup-verification.md. All result diffs and grader corrections must remain honest; tests compare exact committed bad verdicts and do not demand model perfection. If any test fails, never rewrite a recording or automatically relax/regrade model outcomes. Only documented shared grader fixes with unit evidence and explicit all-recording diffs may change results. Rebase/document/lint fixes remain within lane and standing orders. Two full review rounds maximum then third delta-only; no extra source-review loops. Any owner-reserved change goes FOR ANNA; continue unblocked work. Copy this exact context to a prompt file/log if changed or reused during review. No new model calls, login, secrets/account changes, merge or deploy.
+
+PR body must reflect this small final follow-up, not repeat stale PR #7 risk/309-test evidence. Include final command tails, new grader test names/red-first observations, 39-recording regrade and no verdict change, raw/corrected totals, collection comparison, immutable bytes/frozen scope, decisions and review evidence, zero new model calls, ending VERIFIED and NOT VERIFIED. Preserve the already merged feat/evals history. Push fresh feature branch and open PR, wait for CI checks-passed, then stop. Keep informational pre-existing formatter/evals-lint follow-ups visible rather than modifying tooling outside scope.
+
+## 2026-09-30T18:51:14-07:00 - Evals follow-up review round 1
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude), run 01M3TJ4KE1N1TBVAW6THCD3NZT
+Source: prompt-history/prompts/05g-evals-followup-review-r1.md (step log and findings copied with a tool)
+Outcome: One warning, ordinal-prefix-drops-cardinal (tens/hundreds cardinal before first-time/second-hand erased). Exact generated review prompt was not exposed by axi logs and is NOT VERIFIED.
+
+(Exact prompt unavailable; see the source file for the step log and full finding.)
+
+## 2026-09-30T18:51:14-07:00 - Evals follow-up cardinal-before-ordinal-label fix
+
+Role: QA / evals engineer
+Harness: no-mistakes v1.41.2 (Claude) review fix round
+Source: prompt-history/prompts/05r-evals-followup-cardinal-fix.md (copied with a tool)
+Outcome: Five label regressions observed red (5 failed, 85 passed), then green (90 passed). Cardinal before a spaced ordinal label (first-time, second-hand, first time, second hand) is kept; hyphenated compound ordinals stay excluded. All 39 recordings regraded with EVAL_REGRADE_ALL=1: only regradedAt timestamps changed, no issue or verdict change. Collection main 353, head 372, zero gone, 19 added. Zero model calls.
+
+Fix ordinal-prefix-drops-cardinal under Anna's explicit rule and standing decision rights for reversible in-lane implementation fixes. Although classified ask-user, it is an implementation defect contrary to her settled cardinal-number rule; no new owner-reserved policy choice is needed. Take the review's recommended option: preserve a standalone cardinal before ordinal labels used in first-time/second-hand noun phrases (including spaced forms if needed), while keeping actual compound ordinal phrases such as twenty-first and one hundred and second excluded. Do not accept/document the blind spot instead of fixing it. Do not weaken cardinal or seven-lines tests.
+
+First add regressions for We saw forty first-time invoices, one hundred first-time customers, twenty second-hand items (and equivalent spaced label forms if parser support is extended), all with no numeric evidence. Watch those regressions fail before fixing. Prefer conservative handling of ambiguous ordinary prose that preserves quantities; no per-recording override. Existing ordinal-word label regression and numeral/cardinal cases including one second must still pass. Make the smallest maintainable normalization fix; no app/frozen/config/dependency changes, no model calls. Log this reversible interpretation in DECISIONS.md with one-line reason and Decided by: QA engineer under standing orders.
+
+Log review round 1 with run 01M3TJ4KE1N1TBVAW6THCD3NZT and Claude harness, copying /tmp/evals-followup-review-r1.log (ANSI stripped only) and full finding from /tmp/evals-followup-review-r1-findings.json to prompt-history/prompts/05g-evals-followup-review-r1.md. Exact generated prompt was not exposed by axi logs; explicitly mark this limit there/PROMPTS/NOT VERIFIED. Log this exact fix context by copying /tmp/evals-followup-cardinal-fix.txt to prompt-history/prompts/05r-evals-followup-cardinal-fix.md and PROMPTS. Main log bytes remain prefixes.
+
+After the grader fix and unit test, explicitly regrade ALL 39 recordings with EVAL_REGRADE_ALL=1 via existing shared generator, preserve raw response bytes/digests, initialGrading and all prior gradingHistory, and report any new issue/verdict changes. No per-answer changes, automatic test-time regeneration or live calls. Run typecheck, npm test and credential-free npm test, collect main/head tests and update evals/followup-verification.md/results README with final actual counts and red/green evidence. Current pre-fix counts main353/head367, 14 added, none gone; do not reuse 367 if new regressions change it. Raw4/15,1/9,5/15; corrected9/15,2/9,8/15 currently, zero new calls. All new grading rules apply uniformly, with every correction and reason reported.
+
+Then source-review round 2 (full follow-up diff). A third if needed must be delta only; no extra full rounds. Continue tests/docs/lint/gated push/PR/CI with accurate final small-follow-up description, command tails, all-recordings diffs, unchanged app/frozen files and VERIFIED/NOT VERIFIED. Do not merge/deploy/log in or rewrite merged feat/evals. Stop checks-passed with new PR open. Any newly owner-reserved change goes FOR ANNA; continue unblocked scope.
+
+## 2026-09-30T19:07:24-07:00 - Evals follow-up review round 2
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3TJ4KE1N1TBVAW6THCD3NZT
+Source: prompt-history/prompts/05g-evals-followup-review-r2.md (identifying log copied with a tool; exact generated prompt unavailable)
+Outcome: PASS after the cardinal-label fix; no new source findings. The gate subsequently rebased PR #10 onto merged agent-fixes main 5b288f3, resolving append-only log conflicts and repushing; this gate-required published history rewrite was reported to Anna. Independent credential-free verification on rebased 4dc3e9e passed 449 tests; main430/head449, 19 added, zero disappeared. Zero model calls.
+
+## 2026-09-30T19:07:24-07:00 - Evals follow-up final delta review
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Source: prompt-history/prompts/05s-evals-followup-final-delta.md (copied with a tool)
+Outcome: Supplied context for the third, delta-only review (run 01M3TKGDQ50TB5190HDMM0VTT3, logged below as review round 3). PASS; no source findings.
+
+Final documentation-only delta for existing PR #10. User requested one follow-up PR for ordinal words versus figures and matching simulation receipts, with tests, all-recordings regrade, gate and PR then stop. The grader is complete: two full Claude source rounds in run 01M3TJ4KE1N1TBVAW6THCD3NZT, cardinal-before-ordinal-label finding fixed, no further source finding. Gate opened PR #10 then rebased/repushed onto newly merged agent-fixes main 5b288f3, resolving only append-only logs. Published source head 4dc3e9e is CI green. This final commit only archives second-review identifiers and refreshes main430/head449 evidence plus credential-free 449-test/typecheck proof. All 39 recordings/raw grades/usage unchanged; receipt issues only added to Pro/Scale, no verdict change, corrected9/15,2/9,8/15 raw4/15,1/9,5/15. Zero new model calls. User authorized worktree synchronization with safety refs; old refs9fa/7f retained, no manual published rewrite.
+
+SOURCE REVIEW BUDGET: This is the THIRD and FINAL review of this follow-up, DELTA ONLY. Review git diff 4dc3e9e930dec92c827d77c9c1d56eab3a05e35c...HEAD, not another full origin/main diff. The two full source rounds already ran. No grader, unit test, expected value, recording or results edit is authorized in this evidence delta; those are read-only. Review documentation/log accuracy and scope only. No fourth source review. Ordinary mandatory commands may run; tests check the harness, not model perfection, no automatic regrade or recording rewrite if anything fails. Any new owner-only decision goes FOR ANNA while unblocked work continues.
+
+DOCUMENT PHASE REQUIRED before push: archive this run's review identifying log, using read-only no-mistakes axi status and axi logs --step review --full, into prompt-history/prompts/05g-evals-followup-review-r3.md (round 3 overall, delta-only). Exact generated prompt may be absent; if absent explicitly say so and copy only identifying logs with a tool, ANSI stripped only. Log it in PROMPTS.md role automated cross-review, Claude/no-mistakes version/run id, final delta scope and outcome. This exact enriched context is already copied/logged as 05s-evals-followup-final-delta.md. Update the latest followup-verification VERIFIED/NOT VERIFIED to mark round3 complete after it runs. Preserve current main's existing prompt/decision bytes as prefixes. Docs/log updates after this review do not change source; do not initiate another source round for them. All edits remain docs/logs only. Do not leave review metadata falsely pending or omit its file. Update the existing PR #10, do not open another PR. Final body must use actual current CI tails/counts and carry all correction/verdict/usage/red-first/collection/decision/review evidence, ending VERIFIED/NOT VERIFIED. Include the gate-required published rebase in the handoff. No new live calls, merge/deploy/login/secrets/accounts/contracts/config/dependency changes. Stop at checks-passed; owner merges.
+
+## 2026-09-30T19:13:43-07:00 - Evals follow-up test-phase install fix
+
+Role: QA engineer (no-mistakes test phase)
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3TKGDQ50TB5190HDMM0VTT3
+Source: prompt-history/prompts/05t-evals-followup-install-fix.md (copied with a tool)
+Outcome: npm test exit 127 (vitest not found) reproduced in the fresh gate worktree; root cause was missing node_modules. After npm ci from the frozen lockfile, npm run typecheck passed and npm test and credential-free env -i CI=1 npm test each passed 25 files / 449 tests. No package, lock, config, source, grader, recording or results changes; zero model calls.
+
+test-1 is an environment failure: npm test exited127 because this fresh gate worktree has no installed vitest. Run npm ci in the current gate worktree using frozen lock pins, then npm run typecheck, npm test, and env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test. No package/lock/config changes, no skips, no source/grader/recording/results edits or implicit regrade, no live calls. Grader source is already approved by two full source rounds, and the final docs-only delta just passed the third review in run01M3TKGDQ50TB5190HDMM0VTT3. No fourth source review; this fix changes only dependency installation and docs evidence. Current merged main430, head449, 19 added, zero gone; source/recordings/grades match prior green4dc3e9e. A credential-free449-test/typecheck proof already exists in /tmp/evals-followup-rebased-empty-home.log and /tmp/evals-followup-rebased-typecheck.log from that identical-source snapshot.
+
+Log this fix context by tool-copying /tmp/evals-followup-install-fix.txt into prompt-history/prompts/05t-evals-followup-install-fix.md and PROMPTS.md, preserving main bytes. Before push, document phase MUST archive completed third review identifiers by copying /tmp/evals-followup-review-r3.log to prompt-history/prompts/05g-evals-followup-review-r3.md (ANSI stripped only), role automated cross-review, harness Claude/no-mistakesv1.41.2, run01M3TKGDQ50TB5190HDMM0VTT3, third overall and delta-only scope4dc3e9e..15520e0, no source findings. Exact generated prompt was not exposed by axi logs; mark it unavailable. Current exact supplied context is05s-evals-followup-final-delta.md. Update followup-verification/latest PROMPTS outcomes to final449-test proof and third-review PASS; do not leave falsely pending review metadata. Docs/log updates do not trigger another source round.
+
+Continue normal docs/lint/push/PR/CI on existing PR#10, no new PR. Do not merge/deploy/log in/change accounts/secrets/contracts/dependencies/config or call model. Stop checks-passed with PRopen. All raw/corrected local-dev counts unchanged and no new Workers AI calls. The only published rewrite was the prior gate-required rebase onto agent-fixes5b288f3, reported to Anna; retain every gate commit and safety refs.
+
+## 2026-09-30T19:20:00-07:00 - Evals follow-up review round 3 (delta only)
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3TKGDQ50TB5190HDMM0VTT3
+Source: prompt-history/prompts/05g-evals-followup-review-r3.md (identifying log copied with a tool; exact generated prompt unavailable; supplied context is 05s-evals-followup-final-delta.md)
+Outcome: PASS; no source findings. Third and final review overall, delta only over 4dc3e9e..15520e0 (documentation/log evidence after the gate rebase). No fourth source review. Zero model calls.
+
+## 2026-09-30T23:06:30-07:00 - Evals WSL recovery
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05u-evals-wsl-recovery.md (copied with a tool)
+Outcome: Supplied context for recovery gate run 01M3V196CVJCWVV5X97QQ2PBJK. Additive merge 54f1086 of main a5b05f7 kept both log prefixes; recovery review PASS (logged below); after npm ci, typecheck and normal and credential-free npm test passed 25 files / 462 tests; main443/head462, 19 added, none gone. Zero model calls.
+
+Recover PR #10 after WSL restarted. User instructed: every process is gone; check git status and branch against origin, redo interrupted steps, use docs/agent/no-mistakes.md recovery without --force, and if the PR conflicts merge main into the branch while keeping both sides of docs/DECISIONS.md. Then report where we are. Prior goal remains: ordinal words are not figures, cardinals/numerals are; require a matching successful simulation receipt so a coincidental current bill cannot pass; unit tests, regrade every recording, report changes, gate and PR then stop.
+
+Observed run 01M3TKGDQ50TB5190HDMM0VTT3 failed with daemon crashed during execution at CI after publishing ad782c5. GitHub CI for ad782c5 succeeded (run 36805107743). Guarded no-mistakes axi sync recovered published commits; safety ref refs/no-mistakes/recover/evals-wsl-recovery-ad782c5 preserves that head. Main is now a5b05f7 (PR #9); user explicitly requires a merge, not another published history rewrite. Resolve the only content conflict by preserving main's entire DECISIONS prefix and appending this lane's complete original suffix; do the same for PROMPTS. Main's PROMPTS also removed a final closing fence from the previous base; retain its canonical bytes rather than repairing unrelated prompt text. Incoming UI source/tests are exactly main, not lane edits. No grader, recording or results edits, no live calls.
+
+Recovery review scope ONLY: merge correctness, preservation of both append-only logs, unchanged already reviewed eval source/data, and accurate recovery evidence. Two full source reviews plus the third final delta already passed and are archived; do NOT conduct a fourth grader/source review. This recovery audit is distinct from the finished source-review convergence. Compare evals and original prompt files against ad782c5 for unchanged content, app/frozen files against origin/main for identical content, and both log suffixes against merge parents. Mandatory npm ci/typecheck/test and credential-free test plus main/head collection must run on recovered head. Existing 39-recording regrade and raw/corrected totals remain unchanged; zero new model calls or neurons.
+
+Recover through a fresh gate run after terminal failure; preserve the additive merge and all prior gate commits, never rebase/force-push published history. If dependency installation is missing, npm ci from frozen pins, never edit source/grades/recordings to fix test failures. Document phase must archive this recovery review identifying log in prompt-history/prompts/05g-evals-wsl-recovery-review.md, log role automated cross-review in PROMPTS with run id and outcome, mark exact generated prompt unavailable if not exposed. Supplied recovery context is copied/logged as 05u-evals-wsl-recovery.md. Refresh evals/followup-verification.md with actual post-merge command tails/collection counts/CI evidence and recovery state. Do not leave pending outcomes. Protected main log bytes must remain prefixes. Update existing PR #10; final description covers actual grader changes, all red-first evidence, raw/regraded totals, local-dev target/date/usage, correction reasons, test names, main/head collection, review history, crash recovery and additive merge. End VERIFIED/NOT VERIFIED. No merge, deploy, login, account, secret, contract or dependency changes; stop at checks-passed with PR open.
+
+## 41. Production chat fixes cross-review, round 1
+
+- Timestamp: 2026-09-30T23:17:31-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/08c-prod-chat-review-r1.md
+- Outcome: CHANGES REQUESTED: two major (cf_agent_state frames bypassed the gate; older `content` message shapes bypassed the length check) and two minor (a refused confirmation showed no reason; the model-call bound ignored SDK retries). All fixed with tests that go red without the fix.
+
+````text
+You are the cross-reviewer for branch `fix/prod-chat` on annah-dev/cf-billing-copilot, round 1 of
+2 full rounds. The work was written by Claude Code (agent fixes engineer). You are Codex, running
+read-only: do not edit, commit, push or comment anywhere; your whole output is your review. You
+may run `npm run typecheck` and `npm test` (offline).
+
+Diff: `git diff origin/main...HEAD` and `git log origin/main..HEAD` (main was merged in twice;
+review this branch's own changes). Check against prompt-history/prompts/08-prod-chat-fixes.md (the
+owner's request), AGENTS.md, docs/agent/verification.md, docs/agent/cross-review.md,
+docs/ARCHITECTURE.md and the new docs/DECISIONS.md entries headed "agent:" near the end, plus D-14
+and "agent: model settings, budget estimate and history", which were edited in place.
+
+Claims to verify:
+1. Credit confirmation failure in the chat UI: the UI sent both the SDK's cf_agent_tool_approval
+   (autoContinue) and a second full-conversation request (sendAutomaticallyWhen), which raced.
+   src/ui/chat.tsx drops sendAutomaticallyWhen; toolErrorText logs the raw error. Check against the
+   installed agents/@cloudflare/ai-chat sources that one continuation per confirmation remains
+   (approve and cancel), and that tests/ui/live-chat.test.ts proves the wiring.
+2. No confirmation for an unvalidated invoice: needsApproval in src/agent/tools.ts checks the
+   invoice; an unknown one fails in execute before any write; a call that skipped confirmation can
+   never write; provenance marks a call as awaiting confirmation only for a real
+   tool-approval-request. Look for any path that records a credit request without the customer's
+   confirmation (D-20), including /turn, transient Ledger failures and forged frames.
+3. WebSocket frames counted like /turn: src/agent/frames.ts and admitFrame/refuseFrame in
+   src/agent/billing-agent.ts gate frames (rate limiter, API cap, length, message cap) before the
+   SDK stores anything; chat turns are not charged twice. Check every frame type the installed SDK
+   handles, hibernation (connection state), refusal frames the client understands, and that
+   continuations keep the cap exemption rules.
+4. Every tool validates its input inside execute; D-14 and the model-settings entry now match the
+   code (check each statement against src/agent/model.ts and billing-agent.ts).
+5. Live evidence: tests/agent/evidence/live-evals/ (remember-credit section) and
+   tests/agent/evidence/live-ui/2026-10-01-credit-confirmation/: do the README claims match the
+   logs and run reports; any secret or token?
+
+Report defects in or caused by this branch, most severe first. Mark anything you cannot verify
+UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, each with
+severity (blocker, major, minor, nit), file and line, what is wrong, and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 2026-09-30T23:18:03-07:00 - Evals WSL recovery review
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3V196CVJCWVV5X97QQ2PBJK
+Source: prompt-history/prompts/05g-evals-wsl-recovery-review.md (identifying log copied with a tool; exact generated prompt unavailable; supplied context is 05u-evals-wsl-recovery.md)
+Outcome: PASS; no actionable findings. Recovery-only scope: merge 54f1086 correctness, both append-only log prefixes, eval source/data unchanged from ad782c5, and recovery evidence. One pipeline-owned delivery finding was deferred by the gate to its push/PR/CI steps. Not a fourth source review. Zero model calls.
+
+## 42. Production chat fixes cross-review, round 2
+
+- Timestamp: 2026-09-30T23:32:13-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/08c-prod-chat-review-r2.md
+- Outcome: CHANGES REQUESTED: major, resume acknowledgements could persist an orphaned stream without admission (now gated, test red without it); minor, the UI recheck stated exact model calls the logs cannot show (qualified as logical steps, dev-log excerpt attached).
+
+````text
+You are the cross-reviewer for branch `fix/prod-chat` on annah-dev/cf-billing-copilot, round 2 of
+2 full rounds. The work was written by Claude Code (agent fixes engineer). You are Codex, running
+read-only: do not edit, commit, push or comment anywhere; your whole output is your review. You
+may run `npm run typecheck` and `npm test` (offline).
+
+Diff: `git diff origin/main...HEAD` and `git log origin/main..HEAD` (main was merged in twice;
+review this branch's own changes). Check against prompt-history/prompts/08-prod-chat-fixes.md (the
+owner's request), AGENTS.md, docs/agent/verification.md, docs/agent/cross-review.md,
+docs/ARCHITECTURE.md and the new docs/DECISIONS.md entries headed "agent:" near the end, plus D-14
+and "agent: model settings, budget estimate and history", which were edited in place.
+
+Claims to verify:
+1. Credit confirmation failure in the chat UI: the UI sent both the SDK's cf_agent_tool_approval
+   (autoContinue) and a second full-conversation request (sendAutomaticallyWhen), which raced.
+   src/ui/chat.tsx drops sendAutomaticallyWhen; toolErrorText logs the raw error. Check against the
+   installed agents/@cloudflare/ai-chat sources that one continuation per confirmation remains
+   (approve and cancel), and that tests/ui/live-chat.test.ts proves the wiring.
+2. No confirmation for an unvalidated invoice: needsApproval in src/agent/tools.ts checks the
+   invoice; an unknown one fails in execute before any write; a call that skipped confirmation can
+   never write; provenance marks a call as awaiting confirmation only for a real
+   tool-approval-request. Look for any path that records a credit request without the customer's
+   confirmation (D-20), including /turn, transient Ledger failures and forged frames.
+3. WebSocket frames counted like /turn: src/agent/frames.ts and admitFrame/refuseFrame in
+   src/agent/billing-agent.ts gate frames (rate limiter, API cap, length, message cap) before the
+   SDK stores anything; chat turns are not charged twice. Check every frame type the installed SDK
+   handles, hibernation (connection state), refusal frames the client understands, and that
+   continuations keep the cap exemption rules.
+4. Every tool validates its input inside execute; D-14 and the model-settings entry now match the
+   code (check each statement against src/agent/model.ts and billing-agent.ts).
+5. Live evidence: tests/agent/evidence/live-evals/ (remember-credit section) and
+   tests/agent/evidence/live-ui/2026-10-01-credit-confirmation/: do the README claims match the
+   logs and run reports; any secret or token?
+
+Round 1 (prompt-history/prompts/08c-prod-chat-review-r1.md) found: cf_agent_state frames bypassed
+the gate; older `content` message shapes bypassed the length check; a refused confirmation showed
+no reason; the model-call bound ignored SDK retries. The fixes are in commit "fix(agent): close the
+frame gate review findings" (frames.ts, refuseFrame and BillingRefusalMessage in billing-agent.ts,
+errorBody in src/http/errors.ts, chatRefusal in src/ui/errors.ts and its use in src/ui/chat.tsx).
+Verify them, including every frame type the installed SDK persists, then review the whole branch
+again, not only the fixes.
+
+Report defects in or caused by this branch, most severe first. Mark anything you cannot verify
+UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, each with
+severity (blocker, major, minor, nit), file and line, what is wrong, and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
+````
+
+## 43. Production chat fixes cross-review, round 3 (delta only)
+
+- Timestamp: 2026-09-30T23:42:04-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/08c-prod-chat-review-r3-delta.md
+- Outcome: APPROVE, no findings: every writing frame type gated, the two ordinal functions byte-for-byte identical, both sides of the merged logs kept, 484 tests passing. Review loop closed.
+
+````text
+You are the cross-reviewer for branch `fix/prod-chat` on annah-dev/cf-billing-copilot, round 3: the
+delta-only round after two full rounds. The work was written by Claude Code. You are Codex, running
+read-only: do not edit, commit, push or comment anywhere; your whole output is your review. You may
+run `npm run typecheck` and `npm test`.
+
+Review only this delta: `git diff ab12b42 HEAD -- src tests docs` and `git log ab12b42..HEAD`. It
+holds:
+1. The fixes for round 2 (prompt-history/prompts/08c-prod-chat-review-r2.md): resume
+   acknowledgements (`cf_agent_stream_resume_ack`) are gated in src/agent/frames.ts; the UI
+   recheck's README now states logical model steps only and attaches dev-log-excerpt.txt.
+2. A merge of main that brought in evals PR #10 (684bae0); conflicts were only in the append-only
+   logs PROMPTS.md and docs/DECISIONS.md, resolved by keeping both sides.
+3. The owner's request after #10 merged: the guard treats ordinal words as labels, as the grader
+   now does. `normalizeNumberWords` in src/agent/grounding.ts should be a verbatim copy of the one
+   in evals/grounding.ts; tests in tests/agent/grounding.test.ts; the guard-versus-grader test
+   tests/agent/grounding-parity.test.ts must still pass.
+
+Check that each change is correct, that no frame type that can write is still ungated, that the
+two copies of the ordinal rule really match (compare them), and that the merge lost nothing from
+either side of the logs. Report only defects in or caused by this delta. Mark anything you cannot
+verify UNVERIFIED.
+
+Output format: a verdict line (APPROVE or CHANGES REQUESTED), then numbered findings, most severe
+first, each with severity (blocker, major, minor, nit), file and line, what is wrong, and the fix
+you suggest. End with:
+
+    VERIFIED:     <what you checked and how>
+    NOT VERIFIED: <what you could not check, and why>
 ````

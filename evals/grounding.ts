@@ -1,4 +1,4 @@
-import { MoneySchema } from "../src/contracts";
+import { MoneySchema, ToolSchemas } from "../src/contracts";
 import type { EvalCase } from "./cases";
 import { parseRecording } from "./recording";
 
@@ -82,14 +82,58 @@ function normalizeNumberWords(text: string): string {
     "seventh",
     "eighth",
     "ninth",
-    "tenth"
+    "tenth",
+    "eleventh",
+    "twelfth",
+    "thirteenth",
+    "fourteenth",
+    "fifteenth",
+    "sixteenth",
+    "seventeenth",
+    "eighteenth",
+    "nineteenth",
+    "twentieth",
+    "thirtieth",
+    "fortieth",
+    "fiftieth",
+    "sixtieth",
+    "seventieth",
+    "eightieth",
+    "ninetieth",
+    "hundredth",
+    "thousandth",
+    "millionth",
+    "billionth"
   ];
+  const cardinal = [
+    ...smallNumbers,
+    ...tens,
+    "hundred",
+    "thousand",
+    "million",
+    "billion"
+  ].join("|");
+  // Ordinal words (including compound phrases) are labels, not figures. Numeral ordinals
+  // still go through the numeric matcher; cardinal words still normalize to figures.
+  const ordinalWords = new RegExp(
+    `\\b((?:(?:${cardinal})(?:[ -]+(?:and[ -]+)?(?:${cardinal}))*[ -]+(?:and[ -]+)?)?)(${ordinals.join("|")})\\b(?=(-[a-z]|[ ]+(?:time|hand)\\b)?)`,
+    "gi"
+  );
   return text
-    .replace(numberWords, (words) => wordValue(words))
     .replace(
-      new RegExp(`\\b(${ordinals.join("|")})\\b`, "gi"),
-      (word) => `${ordinals.indexOf(word.toLowerCase()) + 1}th`
+      ordinalWords,
+      (_, prefix: string, ordinal: string, label: string | undefined) => {
+        // Preserve a cardinal before an independent ordinal word, such as "one second",
+        // or before a spaced ordinal label, such as "forty first-time".
+        const compound =
+          !(label && /\s$/.test(prefix)) &&
+          (/\b(hundred|thousand|million|billion)\b/i.test(prefix) ||
+            tens.some((word) => prefix.toLowerCase().startsWith(word)) ||
+            /^(hundredth|thousandth|millionth|billionth)$/i.test(ordinal));
+        return !prefix || compound ? " " : prefix;
+      }
     )
+    .replace(numberWords, (words) => wordValue(words))
     .replace(/(\d+(?:\.\d+)?)\s+percent\b/gi, "$1%")
     .replace(/(\d+(?:\.\d+)?)\s+times\b/gi, "$1x");
 }
@@ -304,6 +348,30 @@ export function checkReplay(testCase: EvalCase, value: unknown): string[] {
     });
     messageDates(recorded.request.message, dates);
     const dated = normalizeDates(recorded.response.text, dates);
+    const simulation = planned.requiredSimulation;
+    if (
+      simulation &&
+      !recorded.response.toolCalls.some((call) => {
+        if (
+          call.name !== "simulatePlan" ||
+          call.error !== null ||
+          call.output === null
+        )
+          return false;
+        const input = ToolSchemas.simulatePlan.input.parse(call.input);
+        const output = ToolSchemas.simulatePlan.output.parse(call.output);
+        return (
+          input.planId === simulation.planId &&
+          input.period === simulation.period &&
+          output.simulatedPlanId === simulation.planId &&
+          output.period === simulation.period &&
+          output.customerId === testCase.customerId
+        );
+      })
+    )
+      issues.push(
+        `Turn ${index}: missing successful simulation for ${simulation.planId} in ${simulation.period}`
+      );
     if (
       planned.request.confirm &&
       !recorded.response.toolCalls.some(

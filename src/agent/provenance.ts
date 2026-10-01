@@ -83,11 +83,12 @@ export class ToolProvenance {
   async recordStep(
     calls: readonly IssuedCall[],
     errors: readonly { toolCallId: string; text: string }[],
-    confirmCredit: boolean
+    /** Calls the SDK asked the customer to confirm in this step (tool-approval-request). */
+    approvalRequested: ReadonlySet<string>
   ): Promise<void> {
     for (const call of calls) {
       await this.upsertCall(call);
-      if (confirmCredit && call.toolName === "startCreditRequest") {
+      if (approvalRequested.has(call.toolCallId)) {
         this.sql.exec(
           "UPDATE issued_tool_calls SET confirmation = 'requested' WHERE id = ? AND confirmation IS NULL",
           call.toolCallId

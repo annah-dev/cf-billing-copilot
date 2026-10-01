@@ -304,6 +304,93 @@ describe("eval defect guards", () => {
     expect(checkReplay(countCase, recording)).toEqual([]);
   });
 
+  test("ordinal words are not figures even without tool evidence", () => {
+    const testCase = {
+      ...countCase,
+      turns: [{ ...countCase.turns[0], expected: [], phrases: [] }]
+    };
+    const recording = fixture(countCase.id);
+    recording.turns[0].response.toolCalls = [];
+    recording.turns[0].response.text =
+      "First ask, second review, third confirm. The twentieth, twenty-first and one hundred and second steps are labels.";
+    expect(checkReplay(testCase, recording)).toEqual([]);
+  });
+
+  test.each(["1", "2nd", "one", "two", "twenty-one", "one second"])(
+    "still checks numeral or cardinal figure %s without tool evidence",
+    (figure) => {
+      const recording = fixture(countCase.id);
+      recording.turns[0].response.toolCalls = [];
+      recording.turns[0].response.text = `There were ${figure} entries.`;
+      expect(
+        checkReplay(countCase, recording).some((issue) =>
+          issue.includes("ungrounded number")
+        )
+      ).toBe(true);
+    }
+  );
+
+  test.each([
+    ["We saw forty first-time invoices.", "40"],
+    ["We saw one hundred first-time customers.", "100"],
+    ["We sold twenty second-hand items.", "20"],
+    ["We saw forty first time invoices.", "40"],
+    ["We sold twenty second hand items.", "20"]
+  ])("keeps the cardinal before an ordinal label in %s", (text, figure) => {
+    const recording = fixture(countCase.id);
+    recording.turns[0].response.toolCalls = [];
+    recording.turns[0].response.text = text;
+    expect(checkReplay(countCase, recording)).toContain(
+      `Turn 0: ungrounded number ${figure}`
+    );
+  });
+
+  test("a coincidental current-invoice match cannot pass a Scale simulation", () => {
+    const testCase = cases.find((item) => item.id === "scale-simulation")!;
+    const recording = fixture(testCase.id);
+    recording.turns[0].response.toolCalls = fixture(
+      countCase.id
+    ).turns[0].response.toolCalls;
+    expect(checkReplay(testCase, recording)).toEqual([
+      "Turn 0: missing successful simulation for plan_scale in 2026-09"
+    ]);
+  });
+
+  test("a rejected simulation cannot supply a simulation receipt", () => {
+    const testCase = cases.find((item) => item.id === "scale-simulation")!;
+    const recording = fixture(testCase.id);
+    recording.turns[0].response.toolCalls = [
+      ...fixture(countCase.id).turns[0].response.toolCalls,
+      { name: "simulatePlan", input: {}, output: null, error: "Invalid input" }
+    ];
+    expect(checkReplay(testCase, recording)).toContain(
+      "Turn 0: missing successful simulation for plan_scale in 2026-09"
+    );
+  });
+
+  test.each(["plan", "period", "output plan", "output period", "customer"])(
+    "simulation evidence must match the requested %s",
+    (field) => {
+      const testCase = cases.find((item) => item.id === "scale-simulation")!;
+      const recording = fixture(testCase.id);
+      const call = recording.turns[0].response.toolCalls[0];
+      if (field === "plan")
+        call.input = { period: "2026-09", planId: "plan_pro" };
+      if (field === "period")
+        call.input = { period: "2026-08", planId: "plan_scale" };
+      if (field === "output plan")
+        (call.output as { simulatedPlanId: string }).simulatedPlanId =
+          "plan_pro";
+      if (field === "output period")
+        (call.output as { period: string }).period = "2026-08";
+      if (field === "customer")
+        (call.output as { customerId: string }).customerId = "cus_1";
+      expect(checkReplay(testCase, recording)).toContain(
+        "Turn 0: missing successful simulation for plan_scale in 2026-09"
+      );
+    }
+  );
+
   test("grounds only the UTC calendar date of a non-midnight timestamp", () => {
     expect(
       creditAnswer(

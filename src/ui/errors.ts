@@ -14,6 +14,21 @@ const titles: Record<ErrorCode, string> = {
   budget_exhausted: "Today's AI budget is used up",
   internal: "Something went wrong"
 };
+/**
+ * A refusal the agent sends on the chat connection for a frame it did not accept (for example a
+ * confirmation over the daily API cap): `{ type: "billing-refusal", error: { ... } }`.
+ */
+export function chatRefusal(data: unknown): ErrorResponse | null {
+  if (typeof data !== "string") return null;
+  try {
+    const parsed = JSON.parse(data) as { type?: unknown };
+    if (parsed?.type !== "billing-refusal") return null;
+    const response = ErrorResponseSchema.safeParse(parsed);
+    return response.success ? response.data : null;
+  } catch {
+    return null;
+  }
+}
 export function errorResponse(error: unknown): ErrorResponse | null {
   if (error instanceof ApiError) return error.response;
   const direct = ErrorResponseSchema.safeParse(error);
