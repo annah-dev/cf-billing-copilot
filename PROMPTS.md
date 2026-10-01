@@ -2721,13 +2721,30 @@ you suggest. End with:
     NOT VERIFIED: <what you could not check, and why>
 ````
 
+## 37. Sandbox per-IP cap (owner, mid-session)
+
+- Timestamp: 2026-09-30T18:51:00-07:00
+- Role: Agent fixes engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/08a-sandbox-ip-cap.md
+- Outcome: per-IP cap raised to 20 in its own PR (wrangler.jsonc is frozen, AGENTS.md hard rule 4); global and per-sandbox caps unchanged; D-7, README, ARCHITECTURE and evals docs updated; remember-credit live run is part of the production-fixes PR.
+
+````text
+A1 B1. Merging #8 now. You were right about the limit; my note got the UTC day wrong.
+Add one item to the second PR: raise the new-sandbox cap per IP from 5 to 20 per UTC day, and keep
+the global cap of 200 and the per-sandbox message cap. Reason: several reviewers behind one office
+or VPN address would otherwise lock each other out after five sandboxes, and a full eval run needs
+about five on its own. Update D-7, the cost estimate in docs/ARCHITECTURE.md and any doc that
+states the cap. Run remember-credit as part of that PR's live checks after 00:00 UTC.
+````
+
 ## 38. Sandbox IP cap cross-review, round 1
 
 - Timestamp: 2026-09-30T19:02:09-07:00
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/08b-config-ip-cap-review-r1.md
-- Outcome: (filled in after the round)
+- Outcome: CHANGES REQUESTED, two minor: stale five-sandbox wording in evals/README.md, evals/live-runner.ts and an earlier decision (fixed; the amendment notes older entries describe the old cap); the owner prompt was not archived on this branch (added as entry 37).
 
 ````text
 You are the cross-reviewer for branch `fix/sandbox-ip-cap` on annah-dev/cf-billing-copilot, round

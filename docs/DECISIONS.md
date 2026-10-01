@@ -1048,6 +1048,7 @@ address would lock each other out after five sandboxes, and one full eval run ne
 its own (the agent-fixes lane's live runs hit the cap on 2026-10-01). The cost estimate does not
 change: it already assumes the global cap saturated every day, and the global cap still binds. What
 changes is how fast one address can use it up: 10 addresses can now take the day's 200 sandboxes,
-against 40 before.
+against 40 before. Earlier entries that cite five sandboxes per IP (for example "evals: bounded
+live capture with honest capacity results") describe the cap as it was when they were written.
 
 Decided by: Anna.
