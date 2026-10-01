@@ -2957,7 +2957,7 @@ End with:
 - Role: Agent fixes engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/08-prod-chat-fixes.md
-- Outcome: (filled in at the end)
+- Outcome: #8 rebased onto main and force-pushed (owner-authorized); the two unreached eval questions run (expired-credit-history passed; remember-credit passed later under the new cap); the four production issues fixed on fix/prod-chat with one commit each, reproduced and rechecked live in local dev (13 model calls), two full Codex rounds and one delta round; the guard follows the grader ordinal rule after #10.
 
 ````text
 Merged #7. Rebase #8 onto main and force-push feat/agent-fixes (never main). A1: the daily limit
@@ -3340,7 +3340,7 @@ with:
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/08c-prod-chat-review-r3-delta.md
-- Outcome: (filled in after the round)
+- Outcome: APPROVE, no findings: every writing frame type gated, the two ordinal functions byte-for-byte identical, both sides of the merged logs kept, 484 tests passing. Review loop closed.
 
 ````text
 You are the cross-reviewer for branch `fix/prod-chat` on annah-dev/cf-billing-copilot, round 3: the
