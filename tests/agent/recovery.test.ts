@@ -267,3 +267,42 @@ describe("counts that do not match the listed entries (september-invoice)", () =
     );
   });
 });
+
+describe("a claim that skipped the confirmation never writes (production report)", () => {
+  it("refuses in execute even when the invoice reads fine after a failed check", async () => {
+    const { buildTools } = await import("../../src/agent/tools");
+    const invoice = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        message: "Billing data could not be read just now."
+      })
+      .mockResolvedValue({ ok: true, value: { id: INV_SEP } });
+    const startCreditRequest = vi.fn();
+    const tools = buildTools(
+      {
+        sandboxId: "0".repeat(32),
+        customerId: ACME,
+        ledger: { invoice },
+        startCreditRequest,
+        remember: vi.fn(),
+        recordResult: vi.fn()
+      } as never,
+      new Map(),
+      { confirmCredit: true }
+    );
+    const input = { invoiceId: INV_SEP, reason: "charged twice" };
+    const call = { toolCallId: "c1", messages: [] };
+    const needs = tools.startCreditRequest.needsApproval as unknown as (
+      i: unknown,
+      o: typeof call
+    ) => Promise<boolean>;
+    expect(await needs(input, call)).toBe(false);
+    await expect(
+      tools.startCreditRequest.execute!(input, call)
+    ).rejects.toThrow("Billing data could not be read just now.");
+    expect(startCreditRequest).not.toHaveBeenCalled();
+    // A different call on a known invoice is confirmed first, as before.
+    expect(await needs(input, { toolCallId: "c2", messages: [] })).toBe(true);
+  });
+});

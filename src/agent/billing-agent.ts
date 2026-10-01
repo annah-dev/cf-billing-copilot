@@ -562,7 +562,13 @@ export class BillingAgent extends AIChatAgent<Env> {
                     ]
                   : []
               ),
-              !preConfirmed
+              new Set(
+                step.content.flatMap((c) =>
+                  c.type === "tool-approval-request"
+                    ? [c.toolCall.toolCallId]
+                    : []
+                )
+              )
             ),
           // The last step has no tools (mustAnswer), so no server check can arrive after it.
           stopWhen: stepCountIs(MAX_STEPS),

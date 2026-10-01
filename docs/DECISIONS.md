@@ -1054,3 +1054,19 @@ still be diagnosable from the logs. This touches the UI lane's file because the 
 wiring.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: a credit confirmation only for an invoice the Ledger knows
+
+Production report, reproduced in local dev: the model called `startCreditRequest` with an
+invented `inv_123456789` before any lookup and the customer was shown "Request a credit?" for it;
+after confirming, the tool failed and a second confirmation followed. In the chat,
+`needsApproval` is now a check: a claim on an invoice the Ledger knows for the customer asks for
+confirmation as before; an unknown one skips the confirmation and fails in `execute`, before any
+write, with the customer's real invoice ids. A call that skipped the confirmation is remembered by
+its tool call id and can never write, even if the invoice reads fine at execute time (so a
+transient failure of the check cannot become an unconfirmed request). Provenance marks a call as
+awaiting confirmation only when the step really emitted a `tool-approval-request`. The prompt says
+to call `getInvoice` before `startCreditRequest`. `/turn` is unchanged (D-20: `confirm` decides).
+Reason: the customer must never confirm something the server has not validated.
+
+Decided by: Agent fixes engineer under standing orders.

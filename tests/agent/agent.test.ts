@@ -188,7 +188,9 @@ describe("tool calls", () => {
     const headless = buildTools({} as ToolHost, new Map(), {
       confirmCredit: false
     });
-    expect(chat.startCreditRequest.needsApproval).toBe(true);
+    // In the chat it is a check: only a claim on an invoice the Ledger knows is confirmed
+    // (chat.test.ts, "confirmation only for a known invoice").
+    expect(typeof chat.startCreditRequest.needsApproval).toBe("function");
     expect(headless.startCreditRequest.needsApproval).toBe(false);
     for (const name of TOOL_NAMES.filter((n) => n !== "startCreditRequest")) {
       expect(chat[name].needsApproval, name).toBeFalsy();
@@ -495,7 +497,7 @@ describe("neuron estimate", () => {
       await p.recordStep(
         [{ toolCallId: "t1", toolName: "getInvoice", input }],
         [],
-        true
+        new Set()
       );
       const part = (id: string, o: unknown, i: unknown = input) => ({
         type: "tool-getInvoice",
@@ -640,7 +642,7 @@ describe("credit confirmation on /turn (D-20)", () => {
       await p.recordStep(
         [{ toolCallId: "t1", toolName: "getInvoice", input: {} }],
         [{ toolCallId: "t1", text: "bad input" }],
-        false
+        new Set()
       );
       new ToolProvenance(state.storage.sql); // a second construction is a no-op
       return state.storage.sql

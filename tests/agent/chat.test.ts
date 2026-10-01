@@ -625,3 +625,143 @@ describe("stored evidence needs the customer's answer (PR review r2)", () => {
     ws.close();
   });
 });
+
+describe("a full-conversation resend after a confirmation (production report)", () => {
+  // The UI used to send the whole conversation again, with the proposal approval-responded, as a
+  // chat request (sendAutomaticallyWhen), besides the SDK's own approval frame. The UI no longer
+  // does (tests/ui/live-chat.test.ts); a client that still does must get a working answer.
+  it("records the request and answers after a resend with the proposal approved", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    stubAi([
+      toolCall("startCreditRequest", {
+        invoiceId: INV_SEP,
+        disputedLedgerEntryId: DUP_ENTRY,
+        reason: "charged twice"
+      })
+    ]);
+    ws.send(chatRequest("r1", "I was double-charged in September"));
+    await until(responseDone, "proposal");
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sb.sandboxId}.${ACME}`
+    );
+    const history = (await runInDurableObject(
+      agent,
+      (a) => a.messages
+    )) as UIMessage[];
+    const answered = structuredClone(history);
+    let found = 0;
+    for (const m of answered) {
+      for (const p of m.parts as {
+        type: string;
+        state?: string;
+        approval?: { id: string; approved?: boolean };
+      }[]) {
+        if (
+          p.type === "tool-startCreditRequest" &&
+          p.state === "approval-requested"
+        ) {
+          p.state = "approval-responded";
+          p.approval = { id: p.approval!.id, approved: true };
+          found += 1;
+        }
+      }
+    }
+    expect(found).toBe(1);
+
+    const cont = stubAi([
+      text("Your request is recorded; an approver will review it.")
+    ]);
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({
+        type: "cf_agent_use_chat_request",
+        id: "r2",
+        init: {
+          method: "POST",
+          body: JSON.stringify({
+            messages: answered,
+            trigger: "submit-message"
+          })
+        }
+      })
+    );
+    await until(
+      (f) => responseDone(f) && frames.indexOf(f) >= before,
+      "confirmation"
+    );
+    const after = frames
+      .slice(before)
+      .map((f) => f.body ?? "")
+      .join("\n");
+    expect(after).not.toContain("An internal error occurred");
+    const rid = await requestIdFor(sb.sandboxId, ACME, INV_SEP, DUP_ENTRY);
+    expect(
+      await countRows(sb.sandboxId, "credit_requests", `id = '${rid}'`)
+    ).toBe(1);
+    const final = (await runInDurableObject(
+      agent,
+      (a) => a.messages
+    )) as UIMessage[];
+    const text_ = final
+      .filter((m) => m.role === "assistant")
+      .at(-1)!
+      .parts.map((p) => (p.type === "text" ? p.text : ""))
+      .join("");
+    expect(text_).toContain("Your request is recorded");
+    ws.close();
+  });
+});
+
+describe("confirmation only for a known invoice (production report)", () => {
+  it("never asks the customer to confirm a claim on an invented invoice, and writes nothing", async () => {
+    const sb = await createSandbox();
+    const { ws, until } = await connect(sb.sandboxId);
+    stubAi([
+      toolCall("startCreditRequest", {
+        invoiceId: "inv_1234567890",
+        reason: "charged twice"
+      }),
+      toolCall("getInvoice", { period: "2026-09" }),
+      toolCall("startCreditRequest", {
+        invoiceId: INV_SEP,
+        disputedLedgerEntryId: DUP_ENTRY,
+        reason: "charged twice"
+      })
+    ]);
+    ws.send(chatRequest("r1", "I was double-charged in September"));
+    await until(responseDone, "proposal");
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sb.sandboxId}.${ACME}`
+    );
+    const parts = (
+      (await runInDurableObject(agent, (a) => a.messages)) as UIMessage[]
+    )
+      .flatMap((m) => m.parts)
+      .filter((p) => p.type === "tool-startCreditRequest") as unknown as {
+      toolCallId: string;
+      state: string;
+      input: { invoiceId: string };
+      errorText?: string;
+    }[];
+    expect(parts.map((p) => [p.input.invoiceId, p.state])).toEqual([
+      ["inv_1234567890", "output-error"],
+      [INV_SEP, "approval-requested"]
+    ]);
+    expect(parts[0].errorText).toContain(`${INV_SEP} (2026-09)`);
+    expect(await countRows(sb.sandboxId, "credit_requests")).toBe(1); // seeded only
+    // Only the real proposal is recorded as awaiting the customer's confirmation.
+    const awaiting = await runInDurableObject(agent, (_a, state) =>
+      state.storage.sql
+        .exec<{ id: string }>(
+          "SELECT id FROM issued_tool_calls WHERE confirmation = 'requested'"
+        )
+        .toArray()
+        .map((r) => r.id)
+    );
+    expect(awaiting).toEqual([parts[1].toolCallId]);
+    ws.close();
+  });
+});

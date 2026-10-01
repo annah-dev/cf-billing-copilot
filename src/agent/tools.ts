@@ -134,6 +134,37 @@ export function buildTools(
     });
   }
 
+  /** Chat calls that skipped the confirmation because the invoice check failed, with the reason. */
+  const unconfirmed = new Map<string, string>();
+  const startCredit = guard("startCreditRequest", async (input: unknown) => {
+    const parsed = ToolSchemas.startCreditRequest.input.parse(input);
+    unwrap(await ledger.invoice(customerId, { invoiceId: parsed.invoiceId }));
+    const disputed = parsed.disputedLedgerEntryId ?? null;
+    const result = await host.startCreditRequest({
+      invoiceId: parsed.invoiceId,
+      disputedLedgerEntryId: disputed,
+      reason: parsed.reason,
+      // needsApproval on: execute runs only after the chat's approval step.
+      confirmedVia: options.confirmCredit ? "chat" : "turn",
+      idempotencyKey: await creditIdempotencyKey(
+        host.sandboxId,
+        customerId,
+        parsed.invoiceId,
+        disputed
+      )
+    });
+    if (!result.ok) throw new ToolError(result.message);
+    const output = ToolSchemas.startCreditRequest.output.parse({
+      request: summary(result.request),
+      existing: result.existing,
+      message: result.existing
+        ? `A credit request for this charge already exists (${result.request.id}, status ${result.request.status}). No new request was created.`
+        : `Credit request ${result.request.id} was recorded. The claim is checked against the ledger and a human approver decides; no credit is applied until then.`
+    });
+    host.remember("startCreditRequest", output);
+    return output;
+  });
+
   const tools: ToolSet = {
     getAccount: tool({
       description: ToolSchemas.getAccount.description,
@@ -192,34 +223,32 @@ export function buildTools(
     startCreditRequest: tool({
       description: ToolSchemas.startCreditRequest.description,
       inputSchema: ToolSchemas.startCreditRequest.input,
-      needsApproval: options.confirmCredit,
-      execute: guard("startCreditRequest", async (input: unknown) => {
-        const parsed = ToolSchemas.startCreditRequest.input.parse(input);
-        const disputed = parsed.disputedLedgerEntryId ?? null;
-        const result = await host.startCreditRequest({
-          invoiceId: parsed.invoiceId,
-          disputedLedgerEntryId: disputed,
-          reason: parsed.reason,
-          // needsApproval on: execute runs only after the chat's approval step.
-          confirmedVia: options.confirmCredit ? "chat" : "turn",
-          idempotencyKey: await creditIdempotencyKey(
-            host.sandboxId,
-            customerId,
-            parsed.invoiceId,
-            disputed
-          )
-        });
-        if (!result.ok) throw new ToolError(result.message);
-        const output = ToolSchemas.startCreditRequest.output.parse({
-          request: summary(result.request),
-          existing: result.existing,
-          message: result.existing
-            ? `A credit request for this charge already exists (${result.request.id}, status ${result.request.status}). No new request was created.`
-            : `Credit request ${result.request.id} was recorded. The claim is checked against the ledger and a human approver decides; no credit is applied until then.`
-        });
-        host.remember("startCreditRequest", output);
-        return output;
-      })
+      // The customer is asked to confirm only a claim on an invoice the Ledger knows for this
+      // customer (production: the model proposed an invented inv_1234567890 before any lookup).
+      // An unknown invoice skips the confirmation and fails in execute, before any write, with
+      // the real invoice ids so the model can look one up and propose again.
+      needsApproval: options.confirmCredit
+        ? async (input: unknown, { toolCallId }: { toolCallId: string }) => {
+            const parsed =
+              ToolSchemas.startCreditRequest.input.safeParse(input);
+            if (!parsed.success) return true;
+            const known = await ledger.invoice(customerId, {
+              invoiceId: parsed.data.invoiceId
+            });
+            if (known.ok) return true;
+            unconfirmed.set(toolCallId, known.message);
+            return false;
+          }
+        : false,
+      execute: async (input: unknown, opts: { toolCallId?: string } = {}) => {
+        // A call that skipped the confirmation never writes, even if the invoice reads fine now
+        // (a transient failure must not turn into an unconfirmed credit request).
+        const refused = opts.toolCallId
+          ? unconfirmed.get(opts.toolCallId)
+          : undefined;
+        if (refused !== undefined) throw new ToolError(refused);
+        return startCredit(input);
+      }
     }),
     getCreditRequestStatus: tool({
       description: ToolSchemas.getCreditRequestStatus.description,
