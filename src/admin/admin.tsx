@@ -7,6 +7,7 @@ import {
 import {
   browserStorage,
   followUpDecision,
+  serialQueue,
   parseAdminFragment,
   readSession,
   type BillingApi,
@@ -73,31 +74,40 @@ export function Admin({
   const generation = useRef(0);
   const deciding = useRef(false);
   const mounted = useRef(true);
-  // A quiet refresh leaves `busy` alone, so the page stays busy (Refresh disabled) for the whole
-  // decision follow-up.
+  // Every list read (initial, focus, Refresh, decision follow-up) goes through one queue, so reads
+  // never overlap. The page stays busy until no read is queued and no decision is in progress;
+  // a decision owns `busy` until its follow-up ends.
+  const [enqueueRead] = useState(() => serialQueue());
+  const queuedReads = useRef(0);
   const refresh = useCallback(
     async ({ quiet = false } = {}) => {
       if (!credentials || !mounted.current) return null;
-      const current = ++generation.current;
+      queuedReads.current++;
       if (!quiet) setBusy(true);
-      try {
-        const next = await api.creditRequests(
-          credentials.sandboxId,
-          credentials.token
-        );
-        if (current === generation.current) {
-          setData(next);
-          setError(null);
-          return next;
+      return enqueueRead(async () => {
+        const current = ++generation.current;
+        try {
+          if (!mounted.current) return null;
+          const next = await api.creditRequests(
+            credentials.sandboxId,
+            credentials.token
+          );
+          if (current === generation.current) {
+            setData(next);
+            setError(null);
+            return next;
+          }
+        } catch (failure) {
+          if (current === generation.current) setError(failure);
+        } finally {
+          queuedReads.current--;
+          if (mounted.current && queuedReads.current === 0 && !deciding.current)
+            setBusy(false);
         }
-      } catch (failure) {
-        if (current === generation.current) setError(failure);
-      } finally {
-        if (current === generation.current && !quiet) setBusy(false);
-      }
-      return null;
+        return null;
+      });
     },
-    [api, credentials]
+    [api, credentials, enqueueRead]
   );
   useEffect(() => {
     const requests = generation;
@@ -157,7 +167,7 @@ export function Admin({
       setError(failure);
     } finally {
       deciding.current = false;
-      setBusy(false);
+      setBusy(queuedReads.current > 0);
     }
   }
   const requests = [...(data?.requests ?? [])].sort(

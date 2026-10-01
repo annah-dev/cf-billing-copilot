@@ -910,7 +910,9 @@ Decided by: Anna.
 
 After a decision the admin page re-fetches the list up to 5 times, 1 second apart, while the
 decided request is still `approved` or `pending_approval` with a recorded decision, and stops at
-the first terminal state or when the page unmounts. Reason: the Workflow applies or rejects a
+the first terminal state or when the page unmounts. Every list read (initial, focus, Refresh and
+follow-up) goes through one serial queue, and the page stays busy until no read is queued, so
+reads never overlap and Approve cannot be clicked while an earlier read is outstanding. Reason: the Workflow applies or rejects a
 moment after the decision is recorded, so the single re-fetch left the card on "approved" in
 production; a bounded follow-up shows the outcome without polling against the 200-request daily
 cap ("ui: Approval links and refresh boundaries").

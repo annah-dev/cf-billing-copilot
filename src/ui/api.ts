@@ -123,6 +123,18 @@ export function awaitingWorkflow(request: {
     (request.status === "pending_approval" && request.decision != null)
   );
 }
+/**
+ * Runs async tasks one at a time in call order: a task starts only after the previous one has
+ * settled, whether it resolved or failed.
+ */
+export function serialQueue() {
+  let tail: Promise<unknown> = Promise.resolve();
+  return <T>(task: () => Promise<T>): Promise<T> => {
+    const run = tail.then(task);
+    tail = run.catch(() => undefined);
+    return run;
+  };
+}
 type DecisionList = {
   requests: { id: string; status: string; decision: unknown }[];
 };

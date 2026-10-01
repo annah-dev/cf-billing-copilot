@@ -7,6 +7,7 @@ import {
   awaitingWorkflow,
   createApi,
   followUpDecision,
+  serialQueue,
   parseAdminFragment,
   readSession,
   saveSession,
@@ -297,5 +298,39 @@ describe("admin follow-up loop", () => {
   });
   it("ignores other requests that are still unfinished", async () => {
     expect((await run(["applied"])).count).toBe(1);
+  });
+});
+
+describe("serial read queue", () => {
+  it("never runs two reads at once and keeps call order", async () => {
+    const enqueue = serialQueue();
+    let running = 0;
+    let peak = 0;
+    const order: number[] = [];
+    const task = (n: number, ms: number) => () =>
+      new Promise<number>((done) => {
+        running++;
+        peak = Math.max(peak, running);
+        setTimeout(() => {
+          running--;
+          order.push(n);
+          done(n);
+        }, ms);
+      });
+    const results = await Promise.all([
+      enqueue(task(1, 30)),
+      enqueue(task(2, 5)),
+      enqueue(task(3, 1))
+    ]);
+    expect(results).toEqual([1, 2, 3]);
+    expect(order).toEqual([1, 2, 3]);
+    expect(peak).toBe(1);
+  });
+  it("starts the next read after a failed one", async () => {
+    const enqueue = serialQueue();
+    const failed = enqueue(() => Promise.reject(new Error("network")));
+    const next = enqueue(async () => "ok");
+    await expect(failed).rejects.toThrow("network");
+    await expect(next).resolves.toBe("ok");
   });
 });
