@@ -123,6 +123,44 @@ export function awaitingWorkflow(request: {
     (request.status === "pending_approval" && request.decision != null)
   );
 }
+type DecisionList = {
+  requests: { id: string; status: string; decision: unknown }[];
+};
+/**
+ * After a decision, read the list once, then again every `delayMs` (at most `attempts` more
+ * reads) while the Workflow has not finished `requestId`. Stops at a terminal state, at a failed
+ * read (`read` returns null) or when `active()` turns false, which is checked again after every
+ * delay. Returns the number of reads made.
+ */
+export async function followUpDecision({
+  requestId,
+  read,
+  sleep,
+  active,
+  attempts,
+  delayMs
+}: {
+  requestId: string;
+  read: () => Promise<DecisionList | null | undefined>;
+  sleep: (ms: number) => Promise<void>;
+  active: () => boolean;
+  attempts: number;
+  delayMs: number;
+}): Promise<number> {
+  const unfinished = (list: DecisionList | null | undefined) =>
+    list?.requests.some((r) => r.id === requestId && awaitingWorkflow(r)) ??
+    false;
+  if (!active()) return 0;
+  let latest = await read();
+  let reads = 1;
+  for (let i = 0; i < attempts && unfinished(latest); i++) {
+    await sleep(delayMs);
+    if (!active()) break;
+    latest = await read();
+    reads++;
+  }
+  return reads;
+}
 const sessionKey = (mode: SessionMode) =>
   mode === "fixture" ? SESSION_KEY : "billing-copilot.session.v1.live";
 export function readSession(

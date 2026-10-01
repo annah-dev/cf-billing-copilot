@@ -900,6 +900,9 @@ This supersedes the default in "ui: Fixture transport and live handoff". Reason:
 test found the deployed site serving the fixture preview, because the handoff to live was an
 opt-in build variable that the deploy command did not set; production must not depend on
 remembering it, while `npm run dev` stays free of model calls.
+An approval link minted by the earlier fixture build still opens /admin, but its sandbox id
+was never admitted by the live API, so it gets 404 or 401 and the page shows the error; nothing
+is read or written, so links are not tagged with their mode.
 
 Decided by: Anna.
 

@@ -5,8 +5,8 @@ import {
   type AdminCreditRequestsResponse
 } from "../contracts/http";
 import {
-  awaitingWorkflow,
   browserStorage,
+  followUpDecision,
   parseAdminFragment,
   readSession,
   type BillingApi,
@@ -73,27 +73,32 @@ export function Admin({
   const generation = useRef(0);
   const deciding = useRef(false);
   const mounted = useRef(true);
-  const refresh = useCallback(async () => {
-    if (!credentials) return;
-    const current = ++generation.current;
-    setBusy(true);
-    try {
-      const next = await api.creditRequests(
-        credentials.sandboxId,
-        credentials.token
-      );
-      if (current === generation.current) {
-        setData(next);
-        setError(null);
-        return next;
+  // A quiet refresh leaves `busy` alone, so the page stays busy (Refresh disabled) for the whole
+  // decision follow-up.
+  const refresh = useCallback(
+    async ({ quiet = false } = {}) => {
+      if (!credentials || !mounted.current) return null;
+      const current = ++generation.current;
+      if (!quiet) setBusy(true);
+      try {
+        const next = await api.creditRequests(
+          credentials.sandboxId,
+          credentials.token
+        );
+        if (current === generation.current) {
+          setData(next);
+          setError(null);
+          return next;
+        }
+      } catch (failure) {
+        if (current === generation.current) setError(failure);
+      } finally {
+        if (current === generation.current && !quiet) setBusy(false);
       }
-    } catch (failure) {
-      if (current === generation.current) setError(failure);
-    } finally {
-      if (current === generation.current) setBusy(false);
-    }
-    return null;
-  }, [api, credentials]);
+      return null;
+    },
+    [api, credentials]
+  );
   useEffect(() => {
     const requests = generation;
     mounted.current = true;
@@ -140,17 +145,14 @@ export function Admin({
           ? "This same decision was already recorded."
           : "Decision recorded. The workflow will complete the credit request."
       );
-      let latest = await refresh();
-      for (
-        let attempt = 0;
-        attempt < FOLLOW_UP_ATTEMPTS &&
-        mounted.current &&
-        latest?.requests.some((r) => r.id === requestId && awaitingWorkflow(r));
-        attempt++
-      ) {
-        await new Promise((done) => setTimeout(done, FOLLOW_UP_DELAY_MS));
-        latest = await refresh();
-      }
+      await followUpDecision({
+        requestId,
+        read: () => refresh({ quiet: true }),
+        sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
+        active: () => mounted.current,
+        attempts: FOLLOW_UP_ATTEMPTS,
+        delayMs: FOLLOW_UP_DELAY_MS
+      });
     } catch (failure) {
       setError(failure);
     } finally {
@@ -175,7 +177,9 @@ export function Admin({
         <Button
           variant="secondary"
           disabled={busy || !credentials}
-          onClick={() => void refresh()}
+          onClick={() => {
+            if (!deciding.current) void refresh();
+          }}
         >
           Refresh list
         </Button>

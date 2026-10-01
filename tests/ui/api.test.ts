@@ -6,6 +6,7 @@ import {
   apiMode,
   awaitingWorkflow,
   createApi,
+  followUpDecision,
   parseAdminFragment,
   readSession,
   saveSession,
@@ -232,5 +233,69 @@ describe("admin follow-up after a decision", () => {
     expect(awaitingWorkflow({ status: "requested", decision: null })).toBe(
       false
     );
+  });
+});
+
+describe("admin follow-up loop", () => {
+  const decision = { decision: "approve" };
+  const list = (status: string) => ({
+    requests: [
+      { id: "cr_1", status, decision },
+      { id: "cr_other", status: "approved", decision }
+    ]
+  });
+  function run(
+    statuses: (string | null)[],
+    {
+      active = (): boolean => true,
+      attempts = 5
+    }: { active?: () => boolean; attempts?: number } = {}
+  ) {
+    const sleeps: number[] = [];
+    let reads = 0;
+    const done = followUpDecision({
+      requestId: "cr_1",
+      read: async () => {
+        const status = statuses[Math.min(reads++, statuses.length - 1)];
+        return status === null ? null : list(status);
+      },
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+      active,
+      attempts,
+      delayMs: 1000
+    });
+    return done.then((count) => ({ count, sleeps, reads }));
+  }
+  it("re-reads until the Workflow applies the credit, then stops", async () => {
+    const r = await run(["approved", "approved", "applied", "applied"]);
+    expect(r).toEqual({ count: 3, sleeps: [1000, 1000], reads: 3 });
+  });
+  it("reads once when the decision is already terminal", async () => {
+    expect((await run(["rejected"])).count).toBe(1);
+  });
+  it("never makes more than one read plus the attempt limit", async () => {
+    const r = await run(["approved"], { attempts: 5 });
+    expect(r.count).toBe(6);
+    expect(r.sleeps).toHaveLength(5);
+  });
+  it("stops after a failed read", async () => {
+    expect((await run(["approved", null, "applied"])).count).toBe(2);
+  });
+  it("makes no read after the page unmounts during a delay", async () => {
+    let alive = true;
+    const r = await run(["approved", "approved", "applied"], {
+      active: () => {
+        const was = alive;
+        alive = false;
+        return was;
+      }
+    });
+    expect(r.count).toBe(1);
+    expect(r.reads).toBe(1);
+  });
+  it("ignores other requests that are still unfinished", async () => {
+    expect((await run(["applied"])).count).toBe(1);
   });
 });
