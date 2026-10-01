@@ -747,33 +747,42 @@ describe("proactive anomaly mention (user story 4)", () => {
     expect(anomalyCalls(body)).toHaveLength(0);
   });
 
-  it("checks an invoice fetched on the last allowed step and gives the model one step to mention it", async () => {
+  it("shows the check for an invoice fetched on the last step with tools before the answer", async () => {
     const sb = await createSandbox();
     const ai = stubAi([
       toolCall("getAccount", {}),
-      toolCall("getAccount", {}),
-      toolCall("getAccount", {}),
+      toolCall("getCreditRequestStatus", {}),
       toolCall("getInvoice", { period: "2026-09" }),
       text("Note the spike on 2026-09-18.")
     ]);
     const body = await turnOk(sb.sandboxId, "Tell me everything");
-    expect(ai).toHaveBeenCalledTimes(MAX_STEPS + 1);
-    expect(JSON.stringify(ai.mock.calls[MAX_STEPS][1])).toContain("2026-09-18");
+    expect(ai).toHaveBeenCalledTimes(MAX_STEPS);
+    const last = ai.mock.calls[MAX_STEPS - 1][1] as { tools?: unknown[] };
+    expect(JSON.stringify(last)).toContain("2026-09-18");
+    expect(last.tools ?? []).toEqual([]); // the last step answers (mustAnswer)
     expect(anomalyCalls(body)).toHaveLength(1);
     expect(anomalyCalls(body)[0].error).toBeNull();
+    expect(body.text).toBe("Note the spike on 2026-09-18.");
   });
 
-  it("keeps the step limit when no anomaly result is waiting", async () => {
+  it("keeps the step limit: a tool call on the last step does not run, and the guard asks once for the answer", async () => {
     const sb = await createSandbox();
     const ai = stubAi([
       toolCall("getAccount", {}),
-      toolCall("getAccount", {}),
-      toolCall("getAccount", {}),
-      toolCall("getAccount", {}),
-      text("unused")
+      toolCall("getCreditRequestStatus", {}),
+      toolCall("getInvoice", { period: "2026-08" }),
+      toolCall("getInvoice", { period: "2026-09" }),
+      text("Your August bill is $300.00.")
     ]);
-    await turnOk(sb.sandboxId, "Account?");
-    expect(ai).toHaveBeenCalledTimes(MAX_STEPS);
+    const body = await turnOk(sb.sandboxId, "Account?");
+    expect(ai).toHaveBeenCalledTimes(MAX_STEPS + 1); // the steps, then the guard's one retry
+    const lastStep = body.toolCalls.filter((c) => c.name === "getInvoice")[1];
+    expect(lastStep.output).toBeNull();
+    expect(lastStep.error).toMatch(/unavailable tool/);
+    expect(anomalyCalls(body).map((c) => c.input)).toEqual([
+      { period: "2026-08" }
+    ]);
+    expect(body.text).toBe("Your August bill is $300.00.");
   });
 
   it("shows a failed server check to the model and the transcript, and retries it once", async () => {

@@ -1,0 +1,73 @@
+{
+  "formatVersion": 1,
+  "source": "live",
+  "baseUrl": "http://127.0.0.1:5174",
+  "environment": "local dev",
+  "modelCallCount": 19,
+  "estimatedNeurons": 1585,
+  "sandboxes": {
+    "read-only": {
+      "sandboxId": "e349830e0cce5a9e6f1b66aaca87b644",
+      "messages": 6
+    },
+    "remember-credit": {
+      "sandboxId": "71308f1cebf72f43364361137f84638f",
+      "messages": 2
+    }
+  },
+  "runDate": "2026-10-01T00:17:49.457Z",
+  "status": "complete",
+  "totalCases": 7,
+  "attemptedCases": 7,
+  "completedCases": 7,
+  "passedCases": 6,
+  "passRate": "6/7",
+  "usage": {
+    "inputTokens": 49871,
+    "outputTokens": 1225,
+    "modelCalls": 19
+  },
+  "turnsPosted": 8,
+  "stopCode": null,
+  "cases": [
+    {
+      "id": "september-invoice",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "request-tiers",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "tax-line",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "august-september-change",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "pro-simulation",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "scale-simulation",
+      "passed": true,
+      "issues": []
+    },
+    {
+      "id": "remember-credit",
+      "passed": false,
+      "issues": [
+        "Turn 0: missing expected $412.87",
+        "Turn 0: missing meaning /pending|requested|await/i",
+        "Turn 0: missing meaning /approv/i"
+      ]
+    }
+  ]
+}

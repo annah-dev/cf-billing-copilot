@@ -1,0 +1,2 @@
+local dev 2026-10-01T00:20:33.083Z http://127.0.0.1:5174: 13/15 planned cases passed, 13 completed; stopped
+Reported model calls: 34. Estimated neurons: 2946. Tokens: 96787 input, 1746 output.
