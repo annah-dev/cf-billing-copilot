@@ -891,3 +891,35 @@ of blocking other work; do not log in if wrangler authentication fails. Finish t
 gated push and PR, then stop. After the PR opens, preserve published feat/evals history for the
 agent-fixes lane unless the gate itself requires a rewrite, which must be reported. Reason: Anna
 is away for about five hours and merges on return. Decided by: Anna.
+
+## agent: runtime grounding guard
+
+Before a reply leaves the agent, `src/agent/guard.ts` checks it with the eval grader's rule (owner
+decision): every money amount, percentage, count and other number must appear in that turn's
+successful tool outputs (model-issued, server-issued anomaly checks, and a continuation's earlier
+steps after the last customer message); dates, billing periods and years may also come from the
+customer's message. `src/agent/grounding.ts` is a copy of the grader's tokenising
+(`evals/grounding.ts`, money, number words, counts against array lengths, named dates) because
+`src/` must not import `evals/`; it differs only in scoping evidence to the turn and in accepting
+the customer's dates.
+
+- The reply text is held back while the turn runs (tool parts still stream) and sent once checked.
+  With simulated streaming (D-14) each step's text arrived in one piece anyway.
+- An unsupported draft gets exactly one retry: the same context (server checks included), the
+  draft, and a user-role correction naming each unsupported figure, with no tools, so the retry
+  restates what the turn fetched and cannot start a new tool loop. It is one more budget-reserved
+  model call (worst case `MAX_STEPS + 2` per turn).
+- If the retry is still unsupported, empty or refused by the budget, the customer gets the reply
+  with every sentence carrying an unsupported figure removed plus a fixed note, or a fixed safe
+  answer (no figures) when nothing verifiable is left.
+- A turn that hit the neuron stop sends the fixed budget message unchecked (outcome `budget`).
+- The outcome (`grounded`, `corrected`, `safe_answer`, `budget`, with the unsupported figures of
+  the draft and the retry) is written as the assistant message's metadata, so it is stored with
+  the turn, and logged when not `grounded`. It is not in the `/turn` response: `TurnResponseSchema`
+  is a frozen contract (listed for the owner).
+
+Reason: the evals found ungrounded figures reaching customers (for example "7 lines" for a
+six-line invoice); a prompt rule alone does not stop them. Not chosen: retrying with tools (a
+second loop with its own grounding question) and silently dropping figures without a retry.
+
+Decided by: Agent fixes engineer under standing orders.

@@ -8,8 +8,11 @@ import {
   NoSuchToolError,
   createUIMessageStream,
   createUIMessageStreamResponse,
+  generateText,
   streamText,
-  type UIMessage
+  type UIMessage,
+  type UIMessageChunk,
+  type UIMessageStreamWriter
 } from "ai";
 import {
   AgentInstanceNameSchema,
@@ -20,12 +23,20 @@ import {
   type TurnResponse
 } from "../contracts";
 import { DAY_MS, getConfig, utcDay } from "../http/config";
-import { capMessage, refusal, type Refusal, type Result } from "../http/errors";
+import {
+  BUDGET_MESSAGE,
+  capMessage,
+  refusal,
+  type Refusal,
+  type Result
+} from "../http/errors";
 import { CREDIT_WORKFLOW } from "../workflows/params";
 import { historyForModel } from "./history";
 import { billingModel, newTurnStats, type TurnStats } from "./model";
 import { EMPTY_MEMORY, systemPrompt, type Memory } from "./prompt";
 import { AnomalyChecks } from "./anomalies";
+import { collectEvidence } from "./grounding";
+import { guardReply, type GroundingRecord } from "./guard";
 import { ToolProvenance } from "./provenance";
 import { ToolError, buildTools } from "./tools";
 
@@ -46,7 +57,11 @@ export type CreditUpdateMessage = {
   status: string | null;
 };
 
-type TurnRecord = TurnStats & { capRefusal: Refusal | null };
+type TurnRecord = TurnStats & {
+  capRefusal: Refusal | null;
+  /** The grounding guard's outcome for the reply (guard.ts); null when no model reply ran. */
+  grounding: GroundingRecord | null;
+};
 
 function textOf(message: UIMessage | undefined): string {
   if (!message) return "";
@@ -70,6 +85,52 @@ function toolErrorText(error: unknown): string {
   if (NoSuchToolError.isInstance(error)) return error.message;
   if (error instanceof ToolError) return error.message;
   return "An internal error occurred.";
+}
+
+/** Successful tool outputs after the last user message: a continuation's earlier steps. */
+function toolOutputsSinceLastUser(messages: UIMessage[]): unknown[] {
+  let start = 0;
+  messages.forEach((m, index) => {
+    if (m.role === "user") start = index + 1;
+  });
+  return messages
+    .slice(start)
+    .flatMap((m) => m.parts)
+    .flatMap((part) =>
+      part.type.startsWith("tool-") &&
+      (part as { state?: string }).state === "output-available"
+        ? [(part as { output?: unknown }).output]
+        : []
+    );
+}
+
+/**
+ * Forward a step stream to the client, holding back its text: the reply is only sent after the
+ * grounding guard has checked it. Returns the held text, step by step, and every tool output.
+ */
+async function forwardHoldingText(
+  stream: ReadableStream<UIMessageChunk>,
+  writer: UIMessageStreamWriter
+): Promise<{ text: string; outputs: unknown[] }> {
+  const texts = new Map<string, string>();
+  const outputs: unknown[] = [];
+  const reader = stream.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value.type === "text-start") texts.set(value.id, "");
+    else if (value.type === "text-delta") {
+      texts.set(value.id, (texts.get(value.id) ?? "") + value.delta);
+    } else if (value.type !== "text-end") {
+      if (value.type === "tool-output-available") outputs.push(value.output);
+      writer.write(value);
+    }
+  }
+  const text = [...texts.values()]
+    .map((t) => t.trim())
+    .filter((t) => t !== "")
+    .join("\n\n");
+  return { text, outputs };
 }
 
 /** A reply that never reaches the model: a cap, the budget stop or an oversize message. */
@@ -313,7 +374,11 @@ export class BillingAgent extends AIChatAgent<Env> {
     // this.messages can change at any await below (PR #4 review round 4).
     const conversation = structuredClone(this.messages);
     const lastUser = [...conversation].reverse().find((m) => m.role === "user");
-    const record: TurnRecord = { ...newTurnStats(), capRefusal: null };
+    const record: TurnRecord = {
+      ...newTurnStats(),
+      capRefusal: null,
+      grounding: null
+    };
     this.turns.set(lastUser?.id ?? options?.requestId ?? "unknown", record);
     // Only /turn reads these back; keep the map small for chat turns nobody collects.
     for (const key of this.turns.keys()) {
@@ -379,14 +444,17 @@ export class BillingAgent extends AIChatAgent<Env> {
       cache,
       { confirmCredit: !preConfirmed }
     );
-    const messages = await historyForModel(
-      await this.provenance.verified(conversation),
-      { continuation, confirmedTurn: preConfirmed }
-    );
+    const verified = await this.provenance.verified(conversation);
+    const messages = await historyForModel(verified, {
+      continuation,
+      confirmedTurn: preConfirmed
+    });
+    const earlierOutputs = toolOutputsSinceLastUser(verified);
+    const customerText = textOf(lastUser);
     const system = systemPrompt(this.memory(), utcDay(Date.now()));
     const stream = createUIMessageStream({
       onError: toolErrorText,
-      execute: ({ writer }) => {
+      execute: async ({ writer }) => {
         // User story 4: the spike is checked and shown whether or not the model asks (anomalies.ts).
         const checks = new AnomalyChecks({
           detectAnomalies: tools.detectAnomalies.execute as NonNullable<
@@ -399,11 +467,12 @@ export class BillingAgent extends AIChatAgent<Env> {
           writer
         });
         checks.wrap(tools);
+        const model = billingModel(this.env, record, {
+          maxOutputTokens: config.MAX_OUTPUT_TOKENS,
+          neuronStop: config.NEURON_DAILY_STOP
+        });
         const result = streamText({
-          model: billingModel(this.env, record, {
-            maxOutputTokens: config.MAX_OUTPUT_TOKENS,
-            neuronStop: config.NEURON_DAILY_STOP
-          }),
+          model,
           system,
           messages,
           tools,
@@ -434,7 +503,70 @@ export class BillingAgent extends AIChatAgent<Env> {
           temperature: 0,
           abortSignal: options?.abortSignal
         });
-        writer.merge(result.toUIMessageStream({ onError: toolErrorText }));
+        const draft = await forwardHoldingText(
+          result.toUIMessageStream({ onError: toolErrorText, sendFinish: false }),
+          writer
+        );
+        // The grounding guard (guard.ts): figures must come from this turn's tool results, dates
+        // and periods also from the customer's message. One corrective retry, then a safe answer.
+        let reply: string;
+        if (record.budgetRefusal) {
+          reply = BUDGET_MESSAGE;
+          record.grounding = {
+            outcome: "budget",
+            unsupported: [],
+            retryUnsupported: null
+          };
+        } else {
+          const guarded = await guardReply({
+            draft: draft.text,
+            evidence: collectEvidence(
+              [...earlierOutputs, ...draft.outputs, ...checks.outputs],
+              customerText
+            ),
+            retry: async (correction) => {
+              let response;
+              try {
+                response = await result.response;
+              } catch (_err) {
+                return null; // the turn failed; nothing to correct
+              }
+              // The context the model answered from, server checks included, then the correction.
+              // No tools: the retry restates what this turn already fetched.
+              const retried = await generateText({
+                model,
+                system,
+                messages: [
+                  ...checks.withServerResults([
+                    ...messages,
+                    ...response.messages
+                  ]),
+                  { role: "user", content: correction }
+                ],
+                maxOutputTokens: config.MAX_OUTPUT_TOKENS,
+                temperature: 0,
+                abortSignal: options?.abortSignal
+              });
+              return record.budgetRefusal ? null : retried.text;
+            }
+          });
+          reply = guarded.text;
+          record.grounding = guarded.grounding;
+        }
+        if (record.grounding.outcome !== "grounded") {
+          console.log("grounding guard", record.grounding);
+        }
+        if (reply !== "") {
+          const id = crypto.randomUUID();
+          writer.write({ type: "text-start", id });
+          writer.write({ type: "text-delta", id, delta: reply });
+          writer.write({ type: "text-end", id });
+        }
+        writer.write({
+          type: "message-metadata",
+          messageMetadata: { grounding: record.grounding }
+        });
+        writer.write({ type: "finish" });
       }
     });
     return createUIMessageStreamResponse({ stream });

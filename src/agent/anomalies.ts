@@ -27,6 +27,8 @@ export class AnomalyChecks {
   private readonly inFlight = new Map<string, Promise<boolean>>();
   /** Server-issued pairs not yet shown to the model, and those already placed in its context. */
   private pending: ModelMessage[][] = [];
+  /** Outputs of successful server-issued checks, in order (evidence for the grounding guard). */
+  readonly outputs: unknown[] = [];
   private readonly injections: { at: number; messages: ModelMessage[] }[] = [];
 
   constructor(
@@ -103,6 +105,7 @@ export class AnomalyChecks {
         messages: []
       });
       this.checked.add(period);
+      this.outputs.push(output);
       writer.write({ type: "tool-output-available", toolCallId, output });
       result = {
         role: "tool",
@@ -149,17 +152,26 @@ export class AnomalyChecks {
    * every pair is re-inserted, each time, at the position where it was first added.
    */
   readonly prepareStep: PrepareStepFunction = ({ messages }) => {
+    const out = this.withServerResults(messages);
+    return out === messages ? undefined : { messages: out };
+  };
+
+  /**
+   * `messages` with every server-issued pair placed where it was first added (the context the
+   * model saw), for prepareStep and for a call outside the step loop such as the grounding retry.
+   */
+  withServerResults(messages: ModelMessage[]): ModelMessage[] {
     for (const pair of this.pending) {
       this.injections.push({ at: messages.length, messages: pair });
     }
     this.pending = [];
-    if (this.injections.length === 0) return undefined;
+    if (this.injections.length === 0) return messages;
     const out = [...messages];
     let offset = 0;
     for (const injection of this.injections) {
       out.splice(injection.at + offset, 0, ...injection.messages);
       offset += injection.messages.length;
     }
-    return { messages: out };
-  };
+    return out;
+  }
 }
