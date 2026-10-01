@@ -105,12 +105,17 @@ New-scope gate review round 1 (run 01M3T67AVMBTC9CJV9A0HGDQYH) is logged in PROM
 05g-evals-harness-review-r1.md: F2 (run filename timestamp) fixed in `run.live.ts` (05k), F1
 (echoed-period grounding) resolved by Anna's rule (05l, fixed under 05m), F3 left as a
 documented proposal. Round 2 (05g-evals-harness-review-r2.md, exact prompt unavailable) ran after
-the F2 fix and before the grounding rule. The changed grader has not yet been source-reviewed;
-any final review is a third round on the grounding delta only. Gated delivery, PR and CI evidence
+the F2 fix and before the grounding rule. Round 3 reviewed only the grounding delta
+d702da68..780f66a3: Codex (read-only second-model inspection, agent-output-review skill) returned
+PASS with no blocking findings (prompt 05n-evals-grounding-delta-review.md, result
+05g-evals-harness-review-r3.md). No fourth review is needed. Gated delivery, PR and CI evidence
 will be added after they execute.
 No merge or deployment is authorized. Release owns the deployed run after UI/deploy and must use
 that result for the public README. The standalone live/regrade tools are excluded from npm test,
 and both test projects prohibit global fetch.
 
-VERIFIED: Local-dev real model captures and reported usage; unchanged response evidence; raw/corrected grades and shared all-recordings regrade; exact verdict/digest/provenance replay; seven failures reported without making tests fail; known-good/bad grader guards including seven lines for six; planted grader change observed red; owner grounding rule with red-first regressions and all-recordings regrade (no verdict change); 353 passing offline tests with and without credentials; typecheck/npm ci; 130 added tests versus main with no coverage loss; unchanged frozen/application source.
-NOT VERIFIED: Source review of the grounding-rule delta, gated PR/CI until executed; deployed run/public README pass rate (release lane after deploy); exact historical generated review prompts (not exposed); Cloudflare-metered neurons (estimate only); human approval of new live credit (intentionally not performed); proposed agent/prompt/grader fixes in failure analysis (not implemented).
+FOR ANNA (follow-ups, not approvals needed before the authorized push/PR, per 05o): merge this PR
+when back; release-lane deploy, deployed eval run and public README pass rate later.
+
+VERIFIED: Local-dev real model captures and reported usage; unchanged response evidence; raw/corrected grades and shared all-recordings regrade; exact verdict/digest/provenance replay; seven failures reported without making tests fail; known-good/bad grader guards including seven lines for six; planted grader change observed red; owner grounding rule with red-first regressions and all-recordings regrade (no verdict change); 353 passing offline tests with and without credentials; typecheck/npm ci; 130 added tests versus main with no coverage loss; unchanged frozen/application source; delta-only Codex source review of the grounding rule (round 3, PASS).
+NOT VERIFIED: Gated PR/CI until executed; deployed run/public README pass rate (release lane after deploy); exact historical generated review prompts (not exposed); Cloudflare-metered neurons (estimate only); human approval of new live credit (intentionally not performed); proposed agent/prompt/grader fixes in failure analysis (not implemented).

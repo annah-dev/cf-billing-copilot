@@ -2499,3 +2499,33 @@ Harness: no-mistakes v1.41.2 (Claude)
 Run: 01M3T67AVMBTC9CJV9A0HGDQYH
 Source: prompt-history/prompts/05m-evals-gate-grounding-fix.md (fix context copied verbatim with a tool)
 Outcome: Grader, regressions, all-recordings regrade, evals/README.md policy, results README corrections/failure analysis and verification evidence updated. Normal and credential-free npm test: 22 files, 353 tests passed; typecheck exit 0; main 21a8069 collects 223, head 353, zero disappeared, 130 added. Recordings and initialGrading identical to 9fa01a8. src/agent, contracts, configs and pins unchanged; zero Workers AI calls. Any source review of this delta must be a third, delta-only round.
+
+## 2026-09-30T17:00:13-07:00 - Evals harness gate review round 3 (grounding delta only)
+
+Role: automated cross-review
+Harness: Codex (read-only second-model inspection, agent-output-review skill); not a codex exec run, but the root Codex reviewer inspecting the Claude-authored gate delta
+Run: 01M3T67AVMBTC9CJV9A0HGDQYH
+Scope: round 3, delta only, d702da68088fd5782ca304f9be0959bf8ed8934d..780f66a387c43b7bd16a803833a6a43413879085
+Source: prompt-history/prompts/05n-evals-grounding-delta-review.md (prompt); prompt-history/prompts/05g-evals-harness-review-r3.md (result); both copied with a tool
+Outcome: PASS, no blocking findings. Per-turn tool-only grounding of amounts, percentages and counts, normalized customer-message dates, negative guards, all-recording issue diff (only `ungrounded number 2026-09` removed, no verdict change) and immutable raw evidence confirmed. Resolves doc-grounding-delta-review; no fourth review needed. Zero Workers AI calls.
+
+Review round 3, delta only, for feat/evals before its local-dev eval PR is opened.
+Role: Codex second-model reviewer using agent-output-review; read-only, no fixes, pushes, rebase, merge or model calls.
+Review git diff d702da68088fd5782ca304f9be0959bf8ed8934d 780f66a387c43b7bd16a803833a6a43413879085 in the active gate worktree. Do not repeat the two full source-review rounds. Check AGENTS.md, docs/agent/verification.md, docs/agent/cross-review.md, prompt-history/prompts/05-evals.md and 05l-evals-owner-grounding-rule.md against this delta.
+Verify this turn's successful tool results exclusively ground amounts, percentages, counts and other quantities; dates/periods also normalize from the customer message. Check echoed dates pass and customer money fails, prior-turn evidence fails, seven-lines-for-six stays rejected, no per-answer exceptions. Inspect the shared all-recordings regrade, immutable raw recording digests/initial grades and preserved earlier grade history; verify exact issue changes and unchanged usage. Check attached normal and credential-free 353-test evidence, red-first regressions, unchanged frozen/app source, append-only logs, no skipped tests or silent fixture regeneration. No new Workers AI calls are authorized.
+Report PASS or FAIL, findings most severe first with severity/file/line/evidence/proposed fix, and end with VERIFIED / NOT VERIFIED. Delivery, CI, deployed evaluation and metered neurons remain unverified until exercised; do not claim the PR is mergeable before gated delivery succeeds.
+
+## 2026-09-30T17:00:13-07:00 - Evals away standing orders
+
+Role: QA / evals engineer
+Harness: Codex CLI
+Source: prompt-history/prompts/05o-evals-away-standing-orders.md
+Outcome: Recorded in docs/DECISIONS.md, decided by Anna. FOR ANNA list added to evals/verification.md: merge this PR when back; release-lane deploy, deployed eval and public README later. No newly reserved decision blocks the gated push/PR; feat/evals history is preserved after the PR opens unless the gate requires a rewrite, which will be reported.
+
+I am away for about five hours. Do not wait on me: take your recommended option on anything within
+your decision rights and log it. For anything reserved to me (merge, deploy, login, secrets,
+force-push to main, account changes, contract changes), add it to a FOR ANNA list and keep going
+with everything it does not block. If wrangler authentication fails, do not try to log in.
+Finish the grading rule, the gated push and the PR, then stop; I merge when I am back. The
+agent-fixes lane will build on feat/evals, so after the PR is open, do not rewrite its history
+unless the gate requires it, and say so if it does.

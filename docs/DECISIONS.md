@@ -882,3 +882,12 @@ message, compared after normalizing formats, and message dates never ground numb
 the runtime grounding guard will enforce the same rule, and a wrong premise repeated back must
 fail while an echoed period must not. Applied to every recording by explicit offline regrade.
 Decided by: Anna.
+
+## evals: standing orders while Anna is away
+
+Proceed within lane decision rights and log each choice. Reserved decisions (merge, deploy,
+login, secrets, force-push to main, account and contract changes) go on a FOR ANNA list instead
+of blocking other work; do not log in if wrangler authentication fails. Finish the grading rule,
+gated push and PR, then stop. After the PR opens, preserve published feat/evals history for the
+agent-fixes lane unless the gate itself requires a rewrite, which must be reported. Reason: Anna
+is away for about five hours and merges on return. Decided by: Anna.
