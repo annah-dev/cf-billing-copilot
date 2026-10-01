@@ -1254,3 +1254,16 @@ committed recording; the new ordinal cases are covered by unit and turn tests. R
 must apply the grader's rule, and the owner asked for this once #10 merged.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## foundation: 30 s test and hook timeouts in both vitest projects
+
+`vitest.config.ts` sets `testTimeout` and `hookTimeout` to 30 s in the `unit` and `workers`
+projects (inline projects do not inherit root test options). Reason: the owner reported the
+credential-free run timing out intermittently under load; the slowest tests that rely on the 5 s
+default take about 3.4 to 3.6 s whatever the CPU speed, so a slow or loaded machine can cross it.
+No assertion, wait, include pattern or parallelism changes, and the collected tests are identical.
+Not chosen: less parallelism. Contention was not reproduced on the build machine, and more timeout
+headroom keeps the current concurrency and run time. A frozen file, so this is its own PR to main
+(AGENTS.md hard rule 4).
+
+Decided by: Anna (make npm test reliable); the timeout value by Release engineer under standing orders.
