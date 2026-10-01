@@ -950,3 +950,14 @@ a guess; the contract stays strict. Not chosen: loosening the schema (frozen con
 on the prompt alone (it already said to use availablePlans).
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: comparisons trigger the server's anomaly check
+
+The evals' August-to-September comparison never mentioned the September spike: the server check
+(see "the server runs the anomaly check for every invoice a turn touches") only fired on
+`getInvoice` and `explainLineItem`. A `compareInvoices` result now triggers it for both months, the
+later month first, with the same once-per-period and retry rules; the prompt says to mention a
+reported spike when explaining a change. Reason: a spike in either month can explain the change,
+and the check costs no model call.
+
+Decided by: Agent fixes engineer under standing orders.

@@ -1,8 +1,8 @@
 // User story 4: the copilot mentions an unusual usage spike proactively. That must not depend on
 // Llama 3.3 choosing to call detectAnomalies (in the live run it did not). So whenever a tool
-// result in a turn is an invoice (getInvoice) or a line explanation (explainLineItem) for a period
-// that has not been checked successfully in that turn, the server runs detectAnomalies for the
-// period itself, at the moment the result is produced. The call and its result (or its error) are
+// result in a turn is an invoice (getInvoice), a line explanation (explainLineItem) or a comparison
+// (compareInvoices, both months) for a period that has not been checked successfully in that turn,
+// the server runs detectAnomalies for the period itself, at the moment the result is produced. The call and its result (or its error) are
 // written to the chat stream at once, so they are stored, shown in the UI and /turn and recorded in
 // provenance, and they are handed to the model as a server-issued tool call and result before its
 // next step. If the invoice came on the turn's last allowed step, one extra answer step is allowed
@@ -60,6 +60,18 @@ export class AnomalyChecks {
       await this.afterInvoice(
         invoiceId ? await this.options.periodOfInvoice(invoiceId) : null
       );
+      return output;
+    };
+    // A spike in either month can explain a change (evals: august-september-change).
+    const compare = tools.compareInvoices.execute as Execute;
+    tools.compareInvoices.execute = async (input, opts) => {
+      const output = await compare(input, opts);
+      const { fromPeriod, toPeriod } = output as {
+        fromPeriod?: string;
+        toPeriod?: string;
+      };
+      await this.afterInvoice(toPeriod ?? null);
+      await this.afterInvoice(fromPeriod ?? null);
       return output;
     };
     const detect = tools.detectAnomalies.execute as Execute;

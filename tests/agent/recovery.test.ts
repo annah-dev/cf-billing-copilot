@@ -147,3 +147,28 @@ describe("plan ids in display case (pro-simulation, scale-simulation)", () => {
     ).toBeNull();
   });
 });
+
+describe("spike missing from a comparison (august-september-change)", () => {
+  it("runs the server's anomaly check for both compared months and shows it to the model", async () => {
+    const sb = await createSandbox();
+    const ai = stubAi([
+      toolCall("compareInvoices", {
+        fromPeriod: "2026-08",
+        toPeriod: "2026-09",
+      }),
+      text("Your bill rose 38%; note the spike on 2026-09-18."),
+    ]);
+    const body = await turnOk(sb.sandboxId, "Why did my bill change?");
+    expect(ai).toHaveBeenCalledTimes(2); // no extra model call
+    const checks = body.toolCalls.filter((c) => c.name === "detectAnomalies");
+    expect(checks.map((c) => c.input)).toEqual([
+      { period: "2026-09" },
+      { period: "2026-08" },
+    ]);
+    expect(checks.every((c) => c.error === null)).toBe(true);
+    const seen = JSON.stringify(ai.mock.calls[1][1]);
+    expect(seen).toContain("2026-09-18");
+    expect(seen).toContain("5.00x");
+    expect(body.text).toBe("Your bill rose 38%; note the spike on 2026-09-18.");
+  });
+});
