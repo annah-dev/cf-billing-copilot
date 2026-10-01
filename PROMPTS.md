@@ -2778,7 +2778,7 @@ you suggest. End with:
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/08b-config-ip-cap-review-r2.md
-- Outcome: (filled in after the round)
+- Outcome: CHANGES REQUESTED: major, a node_modules symlink from the review worktree was committed (removed); minor, missing npm ci output and a planted-defect run for the cap (added to the PR body).
 
 ````text
 You are the cross-reviewer for branch `fix/sandbox-ip-cap` on annah-dev/cf-billing-copilot, round
