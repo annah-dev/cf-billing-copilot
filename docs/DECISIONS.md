@@ -1242,3 +1242,15 @@ client therefore cannot resume an interrupted stream until the 00:00 UTC reset; 
 refusal instead. Reason: every client frame that can lead to a write is counted, as `/turn` is.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: the guard treats ordinal words as labels, as the grader does
+
+Evals PR #10 changed the grader so ordinal words ("first", "second", "twenty-first") are labels,
+not figures; numeral ordinals ("3rd") and cardinal words ("seven", the "one" in "one second") are
+still figures. `normalizeNumberWords` in src/agent/grounding.ts is now a verbatim copy of the
+grader's (checked identical after formatting), so a reply such as "First, I need your invoice"
+is sent without a corrective retry. The guard-versus-grader agreement test still passes on every
+committed recording; the new ordinal cases are covered by unit and turn tests. Reason: the guard
+must apply the grader's rule, and the owner asked for this once #10 merged.
+
+Decided by: Agent fixes engineer under standing orders.
