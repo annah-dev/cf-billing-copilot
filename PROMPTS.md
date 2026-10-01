@@ -3455,7 +3455,7 @@ with:
 - Role: automated cross-review
 - Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
 - Source: prompt-history/prompts/06o-test-timeouts-review-r2.md
-- Outcome: (pending)
+- Outcome: APPROVE, no findings: both projects at 30 s, no gate changed, identical 484-test collection; the reviewer's own probes failed on main at the 5000 ms test and 10000 ms hook defaults and passed on the head.
 
 ````text
 # PR (fix/test-timeouts) cross-review, round 2 (full)
@@ -3505,6 +3505,36 @@ your sandbox allows it; say which you ran.
 Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
 severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
 with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 47. Test timeouts PR cross-review, round 3 (delta only)
+
+- Timestamp: 2026-10-01T00:46:14-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06p-test-timeouts-review-r3-delta.md
+- Outcome: (pending)
+
+````text
+# PR #13 (fix/test-timeouts) cross-review, round 3 (delta only)
+
+You are reviewing pull request #13, branch `fix/test-timeouts`, for the third and last round,
+covering only the changes since round 2. You are read-only: do not edit, commit, push, rebase or
+merge anything, and make no network or live model calls.
+
+Round 2 (prompt-history/prompts/06o-test-timeouts-review-r2.md) reviewed head f4b253d59134c20309182e13d3431553d83ffaeb and approved
+with no findings. The delta under review:
+
+    git diff f4b253d59134c20309182e13d3431553d83ffaeb..origin/fix/test-timeouts
+
+It should contain only prompt-history and PROMPTS.md records: the round-2 outcome and this
+round-3 prompt. Check that the delta changes no code, configuration or test; that the logged text
+matches its source files verbatim; and that every entry has a timestamp, role, harness, source and
+outcome. Report a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first,
+each with severity, file and line, what is wrong and the fix. End with:
 
     VERIFIED:     <what you ran and observed>
     NOT VERIFIED: <what you did not exercise, and why>
