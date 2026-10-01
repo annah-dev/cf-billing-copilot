@@ -961,3 +961,27 @@ reported spike when explaining a change. Reason: a spike in either month can exp
 and the check costs no model call.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: the last step answers, and an empty reply is asked for once
+
+In the evals the credit turns ended with no text (remember-credit): Llama 3.3 spent all four steps
+on tool calls, including four identical `getCreditRequestStatus` calls. Now:
+
+- `prepareStep` gives a step no tools (`activeTools: []`) when it is the last allowed step, or when
+  the previous step only repeated calls already made in the turn (same tool and canonical input).
+  A tool call the model still emits on such a step is refused by the SDK and not executed.
+- An empty draft, unless the turn stopped at a credit proposal awaiting the customer's
+  confirmation, goes through the grounding guard's one retry with an "answer now" instruction. A
+  grounded answer is sent (outcome `completed`); an ungrounded one becomes the safe answer; an
+  empty one becomes a fixed "could not finish" message (outcome `incomplete`).
+- The prompt asks for the amount and approval status once a credit result is in, and not to
+  fetch the same result again.
+- This supersedes the extra answer step in "the server runs the anomaly check for every invoice a
+  turn touches": with no tools on the last step, no server check can arrive after it, so the
+  `MAX_STEPS + 1` allowance was unreachable and is removed. The cap per turn is `MAX_STEPS` steps
+  plus the guard's one retry. Two tests that scripted a tool call on the last step were rewritten
+  to the new guarantee, and a chat provenance test's script was reordered so its repeat comes last.
+
+Reason: a turn must end with an answer the customer can read, inside the same model-call cap.
+
+Decided by: Agent fixes engineer under standing orders.

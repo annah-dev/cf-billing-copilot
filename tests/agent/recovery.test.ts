@@ -1,6 +1,11 @@
 // Fixes for the failures the evals attributed to the agent (evals/results/README.md, failure
 // analysis): each describe block names the eval question it comes from. No test reaches Workers AI.
 import { describe, expect, it, vi } from "vitest";
+import {
+  AWAITING_CONFIRMATION,
+  MAX_STEPS
+} from "../../src/agent/billing-agent";
+import { ANSWER_NOW, INCOMPLETE_ANSWER } from "../../src/agent/guard";
 import { ACME, INV_AUG, INV_SEP } from "./support/fake-engine";
 import { createSandbox, stubAi, text, toolCall, turn } from "./support/helpers";
 
@@ -170,5 +175,85 @@ describe("spike missing from a comparison (august-september-change)", () => {
     expect(seen).toContain("2026-09-18");
     expect(seen).toContain("5.00x");
     expect(body.text).toBe("Your bill rose 38%; note the spike on 2026-09-18.");
+  });
+});
+
+describe("empty answers after spent steps (remember-credit)", () => {
+  const toolsSent = (ai: ReturnType<typeof stubAi>, n: number) =>
+    ((ai.mock.calls[n][1] as { tools?: unknown[] }).tools ?? []).length;
+
+  it("takes the tools away after the model repeats a call, so it answers", async () => {
+    const sb = await createSandbox();
+    const ai = stubAi([
+      toolCall("getCreditRequestStatus", {}),
+      toolCall("getCreditRequestStatus", {}),
+      text("Your request has expired.")
+    ]);
+    const body = await turnOk(
+      sb.sandboxId,
+      "What is my credit request status?"
+    );
+    expect(ai).toHaveBeenCalledTimes(3);
+    expect(toolsSent(ai, 0)).toBeGreaterThan(0);
+    expect(toolsSent(ai, 1)).toBeGreaterThan(0);
+    expect(toolsSent(ai, 2)).toBe(0);
+    expect(body.text).toBe("Your request has expired.");
+  });
+
+  it("gives the last allowed step no tools", async () => {
+    const sb = await createSandbox();
+    const ai = stubAi([
+      toolCall("getAccount", {}),
+      toolCall("getInvoice", { period: "2026-08" }),
+      toolCall("getCreditRequestStatus", {}),
+      text("Done.")
+    ]);
+    await turnOk(sb.sandboxId, "Tell me everything");
+    expect(ai).toHaveBeenCalledTimes(MAX_STEPS);
+    for (let n = 0; n < MAX_STEPS - 1; n += 1) {
+      expect(toolsSent(ai, n)).toBeGreaterThan(0);
+    }
+    expect(toolsSent(ai, MAX_STEPS - 1)).toBe(0);
+  });
+
+  it("asks once for the answer when the draft is empty, and sends it", async () => {
+    const sb = await createSandbox();
+    const ai = stubAi([
+      toolCall("getCreditRequestStatus", {}),
+      text(""),
+      text("Your earlier request expired.")
+    ]);
+    const body = await turnOk(
+      sb.sandboxId,
+      "What is my credit request status?"
+    );
+    expect(ai).toHaveBeenCalledTimes(3);
+    expect(JSON.stringify(ai.mock.calls[2][1])).toContain(ANSWER_NOW);
+    expect(toolsSent(ai, 2)).toBe(0);
+    expect(body.text).toBe("Your earlier request expired.");
+  });
+
+  it("says the answer is incomplete when the retry is empty too", async () => {
+    const sb = await createSandbox();
+    stubAi([toolCall("getCreditRequestStatus", {}), text(""), text("")]);
+    const body = await turnOk(
+      sb.sandboxId,
+      "What is my credit request status?"
+    );
+    expect(body.text).toBe(INCOMPLETE_ANSWER);
+  });
+
+  it("does not ask for an answer while a credit proposal awaits confirmation", async () => {
+    const sb = await createSandbox();
+    const ai = stubAi([
+      toolCall("startCreditRequest", {
+        invoiceId: INV_SEP,
+        reason: "Charged twice"
+      })
+    ]);
+    const body = await turnOk(sb.sandboxId, "I was charged twice in September");
+    expect(ai).toHaveBeenCalledTimes(1);
+    expect(body.text).toBe("");
+    expect(body.toolCalls[0].error).toBe(AWAITING_CONFIRMATION);
   });
 });

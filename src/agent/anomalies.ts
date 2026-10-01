@@ -5,8 +5,8 @@
 // the server runs detectAnomalies for the period itself, at the moment the result is produced. The call and its result (or its error) are
 // written to the chat stream at once, so they are stored, shown in the UI and /turn and recorded in
 // provenance, and they are handed to the model as a server-issued tool call and result before its
-// next step. If the invoice came on the turn's last allowed step, one extra answer step is allowed
-// so the model sees the result (hard cap: MAX_STEPS + 1 model calls, each still budget-reserved).
+// next step. The turn's last step has no tools (billing-agent.ts, mustAnswer), so every result is
+// seen by at least that answer step.
 import type {
   ModelMessage,
   PrepareStepFunction,
@@ -39,11 +39,6 @@ export class AnomalyChecks {
       writer: UIMessageStreamWriter;
     }
   ) {}
-
-  /** True while a server-issued result exists that the model has not seen in any step. */
-  get hasUnseen(): boolean {
-    return this.pending.length > 0;
-  }
 
   /** Wrap the model-facing tools: invoice results trigger the check; model checks are tracked. */
   wrap(tools: ToolSet): void {

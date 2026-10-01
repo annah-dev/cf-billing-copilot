@@ -379,11 +379,12 @@ describe("chat channel (WebSocket)", () => {
     const sb = await createSandbox();
     const { ws, frames, until } = await connect(sb.sandboxId);
     // Turn 1, SDK-driven: two identical getAccount calls (the second from the per-turn cache)
-    // and one invalid getInvoice call that fails validation.
+    // around one invalid getInvoice call that fails validation. The repeat comes last: the step
+    // after a pure repeat gets no tools (mustAnswer).
     stubAi([
       toolCall("getAccount", {}),
-      toolCall("getAccount", {}),
       toolCall("getInvoice", { period: "September" }),
+      toolCall("getAccount", {}),
       text("Done.")
     ]);
     ws.send(chatRequest("r1", "Show my account"));
@@ -444,14 +445,14 @@ describe("chat channel (WebSocket)", () => {
         errorText: undefined
       },
       {
-        type: "tool-getAccount",
-        state: "output-available",
-        errorText: undefined
-      },
-      {
         type: "tool-getInvoice",
         state: "output-error",
         errorText: expect.stringMatching(/^Invalid input for tool getInvoice/)
+      },
+      {
+        type: "tool-getAccount",
+        state: "output-available",
+        errorText: undefined
       }
     ]);
     expect(JSON.stringify(seen)).not.toContain("FORGED_BILL_99999");

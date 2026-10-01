@@ -9,6 +9,7 @@ import {
   createUIMessageStream,
   createUIMessageStreamResponse,
   generateText,
+  stepCountIs,
   streamText,
   type UIMessage,
   type UIMessageChunk,
@@ -39,11 +40,36 @@ import { planIdRepair } from "./repair";
 import { collectEvidence } from "./grounding";
 import { guardReply, type GroundingRecord } from "./guard";
 import { ToolProvenance } from "./provenance";
-import { ToolError, buildTools } from "./tools";
+import { ToolError, buildTools, stableKey } from "./tools";
 
 /** Model calls per turn: tool round trips plus the answer. Small on purpose (Stop 2 finding). */
 export const MAX_STEPS = 4;
 const MAX_REMEMBERED_QUESTIONS = 8;
+
+/**
+ * Whether the next step gets no tools, so the model has to answer: the last allowed step, or a
+ * step after one where the model only repeated calls it had already made this turn. In the evals
+ * Llama 3.3 spent every step on tool calls (four identical getCreditRequestStatus calls) and the
+ * turn ended with no text (remember-credit).
+ */
+export function mustAnswer(
+  stepNumber: number,
+  steps: readonly {
+    toolCalls: readonly { toolName: string; input: unknown }[];
+  }[]
+): boolean {
+  if (stepNumber >= MAX_STEPS - 1) return true;
+  const last = steps.at(-1);
+  if (!last || last.toolCalls.length === 0) return false;
+  const earlier = new Set(
+    steps
+      .slice(0, -1)
+      .flatMap((s) => s.toolCalls.map((c) => stableKey(c.toolName, c.input)))
+  );
+  return last.toolCalls.every((c) =>
+    earlier.has(stableKey(c.toolName, c.input))
+  );
+}
 const QUESTION_CHARS = 160;
 const MAX_TRACKED_TURNS = 16;
 
@@ -112,9 +138,14 @@ function toolOutputsSinceLastUser(messages: UIMessage[]): unknown[] {
 async function forwardHoldingText(
   stream: ReadableStream<UIMessageChunk>,
   writer: UIMessageStreamWriter
-): Promise<{ text: string; outputs: unknown[] }> {
+): Promise<{
+  text: string;
+  outputs: unknown[];
+  awaitingConfirmation: boolean;
+}> {
   const texts = new Map<string, string>();
   const outputs: unknown[] = [];
+  let awaitingConfirmation = false;
   const reader = stream.getReader();
   for (;;) {
     const { done, value } = await reader.read();
@@ -124,6 +155,7 @@ async function forwardHoldingText(
       texts.set(value.id, (texts.get(value.id) ?? "") + value.delta);
     } else if (value.type !== "text-end") {
       if (value.type === "tool-output-available") outputs.push(value.output);
+      if (value.type === "tool-approval-request") awaitingConfirmation = true;
       writer.write(value);
     }
   }
@@ -131,7 +163,7 @@ async function forwardHoldingText(
     .map((t) => t.trim())
     .filter((t) => t !== "")
     .join("\n\n");
-  return { text, outputs };
+  return { text, outputs, awaitingConfirmation };
 }
 
 /** A reply that never reaches the model: a cap, the budget stop or an oversize message. */
@@ -477,7 +509,12 @@ export class BillingAgent extends AIChatAgent<Env> {
           system,
           messages,
           tools,
-          prepareStep: checks.prepareStep,
+          prepareStep: async (step) => {
+            const prepared = await checks.prepareStep(step);
+            return mustAnswer(step.stepNumber, step.steps)
+              ? { ...prepared, activeTools: [] }
+              : prepared;
+          },
           experimental_repairToolCall: planIdRepair(async () => {
             const account = await ledger.account(customerId);
             return account.ok ? account.value.availablePlans : [];
@@ -500,10 +537,8 @@ export class BillingAgent extends AIChatAgent<Env> {
               ),
               !preConfirmed
             ),
-          // One extra answer step only while a server-issued anomaly result is unseen by the model.
-          stopWhen: ({ steps }) =>
-            steps.length >= MAX_STEPS + 1 ||
-            (steps.length >= MAX_STEPS && !checks.hasUnseen),
+          // The last step has no tools (mustAnswer), so no server check can arrive after it.
+          stopWhen: stepCountIs(MAX_STEPS),
           maxOutputTokens: config.MAX_OUTPUT_TOKENS,
           temperature: 0,
           abortSignal: options?.abortSignal
@@ -528,6 +563,7 @@ export class BillingAgent extends AIChatAgent<Env> {
         } else {
           const guarded = await guardReply({
             draft: draft.text,
+            awaitingConfirmation: draft.awaitingConfirmation,
             evidence: collectEvidence(
               [...earlierOutputs, ...draft.outputs, ...checks.outputs],
               customerText
