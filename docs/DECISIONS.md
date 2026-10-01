@@ -1024,3 +1024,16 @@ the rule no longer depends on that. Also from this round: a retry call that thro
 to the safe answer instead of erroring the turn.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: stored evidence needs the customer's answer to that proposal
+
+Codex review round 2 reproduced a continuation that was not a confirmation (a client
+`cf_agent_tool_result` frame putting the proposal into `output-error`) reusing the proposing run's
+stored evidence. Now `consumeAnsweredConfirmation` returns the consumed tool call id, and the
+stored evidence applies only when that id is one of the stored proposals and the run answers the
+same customer message (`userMessageId`); the stored question text is used for date evidence.
+The row is read and cleared at the very start of every run, before any cap refusal, so a refused,
+abandoned or unrelated run cannot leave it for a later one. An end-to-end WebSocket test with the
+tool-result frame goes red on the round-1 code.
+
+Decided by: Agent fixes engineer under standing orders.

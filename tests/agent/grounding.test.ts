@@ -326,53 +326,31 @@ describe("grounding guard when the retry fails", () => {
   });
 });
 
-describe("evidence from earlier steps (PR review r1)", () => {
-  const invoicePart = {
-    type: "tool-getInvoice",
-    toolCallId: "call_old",
-    state: "output-available",
-    input: { period: "2026-09" },
-    output: { total: money(41287) }
-  } as unknown as UIMessage["parts"][number];
-  const proposal = {
-    type: "tool-startCreditRequest",
-    toolCallId: "call_credit",
-    state: "approval-responded",
-    input: {}
-  } as unknown as UIMessage["parts"][number];
-  const user = (id: string): UIMessage => ({
-    id,
-    role: "user",
-    parts: [{ type: "text", text: "How much do I owe?" }]
+describe("evidence from earlier steps (PR review r1, r2)", () => {
+  const stored = {
+    toolCallIds: ["call_credit"],
+    userMessageId: "u1",
+    customerText: "I was charged twice in September",
+    outputs: [{ total: money(41287) }]
+  };
+
+  it("uses the stored outputs for the answered confirmation of the same question", () => {
+    expect(continuationEvidence("call_credit", stored, "u1")).toBe(stored);
   });
 
-  it("ignores tool results the history places after the last question", () => {
-    const conversation: UIMessage[] = [
-      user("u1"),
-      user("u2"),
-      { id: "a", role: "assistant", parts: [invoicePart] }
-    ];
-    expect(continuationEvidence(false, null, conversation)).toEqual([]);
-    expect(continuationEvidence(true, null, conversation)).toEqual([]);
+  it("gives none without an answered confirmation, e.g. a client tool-result frame", () => {
+    expect(continuationEvidence(null, stored, "u1")).toBeNull();
   });
 
-  it("uses the proposing run's stored outputs only for the continuation that resumes it", () => {
-    const stored = {
-      toolCallIds: ["call_credit"],
-      outputs: [{ total: money(41287) }]
-    };
-    const resuming: UIMessage[] = [
-      user("u1"),
-      { id: "a", role: "assistant", parts: [invoicePart, proposal] }
-    ];
-    expect(continuationEvidence(true, stored, resuming)).toEqual(
-      stored.outputs
-    );
-    expect(continuationEvidence(false, stored, resuming)).toEqual([]);
-    const other: UIMessage[] = [
-      user("u1"),
-      { id: "a", role: "assistant", parts: [invoicePart] }
-    ];
-    expect(continuationEvidence(true, stored, other)).toEqual([]);
+  it("gives none for a confirmation of another call (a stale proposal)", () => {
+    expect(continuationEvidence("call_other", stored, "u1")).toBeNull();
+  });
+
+  it("gives none when the question changed", () => {
+    expect(continuationEvidence("call_credit", stored, "u2")).toBeNull();
+  });
+
+  it("gives none when nothing was stored", () => {
+    expect(continuationEvidence("call_credit", null, "u1")).toBeNull();
   });
 });

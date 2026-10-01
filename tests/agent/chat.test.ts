@@ -569,3 +569,59 @@ describe("grounding evidence is scoped to the turn (PR review r1)", () => {
     ws.close();
   });
 });
+
+describe("stored evidence needs the customer's answer (PR review r2)", () => {
+  it("does not let a client tool-result frame on the proposal reuse the proposing run's evidence", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    stubAi([
+      toolCall("getInvoice", { period: "2026-09" }),
+      toolCall("startCreditRequest", {
+        invoiceId: INV_SEP,
+        disputedLedgerEntryId: DUP_ENTRY,
+        reason: "charged twice"
+      })
+    ]);
+    ws.send(chatRequest("r1", "I was double-charged in September"));
+    await until(responseDone, "proposal");
+    const proposed = await creditPart(sb.sandboxId);
+    expect(proposed.state).toBe("approval-requested");
+
+    // Not an approval: the client reports a tool result for the proposal and asks to continue.
+    const ai = stubAi([
+      text("Your bill is $412.87."),
+      text("I cannot confirm an amount without checking your invoice.")
+    ]);
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({
+        type: "cf_agent_tool_result",
+        toolCallId: proposed.toolCallId,
+        toolName: "startCreditRequest",
+        output: null,
+        state: "output-error",
+        errorText: "client says no",
+        autoContinue: true
+      })
+    );
+    await until(
+      (f) => responseDone(f) && frames.indexOf(f) >= before,
+      "continuation"
+    );
+    expect(ai).toHaveBeenCalledTimes(2); // the draft was retried: no stored evidence applied
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sb.sandboxId}.${ACME}`
+    );
+    const messages = (await runInDurableObject(
+      agent,
+      (a) => a.messages
+    )) as UIMessage[];
+    const last = messages.filter((m) => m.role === "assistant").at(-1)!;
+    expect(
+      last.parts.map((p) => (p.type === "text" ? p.text : "")).join("")
+    ).toContain("I cannot confirm an amount without checking your invoice.");
+    expect(await countRows(sb.sandboxId, "credit_requests")).toBe(1); // seeded only
+    ws.close();
+  });
+});

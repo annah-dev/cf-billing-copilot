@@ -115,33 +115,32 @@ function toolErrorText(error: unknown): string {
 }
 
 /**
- * The evidence a turn that stopped at a credit proposal leaves for the continuation that resumes
- * it: the outputs its steps produced, keyed by the proposed tool calls. Stored server-side, so a
- * client cannot move an older result into a new turn by rearranging its history (PR review r1).
+ * The evidence a run that stopped at a credit proposal leaves for the continuation that resumes
+ * it: the outputs its steps produced, the proposed tool calls, and the question it answered.
+ * Stored server-side, so a client cannot move an older result into a new turn by rearranging its
+ * history (PR review r1).
  */
-export type AwaitingEvidence = { toolCallIds: string[]; outputs: unknown[] };
+export type AwaitingEvidence = {
+  toolCallIds: string[];
+  userMessageId: string;
+  customerText: string;
+  outputs: unknown[];
+};
 
 /**
- * Earlier outputs a run may cite besides its own: only for a continuation, only those the run that
- * proposed the credit request stored server-side, and only when the conversation's last assistant
- * message holds one of the proposed calls. Positions in the client-supplied history count for
- * nothing.
+ * The stored evidence a run may cite besides its own outputs: only when provenance consumed the
+ * customer's answer to one of the stored proposals in this run, for the same question. Any other
+ * continuation (a stray tool-result frame, a changed question, a stale proposal) gets none
+ * (PR review r2).
  */
 export function continuationEvidence(
-  continuation: boolean,
+  answeredCallId: string | null,
   stored: AwaitingEvidence | null,
-  conversation: UIMessage[]
-): unknown[] {
-  const last = conversation.at(-1);
-  if (!continuation || !stored || last?.role !== "assistant") return [];
-  const resumed = new Set(
-    last.parts.flatMap((p) =>
-      "toolCallId" in p && typeof p.toolCallId === "string"
-        ? [p.toolCallId]
-        : []
-    )
-  );
-  return stored.toolCallIds.some((id) => resumed.has(id)) ? stored.outputs : [];
+  userMessageId: string | undefined
+): AwaitingEvidence | null {
+  if (!answeredCallId || !stored) return null;
+  if (!stored.toolCallIds.includes(answeredCallId)) return null;
+  return stored.userMessageId === userMessageId ? stored : null;
 }
 
 /**
@@ -443,9 +442,17 @@ export class BillingAgent extends AIChatAgent<Env> {
     // Only a continuation that resumes a server-issued credit confirmation the customer just
     // answered is exempt from the message cap; any other continuation (a stray or forged approval
     // frame, which the SDK still continues) is charged as a message.
-    const exempt =
-      continuation &&
-      (await this.provenance.consumeAnsweredConfirmation(conversation));
+    // Evidence a proposing run stored is read and cleared before anything else, so a refused,
+    // abandoned or unrelated run can never leave it for a later one.
+    const stored = this.readKey<AwaitingEvidence | null>(
+      "awaiting_evidence",
+      null
+    );
+    if (stored) this.writeKey("awaiting_evidence", null);
+    const answered = continuation
+      ? await this.provenance.consumeAnsweredConfirmation(conversation)
+      : null;
+    const exempt = answered !== null;
     if (!exempt) {
       if (!continuation) {
         const text = textOf(lastUser);
@@ -497,15 +504,11 @@ export class BillingAgent extends AIChatAgent<Env> {
       continuation,
       confirmedTurn: preConfirmed
     });
-    // Evidence comes only from this run's tool outputs, plus, for a continuation that resumes a
-    // credit proposal, the outputs the proposing run stored server-side (used once).
-    const stored = this.readKey<AwaitingEvidence | null>(
-      "awaiting_evidence",
-      null
-    );
-    this.writeKey("awaiting_evidence", null);
-    const earlierOutputs = continuationEvidence(continuation, stored, verified);
-    const customerText = textOf(lastUser);
+    // Evidence comes only from this run's tool outputs, plus, for the continuation that resumes a
+    // credit proposal the customer just answered, what the proposing run stored.
+    const resumed = continuationEvidence(answered, stored, lastUser?.id);
+    const earlierOutputs = resumed?.outputs ?? [];
+    const customerText = resumed?.customerText ?? textOf(lastUser);
     const system = systemPrompt(this.memory(), utcDay(Date.now()));
     const stream = createUIMessageStream({
       onError: toolErrorText,
@@ -575,6 +578,8 @@ export class BillingAgent extends AIChatAgent<Env> {
         if (draft.awaiting.length > 0) {
           const pending: AwaitingEvidence = {
             toolCallIds: draft.awaiting,
+            userMessageId: lastUser?.id ?? "",
+            customerText,
             outputs: [...earlierOutputs, ...draft.outputs, ...checks.outputs]
           };
           this.writeKey("awaiting_evidence", pending);
