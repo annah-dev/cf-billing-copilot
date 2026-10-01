@@ -3100,3 +3100,16 @@ recovery steps in docs/agent/no-mistakes.md rather than restarting the daemon wi
 your open PR conflicts with main, merge main into your branch and keep both sides of
 docs/DECISIONS.md. Then report where you are.
 ````
+
+## 41. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)
+
+- Timestamp: 2026-09-30T23:14:09-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06l-release-owner-pr10-pr11.md
+- Outcome: (pending)
+
+````text
+A1: the evals lane handles #10. #11 is merged, so update the README cost section and its estimate
+in phase 2.
+````
