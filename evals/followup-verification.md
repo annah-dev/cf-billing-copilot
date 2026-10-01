@@ -160,7 +160,14 @@ listed above. Historical 367/372-test tails refer to the earlier main; these fin
 include the merged agent-fixes tests. Zero new model calls; immutable local-dev captures and
 raw/corrected rates are unchanged. The second full source review log is now archived in
 05g-evals-followup-review-r2.md; exact generated prompt was not exposed. This last evidence
-commit changes only docs/logs and receives the third review on its delta only.
+commit changes only docs/logs. The third, delta-only review (run 01M3TKGDQ50TB5190HDMM0VTT3,
+4dc3e9e..15520e0) passed with no source findings; its identifying log is archived in
+05g-evals-followup-review-r3.md, exact generated prompt not exposed. No fourth source review.
 
-VERIFIED: Two full Claude source reviews and corrected cardinal-label finding; gate-required rebase with preserved main prefixes and unchanged lane source; CI on 4dc3e9e; independent 449-test credential-free run/typecheck; 430/449 collection with no disappearance; all earlier red-first/regrade/immutable-evidence proofs; zero model calls.
-NOT VERIFIED: Third, documentation-only delta review and final PR CI until executed; exact generated gate prompts (not exposed); deployed/public evaluation, metered neurons and proposed agent/prompt fixes inherited from the local-dev run. No merge or deployment.
+The gate test step in that run first exited 127 because its fresh worktree had no installed
+vitest. After `npm ci` from the frozen lockfile (no package, lock or config change),
+`npm run typecheck` passed and both `npm test` and credential-free
+`env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test` passed 25 files / 449 tests.
+
+VERIFIED: Two full Claude source reviews and corrected cardinal-label finding; third, delta-only review PASS with no source findings; gate-required rebase with preserved main prefixes and unchanged lane source; CI on 4dc3e9e; independent and gate-worktree 449-test normal/credential-free runs and typecheck; 430/449 collection with no disappearance; all earlier red-first/regrade/immutable-evidence proofs; zero model calls.
+NOT VERIFIED: Final PR CI on this documentation-only head until executed; exact generated gate prompts (not exposed); deployed/public evaluation, metered neurons and proposed agent/prompt fixes inherited from the local-dev run. No merge or deployment.

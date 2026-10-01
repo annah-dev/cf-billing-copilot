@@ -2790,7 +2790,7 @@ Outcome: PASS after the cardinal-label fix; no new source findings. The gate sub
 Role: automated cross-review
 Harness: no-mistakes v1.41.2 (Claude)
 Source: prompt-history/prompts/05s-evals-followup-final-delta.md (copied with a tool)
-Outcome: (pending third delta-only round)
+Outcome: Supplied context for the third, delta-only review (run 01M3TKGDQ50TB5190HDMM0VTT3, logged below as review round 3). PASS; no source findings.
 
 Final documentation-only delta for existing PR #10. User requested one follow-up PR for ordinal words versus figures and matching simulation receipts, with tests, all-recordings regrade, gate and PR then stop. The grader is complete: two full Claude source rounds in run 01M3TJ4KE1N1TBVAW6THCD3NZT, cardinal-before-ordinal-label finding fixed, no further source finding. Gate opened PR #10 then rebased/repushed onto newly merged agent-fixes main 5b288f3, resolving only append-only logs. Published source head 4dc3e9e is CI green. This final commit only archives second-review identifiers and refreshes main430/head449 evidence plus credential-free 449-test/typecheck proof. All 39 recordings/raw grades/usage unchanged; receipt issues only added to Pro/Scale, no verdict change, corrected9/15,2/9,8/15 raw4/15,1/9,5/15. Zero new model calls. User authorized worktree synchronization with safety refs; old refs9fa/7f retained, no manual published rewrite.
 
@@ -2811,3 +2811,11 @@ test-1 is an environment failure: npm test exited127 because this fresh gate wor
 Log this fix context by tool-copying /tmp/evals-followup-install-fix.txt into prompt-history/prompts/05t-evals-followup-install-fix.md and PROMPTS.md, preserving main bytes. Before push, document phase MUST archive completed third review identifiers by copying /tmp/evals-followup-review-r3.log to prompt-history/prompts/05g-evals-followup-review-r3.md (ANSI stripped only), role automated cross-review, harness Claude/no-mistakesv1.41.2, run01M3TKGDQ50TB5190HDMM0VTT3, third overall and delta-only scope4dc3e9e..15520e0, no source findings. Exact generated prompt was not exposed by axi logs; mark it unavailable. Current exact supplied context is05s-evals-followup-final-delta.md. Update followup-verification/latest PROMPTS outcomes to final449-test proof and third-review PASS; do not leave falsely pending review metadata. Docs/log updates do not trigger another source round.
 
 Continue normal docs/lint/push/PR/CI on existing PR#10, no new PR. Do not merge/deploy/log in/change accounts/secrets/contracts/dependencies/config or call model. Stop checks-passed with PRopen. All raw/corrected local-dev counts unchanged and no new Workers AI calls. The only published rewrite was the prior gate-required rebase onto agent-fixes5b288f3, reported to Anna; retain every gate commit and safety refs.
+
+## 2026-09-30T19:20:00-07:00 - Evals follow-up review round 3 (delta only)
+
+Role: automated cross-review
+Harness: no-mistakes v1.41.2 (Claude)
+Run: 01M3TKGDQ50TB5190HDMM0VTT3
+Source: prompt-history/prompts/05g-evals-followup-review-r3.md (identifying log copied with a tool; exact generated prompt unavailable; supplied context is 05s-evals-followup-final-delta.md)
+Outcome: PASS; no source findings. Third and final review overall, delta only over 4dc3e9e..15520e0 (documentation/log evidence after the gate rebase). No fourth source review. Zero model calls.
