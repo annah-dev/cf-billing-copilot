@@ -2064,6 +2064,7 @@ claude exited pid=137713 status=success
 - Harness: no-mistakes v1.41.2 (Claude), run 01M3R4YFDC2775KN88HGKXBJDV
 - Source: prompt-history/prompts/04l-ui-seed-document-log.md
 - Outcome: round-2 provenance was added by the gate; these exact instructions were omitted and are now recorded. Both full reviews completed, routing regression fixed, 146 tests passed normally and credential-free, browser checks and CI passed. No live model calls, deployment or merge.
+- Release annotation (2026-09-30, Reviewer and release engineer, from the exported transcripts; the entry above is unchanged): this text was written by the UI lane's Codex session (prompt-history/transcripts/codex, session 01a0efe2) at 2026-09-30T03:28:05Z, saved to a temporary file and passed to the gate with `no-mistakes axi respond --action fix` on run 01M3R4YFDC2775KN88HGKXBJDV; the same text was the prompt of a Codex subagent started at that moment (session 01a0f04a). Claude received it inside the gate's fix prompt in the no-mistakes worktree of run 01M3R5XQG8RXG4F1HVZZSJ3CHV, first at 2026-09-30T03:32:29Z (session 5c4428b5), not in run 01M3R4YFDC2775KN88HGKXBJDV as the Harness line says. The full generated fix prompt is in those gate transcripts.
 
 ````text
 Keep the original supplied gate intent verbatim: its count was accurate before review added the regression test. The present evidence accurately reports 146 tests, 113 baseline and 33 UI. Do not rewrite historical prompts or relax any checks.
