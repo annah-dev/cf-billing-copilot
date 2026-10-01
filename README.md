@@ -223,18 +223,24 @@ the Workflow and the rate limiter are all declared in `wrangler.jsonc`; nothing 
 
 ## Evals
 
-<!-- release: the live pass rate and date are filled in after the evals PR merges and eval:live
-runs once against the deployed URL. -->
+**Live result: 11 of 15 cases pass (73%), deployed demo, run on 2026-10-01 (UTC)**, one full run of
+15 cases and 17 turns against the live URL: 43 model calls, about 3,800 estimated neurons.
 
-The eval set (`evals/`) asks the copilot 12 to 15 questions covering all six user stories. Each
-expected number is computed by calling the engine on the seed, never typed by hand, and the
-harness checks that every expected number appears in the answer and that every number in the
-answer traces to a tool result.
+The eval set ([evals/](evals/README.md)) asks the copilot 15 questions covering all six user
+stories. Every expected number is computed by calling the engine on the seed, never typed by hand,
+and the grader checks that each expected value and meaning appears in the answer and that every
+number in the answer traces to a tool result from the same turn.
 
-- **Replay mode** runs inside `npm test` against committed recordings, offline.
-- **Live mode** (`npm run eval:live`) runs the set against the deployed URL and re-records.
-
-**Live result: _pending_ (run date _pending_).**
+- **The four misses are strict-grader misses, not wrong numbers.** Two answers name the September
+  18 spike as a "critical anomaly" (5x, $11.60) but not with the words the grader looks for
+  ("spike" or "unusual"); two say "no credits" where the grader expects "$0.00"; one tier answer
+  gives 100,000 and 2,000 requests but not their 102,000 total. The grader was not loosened to pass
+  them ([evals/results/](evals/results/README.md)).
+- **Replay mode runs inside `npm test`**, offline, against the committed recordings: it regrades
+  every active and archived recording and fails if any verdict or recording changes. It checks the
+  harness, not the model: a model failure is a reported verdict, not a failing test.
+- **Live mode** (`EVAL_LIVE_READY=1 EVAL_BASE_URL=<demo URL> npm run eval:live`) runs the set
+  against a deployment and re-records; it stops on the first cap or budget error and never retries.
 
 ## Cost and abuse controls
 

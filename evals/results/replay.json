@@ -1,17 +1,14 @@
 {
   "formatVersion": 1,
   "kind": "latest-recordings snapshot",
-  "baseUrl": "http://127.0.0.1:5173",
-  "environment": "local dev",
-  "runDate": "2026-09-30T20:47:12.096Z",
-  "regradedAt": "2026-10-01T01:49:59.452Z",
-  "modelCallCount": 79,
-  "estimatedNeurons": 6686,
+  "baseUrl": "https://cf-billing-copilot.anna-hester.workers.dev",
+  "environment": "deployed",
+  "runDate": "2026-10-01T07:35:39.703Z",
+  "regradedAt": "2026-10-01T07:37:52.633Z",
+  "modelCallCount": 43,
+  "estimatedNeurons": 3797,
   "usageScope": "all captured attempts at this target",
-  "sourceRuns": [
-    "run-2026-09-30T20-42-51.599Z.json",
-    "run-2026-09-30T20-47-12.096Z.json"
-  ],
+  "sourceRuns": ["run-2026-10-01T07-35-39.703Z.json"],
   "recordingSha256": {
     "recordings/runs/2026-09-30T20-42-51.600Z/september-invoice.json": "3a9443acd87eef4ca0255d87a9282108441865016d2a1015a4d3e041356d673e",
     "recordings/runs/2026-09-30T20-42-51.600Z/august-invoice.json": "c85dd54913a0103337cd40f3bd8fefe214357dfc75f23730aa520b3094f163e8",
@@ -37,21 +34,36 @@
     "recordings/runs/2026-09-30T20-47-12.096Z/duplicate-credit.json": "e1c1e863bb97d504b59f56a8ad07b486158e1811423a6a2a2616b5115b9e0ed3",
     "recordings/runs/2026-09-30T20-47-12.096Z/remember-plan.json": "0d86c3458d3cbefc46978402432502706a1bdb3b9a50713a18e69437e3e61c32",
     "recordings/runs/2026-09-30T20-47-12.096Z/remember-credit.json": "0333db5323c0f468af70aa00bb208d69ddc6e57fe75565aac4800e15a3323587",
-    "recordings/september-invoice.json": "5bdee0f1e0277857474f6f542b6af52c2a0cd0093c01378cb6f7ecec45a63572",
-    "recordings/august-invoice.json": "c85dd54913a0103337cd40f3bd8fefe214357dfc75f23730aa520b3094f163e8",
-    "recordings/request-tiers.json": "d67a964bd3dba81601a51b7c4f22bc1c7534a871fa7e85064ec220baa9d134ea",
-    "recordings/tax-line.json": "858f5a6b824000ab44c4f5b8ad77c7a234708312e1ac1fcacf70e33abf87f536",
-    "recordings/midmonth-plan.json": "446621ac9521988956bab455e926aa7261d692c18418099264850dde69261e7f",
-    "recordings/zero-tax-invoice.json": "73cd109f36e1e2c4613f0dc7f593a91619b344895ebffe25b3ebb87ecc623110",
-    "recordings/august-september-change.json": "e583332626723db5505876195054fd62a0a5041b2cae86b6da9432a0386a2eed",
-    "recordings/july-august-change.json": "fe53b8c162a27f9f07d398904f68fc9badcad7d8a4240212cab55e5fbc2d9083",
-    "recordings/pro-simulation.json": "1920c136fb1825f11fd61bdd03cbf9970b1f2327bf6188ac7376d7d5b7c8f1a0",
-    "recordings/scale-simulation.json": "36d386a224e2b44e65bd82833e9e829d94133f935d7e68e82cad128d54aa77ce",
-    "recordings/september-anomaly.json": "f46c51f43ea0eb98ffe73af304d1b17240019233fa5ad2caa462746d517c27a8",
-    "recordings/duplicate-credit.json": "e1c1e863bb97d504b59f56a8ad07b486158e1811423a6a2a2616b5115b9e0ed3",
-    "recordings/remember-plan.json": "0d86c3458d3cbefc46978402432502706a1bdb3b9a50713a18e69437e3e61c32",
-    "recordings/remember-credit.json": "0333db5323c0f468af70aa00bb208d69ddc6e57fe75565aac4800e15a3323587",
-    "recordings/expired-credit-history.json": "76a07ea4bc16bc35795b8cde7e68729d337ca22fc24631b980d8b454caa18b29"
+    "recordings/runs/2026-10-01T07-35-39.703Z/september-invoice.json": "a3aefa0aa92f5247fd3677147dc029ce1b15078f43cfe1620981a9cb49167c62",
+    "recordings/runs/2026-10-01T07-35-39.703Z/august-invoice.json": "6dd5281977665f67a91d95f5738962f360242159b7040da69e89c8aba97da240",
+    "recordings/runs/2026-10-01T07-35-39.703Z/request-tiers.json": "fb173e4f004737eef6f222684c137eff0904f29f4ce0c812589639962215ccc3",
+    "recordings/runs/2026-10-01T07-35-39.703Z/tax-line.json": "844de5b14f61a5f2aa219804c14133dda4b16092c146c5849ccab0a14f75f85f",
+    "recordings/runs/2026-10-01T07-35-39.703Z/midmonth-plan.json": "51406911cb1ca21a12ad34b4d6a65cb2537f0417fa7472bd1029e7a364fdb16b",
+    "recordings/runs/2026-10-01T07-35-39.703Z/zero-tax-invoice.json": "346bfebb4dd0392846b10d71994ba0d46eb5d07632bf5e775b847d514fad4c39",
+    "recordings/runs/2026-10-01T07-35-39.703Z/august-september-change.json": "0ccf9b60ad285c24dca438d5b510380538b8676e53f0c35e6cee10a99e6aafab",
+    "recordings/runs/2026-10-01T07-35-39.703Z/july-august-change.json": "157adc667bce500bd1571da3c149cb1e3f8f63eb245937dc960978b79455578f",
+    "recordings/runs/2026-10-01T07-35-39.703Z/pro-simulation.json": "bc8c5b2328d796b3a01de9d6b8d63eac3c7f44052423029aabb354d39d515f0a",
+    "recordings/runs/2026-10-01T07-35-39.703Z/scale-simulation.json": "2690116fd1ce7b28797d7048da0603a60b81cc4282e52be364fedb2c8f88c0ba",
+    "recordings/runs/2026-10-01T07-35-39.703Z/september-anomaly.json": "6f35618c8f79d9d4800f89573a349b62c602f0e4db4807ed2d76dcce5bd3ee4d",
+    "recordings/runs/2026-10-01T07-35-39.703Z/duplicate-credit.json": "99ed862aa69ab89e341699112eb5b7b9356e28cd4abcef2c201b5203d83c4ce4",
+    "recordings/runs/2026-10-01T07-35-39.703Z/remember-plan.json": "7cb225e1c58db7f8c43835c8c966d611fe8d0f583be478b71cb5f4bd9f7f7d31",
+    "recordings/runs/2026-10-01T07-35-39.703Z/remember-credit.json": "bccc64199471c9971e6afc9200340d20d02862bc5caa58057537b8e6f7b487d5",
+    "recordings/runs/2026-10-01T07-35-39.703Z/expired-credit-history.json": "2517618b4025aca83b3d9499c4717e980054d913cafa2dc57e80179335dade6f",
+    "recordings/september-invoice.json": "a3aefa0aa92f5247fd3677147dc029ce1b15078f43cfe1620981a9cb49167c62",
+    "recordings/august-invoice.json": "6dd5281977665f67a91d95f5738962f360242159b7040da69e89c8aba97da240",
+    "recordings/request-tiers.json": "fb173e4f004737eef6f222684c137eff0904f29f4ce0c812589639962215ccc3",
+    "recordings/tax-line.json": "844de5b14f61a5f2aa219804c14133dda4b16092c146c5849ccab0a14f75f85f",
+    "recordings/midmonth-plan.json": "51406911cb1ca21a12ad34b4d6a65cb2537f0417fa7472bd1029e7a364fdb16b",
+    "recordings/zero-tax-invoice.json": "346bfebb4dd0392846b10d71994ba0d46eb5d07632bf5e775b847d514fad4c39",
+    "recordings/august-september-change.json": "0ccf9b60ad285c24dca438d5b510380538b8676e53f0c35e6cee10a99e6aafab",
+    "recordings/july-august-change.json": "157adc667bce500bd1571da3c149cb1e3f8f63eb245937dc960978b79455578f",
+    "recordings/pro-simulation.json": "bc8c5b2328d796b3a01de9d6b8d63eac3c7f44052423029aabb354d39d515f0a",
+    "recordings/scale-simulation.json": "2690116fd1ce7b28797d7048da0603a60b81cc4282e52be364fedb2c8f88c0ba",
+    "recordings/september-anomaly.json": "6f35618c8f79d9d4800f89573a349b62c602f0e4db4807ed2d76dcce5bd3ee4d",
+    "recordings/duplicate-credit.json": "99ed862aa69ab89e341699112eb5b7b9356e28cd4abcef2c201b5203d83c4ce4",
+    "recordings/remember-plan.json": "7cb225e1c58db7f8c43835c8c966d611fe8d0f583be478b71cb5f4bd9f7f7d31",
+    "recordings/remember-credit.json": "bccc64199471c9971e6afc9200340d20d02862bc5caa58057537b8e6f7b487d5",
+    "recordings/expired-credit-history.json": "2517618b4025aca83b3d9499c4717e980054d913cafa2dc57e80179335dade6f"
   },
   "rawGrading": {
     "cases": [
@@ -59,28 +71,24 @@
         "id": "september-invoice",
         "passed": false,
         "issues": [
-          "Turn 0: ungrounded count 7 lines",
-          "Turn 0: ungrounded number 7"
+          "Turn 0: missing expected $0.00",
+          "Turn 0: missing meaning /spike|unusual/i"
         ]
       },
       {
         "id": "august-invoice",
         "passed": false,
-        "issues": ["Turn 0: ungrounded count 08 invoices"]
+        "issues": ["Turn 0: missing expected $0.00"]
       },
       {
         "id": "request-tiers",
         "passed": false,
-        "issues": [
-          "Invalid recording: Error: Failed tool explainLineItem: No invoice inv_1234567890 for this customer"
-        ]
+        "issues": ["Turn 0: missing expected 102000"]
       },
       {
         "id": "tax-line",
-        "passed": false,
-        "issues": [
-          "Invalid recording: Error: Failed tool explainLineItem: No invoice inv_1234567890 for this customer"
-        ]
+        "passed": true,
+        "issues": []
       },
       {
         "id": "midmonth-plan",
@@ -89,17 +97,13 @@
       },
       {
         "id": "zero-tax-invoice",
-        "passed": false,
-        "issues": ["Turn 0: ungrounded count 09 invoices"]
+        "passed": true,
+        "issues": []
       },
       {
         "id": "august-september-change",
         "passed": false,
-        "issues": [
-          "Turn 0: missing expected 2026-09-18",
-          "Turn 0: missing expected 5x",
-          "Turn 0: missing meaning /spike|unusual/i"
-        ]
+        "issues": ["Turn 0: missing meaning /spike|unusual/i"]
       },
       {
         "id": "july-august-change",
@@ -108,17 +112,13 @@
       },
       {
         "id": "pro-simulation",
-        "passed": false,
-        "issues": [
-          "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
-        ]
+        "passed": true,
+        "issues": []
       },
       {
         "id": "scale-simulation",
-        "passed": false,
-        "issues": [
-          "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
-        ]
+        "passed": true,
+        "issues": []
       },
       {
         "id": "september-anomaly",
@@ -132,17 +132,13 @@
       },
       {
         "id": "remember-plan",
-        "passed": false,
-        "issues": [
-          "Invalid recording: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
-        ]
+        "passed": true,
+        "issues": []
       },
       {
         "id": "remember-credit",
-        "passed": false,
-        "issues": [
-          "Invalid recording: Error: Failed tool startCreditRequest: No invoice inv_202609 for this customer"
-        ]
+        "passed": true,
+        "issues": []
       },
       {
         "id": "expired-credit-history",
@@ -150,43 +146,32 @@
         "issues": []
       }
     ],
-    "passedCases": 5,
-    "passRate": "5/15"
+    "passedCases": 11,
+    "passRate": "11/15"
   },
   "cases": [
     {
       "id": "september-invoice",
       "passed": false,
       "issues": [
-        "Turn 0: ungrounded count 7 lines",
-        "Turn 0: ungrounded number 7"
+        "Turn 0: missing expected $0.00",
+        "Turn 0: missing meaning /spike|unusual/i"
       ]
     },
     {
       "id": "august-invoice",
-      "passed": true,
-      "issues": []
+      "passed": false,
+      "issues": ["Turn 0: missing expected $0.00"]
     },
     {
       "id": "request-tiers",
       "passed": false,
-      "issues": [
-        "Turn 0: missing expected $101.60",
-        "Turn 0: missing expected $1.00",
-        "Turn 0: missing expected $100.00",
-        "Turn 0: missing expected $0.80",
-        "Turn 0: missing expected $1.60",
-        "Turn 0: missing expected 102000",
-        "Turn 0: missing meaning /tier/i"
-      ]
+      "issues": ["Turn 0: missing expected 102000"]
     },
     {
       "id": "tax-line",
-      "passed": false,
-      "issues": [
-        "Turn 0: missing expected $31.47",
-        "Turn 0: missing expected $381.40"
-      ]
+      "passed": true,
+      "issues": []
     },
     {
       "id": "midmonth-plan",
@@ -201,11 +186,7 @@
     {
       "id": "august-september-change",
       "passed": false,
-      "issues": [
-        "Turn 0: missing expected 2026-09-18",
-        "Turn 0: missing expected 5x",
-        "Turn 0: missing meaning /spike|unusual/i"
-      ]
+      "issues": ["Turn 0: missing meaning /spike|unusual/i"]
     },
     {
       "id": "july-august-change",
@@ -214,21 +195,13 @@
     },
     {
       "id": "pro-simulation",
-      "passed": false,
-      "issues": [
-        "Turn 0: missing successful simulation for plan_pro in 2026-09",
-        "Turn 0: missing expected $412.87",
-        "Turn 0: missing expected $359.17",
-        "Turn 0: missing expected -$53.70"
-      ]
+      "passed": true,
+      "issues": []
     },
     {
       "id": "scale-simulation",
-      "passed": false,
-      "issues": [
-        "Turn 0: missing successful simulation for plan_scale in 2026-09",
-        "Turn 0: missing meaning /Scale/i"
-      ]
+      "passed": true,
+      "issues": []
     },
     {
       "id": "september-anomaly",
@@ -247,15 +220,8 @@
     },
     {
       "id": "remember-credit",
-      "passed": false,
-      "issues": [
-        "Turn 0: missing expected $412.87",
-        "Turn 0: missing meaning /pending|requested|await/i",
-        "Turn 0: missing meaning /approv/i",
-        "Turn 1: missing expected $412.87",
-        "Turn 1: missing meaning /pending|requested|await/i",
-        "Turn 1: missing meaning /approv/i"
-      ]
+      "passed": true,
+      "issues": []
     },
     {
       "id": "expired-credit-history",
@@ -263,6 +229,6 @@
       "issues": []
     }
   ],
-  "passedCases": 8,
-  "passRate": "8/15"
+  "passedCases": 11,
+  "passRate": "11/15"
 }
