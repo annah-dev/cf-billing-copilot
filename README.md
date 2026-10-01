@@ -212,7 +212,7 @@ the Workflow and the rate limiter are all declared in `wrangler.jsonc`; nothing 
         RID=$(curl -s $U/api/sandboxes/$SID/admin/credit-requests -H "authorization: Bearer $TOK" | jq -r '[.requests[] | select(.status=="pending_approval")][0].id')
         curl -s -X POST $U/api/sandboxes/$SID/admin/credit-requests/$RID/decision -H "authorization: Bearer $TOK" \
           -H 'content-type: application/json' -d '{"decision":"approve","reason":"smoke test"}' | jq .request.status
-        curl -s $U/api/sandboxes/$SID/customers/cus_1/panel | jq '.creditRequests[] | {id, status}, [.audit[:5][] | .action]'
+        curl -s $U/api/sandboxes/$SID/customers/cus_1/panel | jq '{creditRequests: [.creditRequests[] | {id, status}], audit: [.audit[:5][] | .action]}'
 
    Expect `startCreditRequest` among the tool calls, the request `pending_approval`, then
    `applied` within a few seconds of the approval, and `credit_applied` at the top of the audit

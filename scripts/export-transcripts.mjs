@@ -309,6 +309,12 @@ for (const f of [
 globalRules = globalRules.filter((r) => r.length > 40);
 
 function scrubString(s) {
+  // Codex repeats its environment (cwd, shell, every writable workspace root) inside messages;
+  // the roots name the owner's other projects, so the whole block is harness context.
+  s = s.replace(
+    /<environment_context>[\s\S]*?<\/environment_context>/g,
+    "<omitted: harness environment context>"
+  );
   for (const rule of globalRules)
     if (s.includes(rule))
       s = s.split(rule).join("<omitted: owner's global agent rules>");
@@ -422,24 +428,29 @@ function scrubCodex(d) {
     };
   }
   if (d.type === "turn_context") {
-    const keep = (r) =>
-      repoPathRe.test(r) || gatePathRe.test(r) || r.startsWith("/tmp");
-    const q = { ...p };
-    if (Array.isArray(q.workspace_roots))
-      q.workspace_roots = q.workspace_roots.filter(keep);
-    if (q.sandbox_policy?.writable_roots)
-      q.sandbox_policy = {
-        ...q.sandbox_policy,
-        writable_roots: q.sandbox_policy.writable_roots.filter(keep)
-      };
-    for (const k of [
-      "user_instructions",
-      "developer_instructions",
-      "base_instructions"
-    ])
-      if (typeof q[k] === "string") q[k] = omitted("harness instructions");
+    // Keep what identifies the turn; the sandbox and permission profile list the owner's other
+    // workspaces and are harness settings, not part of the conversation.
+    const keep = [
+      "turn_id",
+      "root_turn_id",
+      "cwd",
+      "current_date",
+      "timezone",
+      "model",
+      "effort"
+    ];
+    const q = {};
+    for (const k of keep) if (k in p) q[k] = p[k];
+    q.omitted = omitted("sandbox, permission and instruction settings");
     return { ...d, payload: q };
   }
+  if (d.type === "world_state")
+    return { ...d, payload: { omitted: omitted("harness world state") } };
+  if (d.type === "event_msg" && p.type === "thread_settings_applied")
+    return {
+      ...d,
+      payload: { type: p.type, omitted: omitted("harness thread settings") }
+    };
   if (
     d.type === "response_item" &&
     p.type === "reasoning" &&

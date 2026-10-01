@@ -3680,9 +3680,264 @@ points to where each outcome is:
 | 2026-09-30T14:54:53-07:00 - Evals harness verdict tests and failure analysis | 2026-09-30T15:11:47-07:00 - Verdict-test redesign outcome before gate |
 
 
+## 58. Release PR #14 cross-review, round 1
+
+- Timestamp: 2026-10-01T01:03:08-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06b-release-review-r1.md
+- Outcome: CHANGES REQUESTED, 2 major and 1 minor: unrelated owner context left in the export (environment blocks, Codex harness settings, a project alias), the README's "every prompt" claim before PR #13's review prompts were logged, and a jq filter that lost the panel context. All fixed.
+
+````text
+# PR #14 (release) cross-review, round 1 (full)
+
+You are reviewing pull request #14, branch `feat/release`, authored by Claude Code (reviewer and
+release engineer). You are read-only: do not edit, commit, push, rebase or merge anything, and make
+no network calls or live model calls (do not run `npm run dev`, `npm run eval:live` or anything that
+reaches Workers AI or the deployed site).
+
+The diff under review:
+
+    git diff origin/main...origin/feat/release
+
+Check it against prompt-history/prompts/00-assignment.md (acceptance criteria), the lane prompt
+prompt-history/prompts/06-release.md and the owner's notes 06a, 06e and 06i to 06m, AGENTS.md,
+docs/agent/cross-review.md ("What the reviewer checks"), docs/agent/verification.md and
+docs/agent/plan.md (lane "release"). The PR body (`gh pr view 14`, if your sandbox has network;
+otherwise say so) claims every acceptance box with evidence.
+
+Focus on:
+
+1. README accuracy. Every claim must match the code, docs/DECISIONS.md and the eval results:
+   the four components and the files named, caps and cost figures (wrangler.jsonc vars, D-7, the
+   D-7 amendment, D-13), the five-step demo and which user story each covers, setup and deploy
+   commands (the UI's API mode default after PR #9), the release checklist (including the off
+   switch), the eval result (evals/results/run-2026-10-01T07-35-39.703Z.json, replay.json) and the
+   description of its four misses, the Llama 3.3 streaming finding against DEV-16 and D-14, the five
+   owner calls in "How this was built" against the linked DECISIONS entries and PROMPTS.md entries
+   (do the anchors resolve?), and that repository and deployment URLs appear only in the Links
+   block. Claims about the owner are the owner's to make; flag any that the repository does not
+   support.
+2. The transcript export (scripts/export-transcripts.mjs and prompt-history/transcripts/). Could
+   it leak secrets, tokens, emails, home paths, account ids or the owner's unrelated projects?
+   Sample several .jsonl.gz files (`gzip -dc`). Is selection correct (this repo's worktrees and
+   gate runs only)? Does the cross-check report honestly, and does the PROMPTS index link
+   correctly? The private term list is git-ignored by design; check it is not committed.
+3. PROMPTS.md and docs/DECISIONS.md: append-only respected (diff against origin/main must remove
+   no line), late entries 51 to 57 match their prompt files and their transcript source, entry 24's
+   annotation is factual, every DECISIONS entry ends with "Decided by", and the eval result files
+   changed only as the evals README's regrade procedure allows (recordings replaced by the deployed
+   run, earlier runs archived, older run files changing only `regradedAt`).
+4. Rules: no application code changed (src/, tests/ except none, wrangler.jsonc and other frozen
+   files untouched), plain ASCII in docs (verbatim prompt text exempt), done-contract evidence,
+   and VERIFIED / NOT VERIFIED honesty.
+
+You may run `npm ci`, `npm run typecheck`, `npm test`, `npx vitest list` and
+`node scripts/export-transcripts.mjs --prompts-index` (read-only) in a scratch copy if your
+sandbox allows; do not run the export itself, which writes files. Say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
+severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 59. Test timeouts PR cross-review, round 1
+
+- Timestamp: 2026-10-01T00:33:03-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06n-test-timeouts-review-r1.md
+- Outcome: CHANGES REQUESTED, 3 minor, all on evidence and rationale (implementation passed): npm ci evidence added; the UI test with its own 60 s timeout removed from the margin argument; the less-parallelism rationale softened. All accepted.
+
+````text
+# PR (fix/test-timeouts) cross-review, round 1 (full)
+
+You are reviewing a pull request in this repository, branch `fix/test-timeouts`, authored by
+Claude Code (release engineer) at the owner's request (prompt-history/prompts/06m-release-phase2-start.md:
+"The credential-free test run times out intermittently under load. Reviewers will run npm test,
+so make it reliable (a suite timeout or less parallelism) without weakening any assertion.").
+You are read-only: do not edit, commit, push, rebase or merge anything, and make no network or
+live model calls.
+
+The diff under review:
+
+    git diff origin/main...origin/fix/test-timeouts
+
+It changes vitest.config.ts, which AGENTS.md hard rule 4 freezes after the foundation PR; a change
+there is allowed only as its own PR to main, which this is. Check against AGENTS.md,
+docs/agent/cross-review.md ("What the reviewer checks"), docs/agent/verification.md and
+docs/DECISIONS.md (the new entry at the end).
+
+Focus on:
+
+1. Does the change weaken any gate? No assertion, skip, include pattern, setup file, pool option
+   or network guard may change; only `testTimeout` and `hookTimeout` (30 s) in both projects.
+   Confirm the collected tests are identical (`npx vitest list` at main and head).
+2. Is it effective? Vitest inline projects do not inherit root `test` options, so the values must
+   be set per project; are they applied in both? Would a hanging test now take 30 s to fail, and
+   is that acceptable? Do per-test timeouts already in tests (30 s, 60 s) still win?
+3. Is the evidence honest? The author could not reproduce a timeout on this machine (12 cores,
+   4 parallel runs, 1-core pinning, 2 runs on 1 core all passed) and justifies the change by the
+   margin of the slowest default-timeout test (about 3.4 to 3.6 s against 5 s) plus a probe test
+   (6 s) that fails at 5000 ms without the change and passes with it. Is the claim scoped
+   correctly in VERIFIED / NOT VERIFIED? Would less parallelism be the better fix?
+4. Rules: plain ASCII comment, DECISIONS entry appended with "Decided by", prompt log entries.
+
+You may run `npm ci`, `npm run typecheck`, `npm test` and `npx vitest list` in a scratch copy if
+your sandbox allows it; say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
+severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 60. Test timeouts PR cross-review, round 2
+
+- Timestamp: 2026-10-01T00:40:25-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06o-test-timeouts-review-r2.md
+- Outcome: APPROVE, no findings: both projects at 30 s, no gate changed, identical 484-test collection; the reviewer's own probes failed on main at the 5000 ms test and 10000 ms hook defaults and passed on the head.
+
+````text
+# PR (fix/test-timeouts) cross-review, round 2 (full)
+
+You are reviewing a pull request in this repository, branch `fix/test-timeouts`, authored by
+Claude Code (release engineer) at the owner's request (prompt-history/prompts/06m-release-phase2-start.md:
+"The credential-free test run times out intermittently under load. Reviewers will run npm test,
+so make it reliable (a suite timeout or less parallelism) without weakening any assertion.").
+You are read-only: do not edit, commit, push, rebase or merge anything, and make no network or
+live model calls.
+
+The diff under review:
+
+    git diff origin/main...origin/fix/test-timeouts
+
+It changes vitest.config.ts, which AGENTS.md hard rule 4 freezes after the foundation PR; a change
+there is allowed only as its own PR to main, which this is. Check against AGENTS.md,
+docs/agent/cross-review.md ("What the reviewer checks"), docs/agent/verification.md and
+docs/DECISIONS.md (the new entry at the end).
+
+Focus on:
+
+1. Does the change weaken any gate? No assertion, skip, include pattern, setup file, pool option
+   or network guard may change; only `testTimeout` and `hookTimeout` (30 s) in both projects.
+   Confirm the collected tests are identical (`npx vitest list` at main and head).
+2. Is it effective? Vitest inline projects do not inherit root `test` options, so the values must
+   be set per project; are they applied in both? Would a hanging test now take 30 s to fail, and
+   is that acceptable? Do per-test timeouts already in tests (30 s, 60 s) still win?
+3. Is the evidence honest? The author could not reproduce a timeout on this machine (12 cores,
+   4 parallel runs, 1-core pinning, 2 runs on 1 core all passed) and justifies the change by the
+   margin of the slowest default-timeout test (about 3.4 to 3.6 s against 5 s) plus a probe test
+   (6 s) that fails at 5000 ms without the change and passes with it. Is the claim scoped
+   correctly in VERIFIED / NOT VERIFIED? Would less parallelism be the better fix?
+4. Rules: plain ASCII comment, DECISIONS entry appended with "Decided by", prompt log entries.
+
+Round 1 (prompt 06n) requested changes, all on evidence and rationale; the author accepted all
+three: (1) the PR body now carries `npm ci` evidence; (2) the UI live-chat test, which sets its
+own 60 s timeout, is no longer cited as relying on the 5 s default; (3) the DECISIONS entry no
+longer says less parallelism cannot help a slow test; it says contention was not reproduced and
+timeout headroom keeps current concurrency. Re-check each round-1 item, then review the whole diff
+again as a full round. The current PR body is available with `gh pr view 13` if your sandbox has
+network; otherwise say so.
+
+You may run `npm ci`, `npm run typecheck`, `npm test` and `npx vitest list` in a scratch copy if
+your sandbox allows it; say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
+severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 61. Test timeouts PR cross-review, round 3 (delta only)
+
+- Timestamp: 2026-10-01T00:46:14-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06p-test-timeouts-review-r3-delta.md
+- Outcome: APPROVE, no findings: the delta only records review outcomes; logged prompts match their sources byte for byte. Review loop for PR #13 complete; the owner merges.
+
+````text
+# PR #13 (fix/test-timeouts) cross-review, round 3 (delta only)
+
+You are reviewing pull request #13, branch `fix/test-timeouts`, for the third and last round,
+covering only the changes since round 2. You are read-only: do not edit, commit, push, rebase or
+merge anything, and make no network or live model calls.
+
+Round 2 (prompt-history/prompts/06o-test-timeouts-review-r2.md) reviewed head f4b253d59134c20309182e13d3431553d83ffaeb and approved
+with no findings. The delta under review:
+
+    git diff f4b253d59134c20309182e13d3431553d83ffaeb..origin/fix/test-timeouts
+
+It should contain only prompt-history and PROMPTS.md records: the round-2 outcome and this
+round-3 prompt. Check that the delta changes no code, configuration or test; that the logged text
+matches its source files verbatim; and that every entry has a timestamp, role, harness, source and
+outcome. Report a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first,
+each with severity, file and line, what is wrong and the fix. End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 62. Release PR #14 cross-review, round 2
+
+- Timestamp: 2026-10-01T01:20:19-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06c-release-review-r2.md
+- Outcome: (pending)
+
+````text
+# PR #14 (release) cross-review, round 2 (full)
+
+You are reviewing pull request #14, branch `feat/release`, again after the round-1 fixes. You are
+read-only: do not edit, commit, push, rebase or merge anything, and make no network calls or live
+model calls (do not run `npm run dev`, `npm run eval:live`, the transcript export itself, or
+anything that reaches Workers AI or the deployed site).
+
+The diff under review:
+
+    git diff origin/main...origin/feat/release
+
+Check it against the same documents as round 1 (prompt-history/prompts/06b-release-review-r1.md):
+the assignment, the lane prompt 06-release.md and the owner's notes, AGENTS.md,
+docs/agent/cross-review.md, docs/agent/verification.md and docs/agent/plan.md (lane "release").
+
+Round 1 requested changes; the author's dispositions:
+
+1. Unrelated owner context in the export (major): fixed. Every `<environment_context>` block is
+   omitted in any string; Codex `turn_context` keeps only turn id, root turn id, cwd, date,
+   timezone, model and effort; `world_state` and `thread_settings_applied` payloads are omitted;
+   the git-ignored private term list gained the project alias you found. Remaining mentions of
+   the owner's own skills repository path are inside real tool outputs (an agent printing session
+   JSON while investigating) and are left as tool output.
+2. "Every prompt is in PROMPTS.md" before PR #13's review prompts were logged (major): fixed. The
+   three PR #13 review prompt files (06n, 06o, 06p) and their entries (59 to 61) are on this
+   branch, identical to PR #13's; the cross-check now reports 0 in both directions; the
+   chronological index was regenerated and moved to the end of PROMPTS.md.
+3. jq filter losing the panel context (minor): fixed with your suggested filter.
+
+Re-check each round-1 item, then review the whole diff again as a full round, including a fresh
+sample of the transcripts (`gzip -dc`) for anything personal, unrelated or secret. Report a
+verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with severity
+(blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
 ## Chronological index
 
-Every entry above in time order (UTC), generated by `node scripts/export-transcripts.mjs --prompts-index` at the release pass. Lanes appended in parallel, so file order is not time order; entries added after this index are not in it.
+Every entry in this file in time order (UTC), generated by `node scripts/export-transcripts.mjs --prompts-index` at the release pass. Lanes appended in parallel, so file order is not time order.
 
 | # | Time (UTC) | Entry | Source |
 |---|---|---|---|
@@ -3800,67 +4055,8 @@ Every entry above in time order (UTC), generated by `node scripts/export-transcr
 | 112 | 2026-10-01 06:38 | [57. Agent fixes owner note: guard follows the grader's ordinal rule (typed mid-session, logged late)](#57-agent-fixes-owner-note-guard-follows-the-graders-ordinal-rule-typed-mid-session-logged-late) | `prompt-history/prompts/06w-late-agent-fixes-owner-guard-ordinals.md` |
 | 113 | 2026-10-01 06:42 | [43. Production chat fixes cross-review, round 3 (delta only)](#43-production-chat-fixes-cross-review-round-3-delta-only) | `prompt-history/prompts/08c-prod-chat-review-r3-delta.md` |
 | 114 | 2026-10-01 07:06 | [50. Owner: start phase 2 (typed mid-session)](#50-owner-start-phase-2-typed-mid-session) | `prompt-history/prompts/06m-release-phase2-start.md` |
-
-## 58. Release PR #14 cross-review, round 1
-
-- Timestamp: 2026-10-01T01:03:08-07:00
-- Role: automated cross-review
-- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
-- Source: prompt-history/prompts/06b-release-review-r1.md
-- Outcome: (pending)
-
-````text
-# PR #14 (release) cross-review, round 1 (full)
-
-You are reviewing pull request #14, branch `feat/release`, authored by Claude Code (reviewer and
-release engineer). You are read-only: do not edit, commit, push, rebase or merge anything, and make
-no network calls or live model calls (do not run `npm run dev`, `npm run eval:live` or anything that
-reaches Workers AI or the deployed site).
-
-The diff under review:
-
-    git diff origin/main...origin/feat/release
-
-Check it against prompt-history/prompts/00-assignment.md (acceptance criteria), the lane prompt
-prompt-history/prompts/06-release.md and the owner's notes 06a, 06e and 06i to 06m, AGENTS.md,
-docs/agent/cross-review.md ("What the reviewer checks"), docs/agent/verification.md and
-docs/agent/plan.md (lane "release"). The PR body (`gh pr view 14`, if your sandbox has network;
-otherwise say so) claims every acceptance box with evidence.
-
-Focus on:
-
-1. README accuracy. Every claim must match the code, docs/DECISIONS.md and the eval results:
-   the four components and the files named, caps and cost figures (wrangler.jsonc vars, D-7, the
-   D-7 amendment, D-13), the five-step demo and which user story each covers, setup and deploy
-   commands (the UI's API mode default after PR #9), the release checklist (including the off
-   switch), the eval result (evals/results/run-2026-10-01T07-35-39.703Z.json, replay.json) and the
-   description of its four misses, the Llama 3.3 streaming finding against DEV-16 and D-14, the five
-   owner calls in "How this was built" against the linked DECISIONS entries and PROMPTS.md entries
-   (do the anchors resolve?), and that repository and deployment URLs appear only in the Links
-   block. Claims about the owner are the owner's to make; flag any that the repository does not
-   support.
-2. The transcript export (scripts/export-transcripts.mjs and prompt-history/transcripts/). Could
-   it leak secrets, tokens, emails, home paths, account ids or the owner's unrelated projects?
-   Sample several .jsonl.gz files (`gzip -dc`). Is selection correct (this repo's worktrees and
-   gate runs only)? Does the cross-check report honestly, and does the PROMPTS index link
-   correctly? The private term list is git-ignored by design; check it is not committed.
-3. PROMPTS.md and docs/DECISIONS.md: append-only respected (diff against origin/main must remove
-   no line), late entries 51 to 57 match their prompt files and their transcript source, entry 24's
-   annotation is factual, every DECISIONS entry ends with "Decided by", and the eval result files
-   changed only as the evals README's regrade procedure allows (recordings replaced by the deployed
-   run, earlier runs archived, older run files changing only `regradedAt`).
-4. Rules: no application code changed (src/, tests/ except none, wrangler.jsonc and other frozen
-   files untouched), plain ASCII in docs (verbatim prompt text exempt), done-contract evidence,
-   and VERIFIED / NOT VERIFIED honesty.
-
-You may run `npm ci`, `npm run typecheck`, `npm test`, `npx vitest list` and
-`node scripts/export-transcripts.mjs --prompts-index` (read-only) in a scratch copy if your
-sandbox allows; do not run the export itself, which writes files. Say which you ran.
-
-Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
-severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
-with:
-
-    VERIFIED:     <what you ran and observed>
-    NOT VERIFIED: <what you did not exercise, and why>
-````
+| 115 | 2026-10-01 07:33 | [59. Test timeouts PR cross-review, round 1](#59-test-timeouts-pr-cross-review-round-1) | `prompt-history/prompts/06n-test-timeouts-review-r1.md` |
+| 116 | 2026-10-01 07:40 | [60. Test timeouts PR cross-review, round 2](#60-test-timeouts-pr-cross-review-round-2) | `prompt-history/prompts/06o-test-timeouts-review-r2.md` |
+| 117 | 2026-10-01 07:46 | [61. Test timeouts PR cross-review, round 3 (delta only)](#61-test-timeouts-pr-cross-review-round-3-delta-only) | `prompt-history/prompts/06p-test-timeouts-review-r3-delta.md` |
+| 118 | 2026-10-01 08:03 | [58. Release PR #14 cross-review, round 1](#58-release-pr-14-cross-review-round-1) | `prompt-history/prompts/06b-release-review-r1.md` |
+| 119 | 2026-10-01 08:20 | [62. Release PR #14 cross-review, round 2](#62-release-pr-14-cross-review-round-2) | `prompt-history/prompts/06c-release-review-r2.md` |
