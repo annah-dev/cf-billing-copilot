@@ -1,0 +1,37 @@
+{
+  "formatVersion": 1,
+  "seedVersion": "engine-v2",
+  "caseId": "pro-simulation",
+  "turns": [
+    {
+      "customerId": "cus_1",
+      "request": {
+        "message": "What would September 2026 have cost on Pro? Give actual total, simulated total and signed difference.",
+        "confirm": false
+      },
+      "response": {
+        "text": "I am not able to simulate the cost of September 2026 on the Pro plan because I do not have the plan ID for the Pro plan.",
+        "toolCalls": [
+          {
+            "name": "simulatePlan",
+            "input": {
+              "period": "2026-09",
+              "planId": "plan_Pro"
+            },
+            "output": null,
+            "error": "Invalid input for tool simulatePlan: Type validation failed: Value: {\"period\":\"2026-09\",\"planId\":\"plan_Pro\"}.\nError message: [\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^plan_[a-z0-9_]{1,40}$/\",\n    \"path\": [\n      \"planId\"\n    ],\n    \"message\": \"expected plan_<slug>\"\n  }\n]"
+          }
+        ],
+        "usage": {
+          "inputTokens": 5817,
+          "outputTokens": 65,
+          "modelCalls": 2
+        }
+      }
+    }
+  ],
+  "source": "live",
+  "recordedAt": "2026-09-30T20:43:39.994Z",
+  "baseUrl": "http://127.0.0.1:5173",
+  "environment": "local dev"
+}

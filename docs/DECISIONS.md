@@ -759,3 +759,135 @@ are kept because the rebase left src/ui, tests/ui and index.html unchanged. Reas
 must describe the checkout under review, and command output must come from the commands.
 
 Decided by: Frontend engineer under standing orders.
+
+## evals: early-start synthetic fixtures and strict replay provenance
+
+Build fifteen cases from the current engine seed with engine-computed expected amounts,
+and label pre-agent recordings `synthetic-engine` with no timestamp or model usage. Replay
+validates each tool input/output and checks expected displays, semantic phrases, and money
+and numeric provenance using only current and earlier recorded tool outputs. Reason: the
+owner authorized offline work before PR #4 merges, and synthetic harness evidence must not
+be reported as live model performance. Decided by: QA engineer under standing orders.
+
+## evals: memory turns and credit confirmation
+
+Each memory case sends a new HTTP request without client history to the same sandbox/customer;
+only credit-start questions send `confirm: true`, and September invoice/change cases require
+the proactive anomaly without asserting that the model selected detectAnomalies. Reason:
+this exercises persisted context and D-20 while respecting the agent lane's deterministic
+anomaly behavior. Decided by: QA engineer under standing orders.
+
+## evals: bounded live capture with honest capacity results
+
+Use a separate opt-in live config, HTTPS origin from the environment, one fresh sandbox per
+case, sequential requests without retries, and immediate stop on caps or other request failures.
+Persist UTC date, pass fraction over all planned cases, completed counts and reported token/
+model-call usage; discard approver tokens. Require an explicit readiness acknowledgment after
+the owner's merge notice, pull and deployment. Reason: fresh cases avoid shared state, while
+D-7's five-sandbox-per-IP cap must stay enforced and partial results cannot claim completion.
+Full-run capacity is an owner decision, not a cap bypass in the evals lane.
+Decided by: QA engineer under standing orders.
+
+## evals: natural calendar dates in replay grounding
+
+Replay normalizes named calendar dates in answers to ISO before the expected-value and numeric
+provenance checks, grounds bare years from tool dates/periods, resolves a yearless day only from
+a single grounded period for its month, and reports unresolved named days. The replay test title
+reports live versus synthetic-engine recording counts. Reason: gate review round 1 (F1) showed
+natural wording such as "September 2026" or "September 18" failed as ungrounded numbers and missed
+the expected ISO anomaly date, which would count correct live answers as failures; whole-date
+matching keeps a fabricated date from passing on separately present parts, and the source count
+keeps a capped mixed snapshot from reading as live coverage (F2).
+Decided by: QA engineer under standing orders.
+
+## evals: calendar dates from tool timestamps
+
+Replay's numeric pattern also reads the UTC calendar date that begins an ISO timestamp (for
+example `2026-10-04` from `2026-10-04T00:00:00Z`), so credit deadlines and creation dates quoted
+in prose ground as whole dates. Reason: gate review round 2 (R2-F1) showed the `T` separator
+dropped the day, so a correct "approval deadline October 4, 2026" failed as ungrounded; any
+other day is still rejected. Decided by: QA engineer under standing orders.
+
+## evals: preserve gate fixes when starting the owner-authorized live phase
+
+Recover the cancelled offline gate's two fix commits with `no-mistakes axi sync --recover`
+before rebasing onto merged PR #4. Reason: the owner's new live-capture and count-grounding
+scope supersedes the offline-only gate intent, and the new validation must retain its fixes.
+Decided by: QA engineer under standing orders.
+
+## evals: owner-authorized local capture, sandbox grouping and bounded reruns
+
+Capture one full local-dev set, then one explicit rerun of its failing questions; share only
+read-only cases, isolate credit and memory cases, and reuse known sandboxes for the rerun.
+Default EVAL_BASE_URL to loopback dev and persist target, date, model calls and estimated
+neurons per run. Reason: Anna authorized local dev before release deployment and required
+respecting caps rather than raising them. Decided by: Anna.
+
+## evals: every numeric claim includes contextual counts and date wording
+
+Ground array lengths and numbered positions, parse written integer numbers, and require invoice
+line-count claims to match the invoice array rather than any unrelated scalar. Derive month/year
+from full tool timestamps and keep full dates coherent. Keep failed live answers as red replay
+cases; regression tests start from engine fixtures in memory. Reason: the owner reported "7
+lines" for a six-line invoice and asked for every number to be checked.
+Decided by: QA engineer under standing orders.
+
+## evals: offline correction of ISO-month count false positives
+
+Exclude ISO date components from count-claim starts. Preserve initial grading and all original
+responses, then regrade the archived full run offline. Reason: the first capture proved that
+"2026-09 invoice" was incorrectly recognized as "09 invoices"; correcting that checker defect
+changes the first-run grade from 4/15 to 6/15 without a new model call or a weakened count check.
+Decided by: QA engineer under standing orders.
+
+## evals: rejected calls can recover but cannot ground answers
+
+Validate successful tool inputs and outputs strictly. Validate rejected-call envelopes, require
+null output, and exclude rejected inputs and outputs from all grounding evidence; allow a later
+successful call to recover. Require a successful startCreditRequest receipt for confirmed credit
+turns. Reason: real plan-memory captures recover from an invalid plan id and answer correctly,
+so failing solely on the rejected call misgraded valid behavior. The credit capture also recovers
+its tools but fails because its answers are empty. Preserve all prior grades and responses when
+regrading offline. Decided by: QA engineer under standing orders.
+
+## evals: test harness stability instead of model perfection
+
+Replay regrades all active and archived recordings and compares exact verdicts/issues with
+committed results. Known-good and known-bad grader unit tests remain independent. Model failures
+are negative reported verdicts, not failing tests. Reason: Anna requires a green harness gate
+without letting its automatic test fix alter grading or recordings to improve model results.
+Decided by: Anna.
+
+## evals: explicit all-recordings grading with raw/corrected reporting
+
+An offline, opt-in generator applies one shared grader to every recording, preserves capture-time
+and intermediate grades, checks active copies are the latest attempts, and writes corrected
+results plus recording digests. Tests never regenerate results. Reason: Anna requires every
+correction to have a unit regression and a visible full-recording result diff, with no per-answer
+override. Capture archives use run start time separately from individual case timestamps.
+Decided by: QA engineer under standing orders.
+
+## evals: gate retry after the harness passes
+
+Update only the stale local gate branch ref, retaining its old head, and retry gated delivery
+after npm test is green. Reason: Anna explicitly authorized this ref update and PR creation
+with the results labeled local dev; no merge or deployment is authorized. Decided by: Anna.
+
+## evals: per-turn grounding with echoed dates
+
+Money amounts, percentages, counts and other numbers in an answer must come from that turn's
+successful tool outputs; an amount the customer typed or an earlier turn's result is not
+evidence. Dates and billing periods may come from that turn's tool outputs or the customer's own
+message, compared after normalizing formats, and message dates never ground numbers. Reason:
+the runtime grounding guard will enforce the same rule, and a wrong premise repeated back must
+fail while an echoed period must not. Applied to every recording by explicit offline regrade.
+Decided by: Anna.
+
+## evals: standing orders while Anna is away
+
+Proceed within lane decision rights and log each choice. Reserved decisions (merge, deploy,
+login, secrets, force-push to main, account and contract changes) go on a FOR ANNA list instead
+of blocking other work; do not log in if wrangler authentication fails. Finish the grading rule,
+gated push and PR, then stop. After the PR opens, preserve published feat/evals history for the
+agent-fixes lane unless the gate itself requires a rewrite, which must be reported. Reason: Anna
+is away for about five hours and merges on return. Decided by: Anna.
