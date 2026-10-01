@@ -6,12 +6,18 @@ import {
 } from "../contracts/http";
 import {
   browserStorage,
+  followUpDecision,
+  serialQueue,
   parseAdminFragment,
   readSession,
   type BillingApi,
   type SessionMode
 } from "../ui/api";
 import { CreditStatus, ErrorNotice } from "../ui/components";
+// After a decision the Workflow applies or rejects the request a moment later; re-fetch a few
+// times so the card shows the outcome, without polling against the daily request cap.
+const FOLLOW_UP_ATTEMPTS = 5;
+const FOLLOW_UP_DELAY_MS = 1000;
 function getCredentials(sessionMode: SessionMode) {
   try {
     const fragment = parseAdminFragment(window.location.hash);
@@ -67,27 +73,45 @@ export function Admin({
   const [notice, setNotice] = useState("");
   const generation = useRef(0);
   const deciding = useRef(false);
-  const refresh = useCallback(async () => {
-    if (!credentials) return;
-    const current = ++generation.current;
-    setBusy(true);
-    try {
-      const next = await api.creditRequests(
-        credentials.sandboxId,
-        credentials.token
-      );
-      if (current === generation.current) {
-        setData(next);
-        setError(null);
-      }
-    } catch (failure) {
-      if (current === generation.current) setError(failure);
-    } finally {
-      if (current === generation.current) setBusy(false);
-    }
-  }, [api, credentials]);
+  const mounted = useRef(true);
+  // Every list read (initial, focus, Refresh, decision follow-up) goes through one queue, so reads
+  // never overlap. The page stays busy until no read is queued and no decision is in progress;
+  // a decision owns `busy` until its follow-up ends.
+  const [enqueueRead] = useState(() => serialQueue());
+  const queuedReads = useRef(0);
+  const refresh = useCallback(
+    async ({ quiet = false } = {}) => {
+      if (!credentials || !mounted.current) return null;
+      queuedReads.current++;
+      if (!quiet) setBusy(true);
+      return enqueueRead(async () => {
+        const current = ++generation.current;
+        try {
+          if (!mounted.current) return null;
+          const next = await api.creditRequests(
+            credentials.sandboxId,
+            credentials.token
+          );
+          if (current === generation.current) {
+            setData(next);
+            setError(null);
+            return next;
+          }
+        } catch (failure) {
+          if (current === generation.current) setError(failure);
+        } finally {
+          queuedReads.current--;
+          if (mounted.current && queuedReads.current === 0 && !deciding.current)
+            setBusy(false);
+        }
+        return null;
+      });
+    },
+    [api, credentials, enqueueRead]
+  );
   useEffect(() => {
     const requests = generation;
+    mounted.current = true;
     void refresh();
     const onFocus = () => {
       if (!deciding.current) void refresh();
@@ -95,6 +119,7 @@ export function Admin({
     window.addEventListener("focus", onFocus);
     return () => {
       requests.current++;
+      mounted.current = false;
       window.removeEventListener("focus", onFocus);
     };
   }, [refresh]);
@@ -130,12 +155,19 @@ export function Admin({
           ? "This same decision was already recorded."
           : "Decision recorded. The workflow will complete the credit request."
       );
-      await refresh();
+      await followUpDecision({
+        requestId,
+        read: () => refresh({ quiet: true }),
+        sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
+        active: () => mounted.current,
+        attempts: FOLLOW_UP_ATTEMPTS,
+        delayMs: FOLLOW_UP_DELAY_MS
+      });
     } catch (failure) {
       setError(failure);
     } finally {
       deciding.current = false;
-      setBusy(false);
+      setBusy(queuedReads.current > 0);
     }
   }
   const requests = [...(data?.requests ?? [])].sort(
@@ -155,7 +187,9 @@ export function Admin({
         <Button
           variant="secondary"
           disabled={busy || !credentials}
-          onClick={() => void refresh()}
+          onClick={() => {
+            if (!deciding.current) void refresh();
+          }}
         >
           Refresh list
         </Button>

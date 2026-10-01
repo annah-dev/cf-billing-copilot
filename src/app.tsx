@@ -5,14 +5,20 @@ import {
   type PanelResponse
 } from "./contracts/http";
 import { Admin } from "./admin/admin";
-import { browserStorage, createApi, readSession, saveSession } from "./ui/api";
+import {
+  apiMode,
+  browserStorage,
+  createApi,
+  readSession,
+  saveSession
+} from "./ui/api";
 import { createFixtureBackend } from "./ui/fixtures";
 import { FixtureChat, LiveChat } from "./ui/chat";
 import { ErrorNotice, InvoicePanel } from "./ui/components";
 
-// Set VITE_BILLING_API_MODE=live when the agent HTTP surface is available.
-const fixtures = import.meta.env.VITE_BILLING_API_MODE !== "live";
-const sessionMode = fixtures ? "fixture" : "live";
+// Production builds talk to the live API; `npm run dev` shows the fixture preview (apiMode).
+const sessionMode = apiMode(import.meta.env);
+const fixtures = sessionMode === "fixture";
 const backend = createFixtureBackend(browserStorage());
 const api = createApi(
   fixtures ? backend.transport : (path, init) => fetch(path, init)
