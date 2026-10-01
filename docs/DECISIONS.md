@@ -759,3 +759,39 @@ are kept because the rebase left src/ui, tests/ui and index.html unchanged. Reas
 must describe the checkout under review, and command output must come from the commands.
 
 Decided by: Frontend engineer under standing orders.
+
+## release: Transcript export scope and scrubbing
+
+`scripts/export-transcripts.mjs` exports every Claude Code and Codex session for this repo: the
+project directories of the main checkout and its `cf-billing-copilot-*` worktrees (with their
+subagent transcripts), the no-mistakes gate runs whose Claude project directory names only a repo
+id (included when that id's bare repo has this repo's origin, the run started after the first
+commit, and its content names the repo), and Codex sessions by cwd or, outside the repo, by time
+and content. Harness context that is not a prompt (system prompts, skill, tool and agent listings,
+MCP instructions, account and org ids, the owner's global agent rules, sandbox roots outside the
+repo, encrypted reasoning, inline images) is replaced by `<omitted: ...>` markers; home paths,
+emails and token shapes are scrubbed; the owner's private terms come from a git-ignored
+`scripts/scrub-terms.local.txt` so the list itself never enters the repo. The script rescans what
+it wrote and fails if anything is left. Reason: the transcripts carry the owner's unrelated
+projects, connectors and account context, which the assignment forbids in the repo, while the
+prompts and the agents' work must stay verbatim.
+
+Decided by: Release engineer under standing orders.
+
+## release: Transcripts are committed once, at the release PR
+
+Phase 1 commits only the script; the export (about 70 MB of JSONL) is regenerated and committed
+once, after the evals and agent-fixes lanes finish, so the repo history carries one copy instead
+of one per run. Reason: lanes still in flight keep appending to their sessions.
+
+Decided by: Release engineer under standing orders.
+
+## release: UI smoke test against production through a live-mode bundle
+
+The deployed UI was built without `VITE_BILLING_API_MODE=live`, so it serves the fixture preview
+and never calls the deployed agent or Ledger. The release smoke test therefore drove the UI flow
+with a local live-mode build of the same commit, served by Playwright route interception for the
+static paths while `/api/*` and `/agents/*` went to the production Worker. Reason: it exercises the
+production backend through the real UI code without a redeploy, which only the owner may run.
+
+Decided by: Release engineer under standing orders.
