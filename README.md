@@ -282,12 +282,18 @@ arrives a step at a time.
 ## How this was built
 
 This project was built with AI-assisted coding under Anna Hester's direction. Anna wrote the
-assignment, made the product, security and cost decisions recorded as "Decided by: Anna" in
-docs/DECISIONS.md, and merged every pull request. Claude Code and Codex agents worked in parallel
-lanes (architecture, billing engine, agent and Workflow, UI, evals, release), each in its own git
-worktree, and every pull request was reviewed by the harness that did not write it. Every prompt
-is in [PROMPTS.md](PROMPTS.md), and the scrubbed raw session transcripts are in
-[prompt-history/transcripts/](prompt-history/transcripts/).
+assignment, made the decisions reserved to the owner (product scope, security model, cost and
+contract changes), each marked 'Decided by: Anna' in docs/DECISIONS.md, while agents decided
+implementation details under the written decision rights in AGENTS.md, and merged every pull
+request. Claude Code and Codex agents worked in parallel lanes (architecture, billing engine,
+agent and Workflow, UI, evals, release), each in its own git worktree, and every pull request was
+reviewed by the harness that did not write it. Planning, decision review and independent
+verification of each pull request were done in a separate Claude conversation; see the note at
+the top of PROMPTS.md. Every prompt is in [PROMPTS.md](PROMPTS.md), and the scrubbed raw session
+transcripts are in [prompt-history/transcripts/](prompt-history/transcripts/).
+
+<!-- release: keep "and merged every pull request" only if it is still true when the release PR
+opens (owner instruction, PROMPTS.md entry 34). -->
 
 ## License
 
