@@ -30,3 +30,17 @@ fix is covered offline only.
 
 Both dev logs also show `Error: internal error; reference = ...` lines with no stack (21 in the
 first run, 14 in the second). No turn failed with them; their source is not identified.
+
+## Completion run after the rebase onto main (2026-10-01, owner-authorized)
+
+The owner authorized one run of the two unreached questions. At 01:35:30 UTC the harness stopped
+at `cap_reached` before any model call (0 calls, 0 neurons): the per-IP sandbox counter is per
+UTC day, and the earlier runs were at 00:17 and 00:20 UTC on the same day, so it had not reset.
+expired-credit-history reuses the full run's read-only sandbox, so it was run alone at 01:35:44
+UTC: it passed (1/1, 2 model calls, 6,922 input and 43 output tokens, about 194 estimated
+neurons). remember-credit needs a new sandbox and was not run; it is waiting for the 00:00 UTC
+reset on 2026-10-02. The harness needed the not-reached case listed as not passed in its prior
+report; the scratch input marked it so, with the reason, and nothing under `evals/` changed.
+
+Totals for this lane: 55 live model calls, about 4,725 estimated neurons. With the full run, 14 of
+15 questions pass and remember-credit has not run on the final code.
