@@ -74,7 +74,8 @@ base URL, UTC date, environment (`local dev` or `deployed`), pass fraction, comp
 state, model call count, tokens and estimated neurons from the pinned pricing helper.
 
 Read-only cases share one sandbox. Duplicate-credit and each memory case use separate
-sandboxes, preserving credit/memory isolation while staying within five creations per IP.
+sandboxes, preserving credit/memory isolation while staying within the per-IP sandbox cap (20
+new sandboxes per UTC day since the D-7 amendment; 5 when this harness was written).
 The full set uses four sandboxes and at most 12 messages in any one. A group that would exceed
 30 messages uses a new sandbox; app caps remain enforced. Only credit-start turns send
 `confirm: true`. Memory follow-ups send new requests with no client history to the same

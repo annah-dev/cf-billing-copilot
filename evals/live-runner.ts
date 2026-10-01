@@ -131,7 +131,7 @@ export async function runLive(options: RunOptions): Promise<RunResult> {
   for (const testCase of options.cases) {
     result.attemptedCases++;
     try {
-      // Owner-authorized grouping stays within the five-sandbox and 30-message caps.
+      // Owner-authorized grouping stays within the per-IP sandbox cap (D-7) and 30-message cap.
       // State-changing and memory cases have their own groups.
       const group = testCase.sandboxGroup ?? testCase.id;
       let entry = sandboxes.get(group);

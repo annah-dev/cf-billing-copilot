@@ -15,7 +15,7 @@ The public demo runs on the Workers Paid plan with these controls (docs/DECISION
 - **Model budget.** Model calls stop for the day at an estimated 50,000 Workers AI neurons per UTC
   day, reserved before each call. That is at most about $0.44 a day above the included allowance.
 - **Caps.** Per sandbox per UTC day: 30 chat messages of up to 2,000 characters, 5 credit requests
-  and 200 API requests. Per IP: 5 new sandboxes a day. Globally: 200 new sandboxes a day.
+  and 200 API requests. Per IP: 20 new sandboxes a day. Globally: 200 new sandboxes a day.
 - **Estimated, not hard-bounded.** The caps bound abuse cost at an estimated figure (about $34 a
   month above the $5 plan with every cap saturated all month), not a hard ceiling. A request
   refused by a cap still costs one Durable Object request.
