@@ -998,3 +998,15 @@ message dates from the guard turns seven of them red. Reason: "using the same ru
 must be checked, not assumed, while the code exists in two copies.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: an answer step sends no tools field
+
+Found in the live rerun: with `activeTools: []` the AI SDK passes an empty tool list,
+`workers-ai-provider` forwards it, and Workers AI refuses the call (error 8007, "`tools` must not
+be an empty array"), so the answer step failed and remember-credit still ended empty. A model
+middleware (`noEmptyToolsMiddleware`) now drops an empty `tools` list and its `toolChoice` before
+the call. The test stub of the AI binding refuses `tools: []` the same way, so the tests catch a
+regression (three go red without the middleware). Reason: the offline stub accepted a request the
+real binding rejects; it now mirrors that constraint.
+
+Decided by: Agent fixes engineer under standing orders.

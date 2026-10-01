@@ -102,7 +102,12 @@ export const toolCall = (
  */
 export function stubAi(replies: AiReply[]) {
   const queue = [...replies];
-  const run = vi.fn(async (_model: string, _inputs: unknown) => {
+  const run = vi.fn(async (_model: string, inputs: unknown) => {
+    // The real binding refuses an empty tool list (Workers AI error 8007, seen in local dev).
+    const tools = (inputs as { tools?: unknown[] } | undefined)?.tools;
+    if (Array.isArray(tools) && tools.length === 0) {
+      throw new Error("stubbed AI: 8007 `tools` must not be an empty array");
+    }
     const next = queue.shift();
     if (!next) throw new Error("stubbed AI: no scripted reply left");
     return next;
