@@ -1,27 +1,43 @@
 # cf-billing-copilot
 
-**Live demo:** https://cf-billing-copilot.anna-hester.workers.dev (synthetic data; each browser
-gets its own sandbox)
+A billing copilot for a customer of a usage-based cloud product, running entirely on Cloudflare.
+It explains invoices, changes and plan options from a deterministic billing engine (the model
+picks tools and explains; it never does the arithmetic), spots a usage spike on its own, and turns
+"I was double-charged" into a credit request that a Workflow validates against the ledger and holds
+for a human approver, with every step in an append-only audit trail.
 
-A billing copilot for a customer of a usage-based product, running entirely on Cloudflare. Ask
-why the September bill is $412.87, what changed since August, or what the Pro plan would have
-cost, and the copilot answers from a deterministic billing engine: every amount it says comes from
-a tool result, computed in integer cents. It spots the usage spike on its own. When the customer
-was charged twice, it starts a credit request that a durable Workflow validates against the
-ledger, reserves, and holds until a human approves or rejects it, with every step written to an
-append-only audit trail the customer and the approver can both see. The model chooses tools and
-explains; it never does the arithmetic.
+**[Live demo][demo]**: synthetic data; each browser gets its own sandbox. Built on Workers AI
+(Llama 3.3), Durable Objects with SQLite, Workflows and Workers static assets.
+
+## Demo in five steps
+
+Velvet Comet Workshop is selected; its September invoice is $412.87.
+
+1. **Explain my invoice.** Click "Explain my September invoice": every line with its amount, each
+   tool call marked "Source verified", and the September 18 spike (5x, about $11.60) flagged
+   unprompted. Stories 1 and 4.
+2. **What changed.** Click "What changed since August?": $299.18 to $412.87, up 38%, by product.
+   Story 2.
+3. **Plan simulation.** Click "What would I pay on Pro?": the same usage re-rated on Pro, with both
+   totals and the difference. Story 3.
+4. **Credit request.** Click "I was double-charged. Can I request a credit?", confirm the dialog
+   (it names the real invoice), then click Refresh in the side panel: Pending Approval for $412.87,
+   with `credit_requested`, `credit_validated` and `memo_pending` in the audit trail. Story 5.
+5. **Approve and come back.** Click "Approver view", give a reason, approve: the card turns Applied
+   by itself. Back in the chat, Refresh shows `credit_approved` and `credit_applied`. Reload and ask
+   "What's the status of my credit request?": the copilot remembers it. Stories 5 and 6.
 
 The credit story is a duplicated debit: the September invoice charge posted twice by a billing run
 retried without an idempotency key, remedied by a credit memo. A duplicated card payment would be a
-refund instead, which is out of scope.
+refund instead, which is out of scope. The seed also holds one historical request that expired
+after 24 hours without a decision, so the timeout path is visible without waiting a day.
 
 ## Contents
 
 - [Cloudflare components](#cloudflare-components)
+- [How this was built](#how-this-was-built)
 - [Architecture](#architecture)
 - [The LLM never does money math](#the-llm-never-does-money-math)
-- [Demo script](#demo-script)
 - [Local setup](#local-setup)
 - [Deploy](#deploy)
 - [Release checklist](#release-checklist)
@@ -30,7 +46,7 @@ refund instead, which is out of scope.
 - [Known limitations](#known-limitations)
 - [What a production billing platform needs next](#what-a-production-billing-platform-needs-next)
 - [Llama 3.3 tool calls and streaming](#llama-33-tool-calls-and-streaming)
-- [How this was built](#how-this-was-built)
+- [Links](#links)
 
 ## Cloudflare components
 
@@ -46,6 +62,44 @@ ledger is one object, so every credit transition, its reservation and its audit 
 together in one SQLite transaction (`transactionSync`), which D1 cannot do across a
 read-check-write, and each sandbox is isolated by construction rather than by a filter on every
 query.
+
+## How this was built
+
+Built with AI-assisted coding under Anna Hester's direction. Anna wrote the assignment, made the
+decisions reserved to the owner (product scope, security model, cost and contract changes), each
+marked 'Decided by: Anna' in docs/DECISIONS.md, while agents decided implementation details under
+the written decision rights in AGENTS.md, and merged every pull request. Claude Code and Codex
+agents worked in parallel lanes (architecture, billing engine, agent and Workflow, UI, evals,
+release), each in its own git worktree, and every pull request was reviewed by the harness that
+did not write it. Planning, decision review and independent verification of each pull request were
+done in a separate Claude conversation; see the note at the top of PROMPTS.md. Every prompt is in
+[PROMPTS.md](PROMPTS.md); the scrubbed raw session transcripts are in
+[prompt-history/transcripts/](prompt-history/transcripts/).
+
+Five moments where the owner made the call:
+
+- **Confirmation on every path.** The agent lane proposed letting the eval endpoint `/turn` skip
+  the customer's credit confirmation; Anna required `confirm: true` instead, so the evals exercise
+  the same policy as the product
+  ([D-20](docs/DECISIONS.md#d-20-credit-confirmation-on-every-path-including-turn),
+  [prompt](PROMPTS.md#18-turn-confirmation-answer-a3-and-live-evidence-typed-mid-session)).
+- **A debit, not a card payment.** The ledger contract's example reference for a charge was a
+  card-processor charge id; Anna corrected the story to an invoice debit posted twice by a billing run, remedied
+  by a credit memo, with a duplicated card payment (a refund) out of scope
+  ([prompt](PROMPTS.md#11-pr-2-billing-semantics-round-typed-mid-session)).
+- **`npm test` checks the harness, not the model.** Model failures are reported verdicts, not
+  failing tests, and a gate's automatic fix may not change grading or recordings to improve model
+  results ([decision](docs/DECISIONS.md#evals-test-harness-stability-instead-of-model-perfection),
+  [prompt](PROMPTS.md#2026-09-30t145453-0700---evals-harness-verdict-tests-and-failure-analysis)).
+- **A deterministic anomaly check.** The spike mention depended on Llama 3.3 choosing to call
+  `detectAnomalies`, which it did not in a live run; Anna had the server run the check for every
+  invoice a turn touches
+  ([decision](docs/DECISIONS.md#agent-the-server-runs-the-anomaly-check-for-every-invoice-a-turn-touches),
+  [prompt](PROMPTS.md#21-anomaly-determinism-and-final-review-typed-mid-session)).
+- **The per-IP sandbox cap.** Raised from 5 to 20 new sandboxes per IP a day so reviewers behind
+  one office address do not lock each other out, with the global cap unchanged
+  ([D-7 amendment](docs/DECISIONS.md#d-7-amendment-20-new-sandboxes-per-ip-per-utc-day),
+  [prompt](PROMPTS.md#37-sandbox-per-ip-cap-owner-mid-session)).
 
 ## Architecture
 
@@ -109,35 +163,11 @@ or computes an amount itself. The system prompt requires every number in an answ
 tool result, and to say so when data is missing. Outside `src/engine/` and `formatUsd` there is no
 arithmetic on amounts (the reviewer pass greps for it).
 
-## Demo script
-
-Open the demo URL. Velvet Comet Workshop is selected; its September invoice is $412.87.
-
-1. **Explain my invoice.** Click "Explain my September invoice". The copilot walks the lines
-   (subscription fee, four usage meters, tax) with the amounts from `getInvoice`; each tool call
-   shows a "Source verified" badge you can expand. It also flags the spike unprompted: Edge
-   requests on September 18 were 5x the usual day, about $11.60 of extra cost (user stories 1
-   and 4).
-2. **What changed.** Click "What changed since August?". The copilot compares the two issued
-   invoices by product and states the change, $299.18 to $412.87, a 38% increase (story 2).
-3. **Plan simulation.** Click "What would I pay on Pro?". The engine re-rates the same September
-   usage on the Pro plan and the copilot reports both totals and the difference (story 3).
-4. **Credit request.** Click "I was double-charged. Can I request a credit?" and confirm in the
-   dialog. The request appears in the side panel as Pending Approval for $412.87, with
-   `credit_requested`, `credit_validated` and `memo_pending` in the audit trail (story 5).
-5. **Approve, then come back.** Click "Approver view", enter a reason and click "Approve credit".
-   Back in the chat, click Refresh: the request shows Applied and the audit trail shows the
-   decision, `credit_approved` and `credit_applied`. Reload the page (or return later in the same
-   browser) and ask "What's the status of my credit request?": the copilot remembers the account
-   and the open request (story 6).
-
-The seed also holds one historical request that expired after 24 hours without a decision, so the
-timeout path is visible without waiting a day.
-
 ## Local setup
 
-Requirements: a current Node.js (built and tested on Node 24) and a Cloudflare account. Workers AI always runs remotely, so every
-chat message in local dev spends real neurons (docs/DECISIONS.md DEV-12).
+Requirements: a current Node.js (built and tested on Node 24) and a Cloudflare account. Workers AI
+always runs remotely, so every chat message in local dev spends real neurons (docs/DECISIONS.md
+DEV-12). Clone the [repository][repo], then:
 
     npm ci
     npm run typecheck
@@ -168,13 +198,13 @@ the Workflow and the rate limiter are all declared in `wrangler.jsonc`; nothing 
 2. **Deploy.** `VITE_BILLING_API_MODE=live npm run deploy` (above).
 3. **Smoke test the live UI** (about 5 model calls). Open the demo URL in a private window.
    Confirm the "Seed preview" banner is absent. Request a credit ("My September invoice debit was
-   posted twice. Please request a credit for the duplicate charge."), confirm it, and check the
-   panel shows Pending Approval. Open "Approver view", approve with a reason, return, click
+   posted twice. Please request a credit for the duplicate charge."), confirm it, click Refresh in
+   the side panel and check it shows Pending Approval. Open "Approver view", approve with a reason, return, click
    Refresh: Applied, with `decision_received`, `credit_approved` and `credit_applied` in the audit
    trail.
 4. **Smoke test by curl** (one `/turn`, about 3 model calls). Requires `jq`.
 
-        U=https://cf-billing-copilot.anna-hester.workers.dev
+        U=<the live demo URL from Links>
         S=$(curl -s -X POST $U/api/sandboxes); SID=$(echo "$S" | jq -r .sandboxId); TOK=$(echo "$S" | jq -r .approverToken)
         curl -s -X POST $U/api/sandboxes/$SID/customers/cus_1/turn -H 'content-type: application/json' \
           -d '{"message":"I was double-charged for my September invoice. Can I get a credit for the duplicate charge?","confirm":true}' | jq '.toolCalls[].name, .usage'
@@ -216,7 +246,9 @@ The public demo runs on the Workers Paid plan with these controls (docs/DECISION
   and 200 API requests. Per IP: 20 new sandboxes a day. Globally: 200 new sandboxes a day.
 - **Estimated, not hard-bounded.** The caps bound abuse cost at an estimated figure (about $34 a
   month above the $5 plan with every cap saturated all month), not a hard ceiling. A request
-  refused by a cap still costs one Durable Object request.
+  refused by a cap still costs one Durable Object request. Raising the per-IP cap from 5 to 20
+  did not change the estimate, which already assumes the global cap of 200 new sandboxes a day is
+  used up every day; it changes how few addresses can use it up (10 instead of 40).
 - **Rate limiter.** A per-IP limit of 60 requests a minute to the API and agent routes runs before
   any Durable Object is called (Workers Rate Limiting binding). It is per Cloudflare location and
   approximate by design: a brake, not an accounting system.
@@ -279,21 +311,16 @@ the AI SDK's `simulateStreamingMiddleware`: one non-streaming call per step, rep
 as a stream, which keeps `streamText` and `AIChatAgent` working (D-14). The cost is that text
 arrives a step at a time.
 
-## How this was built
+## Links
 
-This project was built with AI-assisted coding under Anna Hester's direction. Anna wrote the
-assignment, made the decisions reserved to the owner (product scope, security model, cost and
-contract changes), each marked 'Decided by: Anna' in docs/DECISIONS.md, while agents decided
-implementation details under the written decision rights in AGENTS.md, and merged every pull
-request. Claude Code and Codex agents worked in parallel lanes (architecture, billing engine,
-agent and Workflow, UI, evals, release), each in its own git worktree, and every pull request was
-reviewed by the harness that did not write it. Planning, decision review and independent
-verification of each pull request were done in a separate Claude conversation; see the note at
-the top of PROMPTS.md. Every prompt is in [PROMPTS.md](PROMPTS.md), and the scrubbed raw session
-transcripts are in [prompt-history/transcripts/](prompt-history/transcripts/).
+Every link that names the repository or the deployment is defined here, so a rename changes one
+place.
 
-<!-- release: keep "and merged every pull request" only if it is still true when the release PR
-opens (owner instruction, PROMPTS.md entry 34). -->
+- [Repository][repo]
+- [Live demo][demo]
+
+[repo]: https://github.com/annah-dev/cf-billing-copilot
+[demo]: https://cf-billing-copilot.anna-hester.workers.dev
 
 ## License
 
