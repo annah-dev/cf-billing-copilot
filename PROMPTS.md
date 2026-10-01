@@ -3097,6 +3097,7 @@ first, each with severity, file and line, what is wrong, and the fix. End with:
 
     VERIFIED:     <what you checked and how>
     NOT VERIFIED: <what you could not check, and why>
+````
 
 ## 2026-09-30T18:32:32-07:00 - Evals figures and simulation follow-up
 
