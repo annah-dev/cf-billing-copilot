@@ -3,6 +3,7 @@
 // startCreditRequest, which records a `requested` row and starts the credit Workflow. It never
 // decides, approves or applies a credit, and it never does money math (D-15).
 import { AIChatAgent, type OnChatMessageOptions } from "@cloudflare/ai-chat";
+import type { Connection, ConnectionContext } from "agents";
 import {
   InvalidToolInputError,
   NoSuchToolError,
@@ -41,6 +42,7 @@ import { collectEvidence } from "./grounding";
 import { guardReply, type GroundingRecord } from "./guard";
 import { ToolProvenance } from "./provenance";
 import { ToolError, buildTools, stableKey } from "./tools";
+import { classifyFrame, type Frame } from "./frames";
 
 /** Model calls per turn: tool round trips plus the answer. Small on purpose (Stop 2 finding). */
 export const MAX_STEPS = 4;
@@ -199,6 +201,129 @@ function fixedTextResponse(text: string): Response {
 
 export class BillingAgent extends AIChatAgent<Env> {
   maxPersistedMessages = 200;
+
+  /** Chat requests whose message cap the frame gate already charged (by request id). */
+  private precharged = new Set<string>();
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // The SDK installs its chat protocol handler in its constructor and saves a chat request's
+    // messages before onChatMessage runs. Every frame passes the gate first (frames.ts).
+    const sdkOnMessage = this.onMessage;
+    this.onMessage = async (connection, message) => {
+      if (
+        typeof message === "string" &&
+        !(await this.admitFrame(connection, message))
+      ) {
+        return;
+      }
+      return sdkOnMessage(connection, message);
+    };
+  }
+
+  /** Remember the client's address for the per-IP rate limiter (D-13) on later frames. */
+  async onConnect(
+    connection: Connection,
+    ctx: ConnectionContext
+  ): Promise<void> {
+    const ip = ctx.request.headers.get("CF-Connecting-IP") ?? "unknown";
+    connection.setState({ ...(connection.state as object | null), ip });
+    await super.onConnect(connection, ctx);
+  }
+
+  /**
+   * Count a chat-channel frame exactly like a /turn request: the per-IP rate limiter, the
+   * sandbox's daily API request cap and, for a new chat turn, the length limit and the chat
+   * message cap. A refused frame writes nothing and never reaches the SDK.
+   */
+  private async admitFrame(
+    connection: Connection,
+    message: string
+  ): Promise<boolean> {
+    const frame = classifyFrame(message);
+    if (frame.kind === "pass") return true;
+    const config = getConfig(this.env);
+    const ip = (connection.state as { ip?: string } | null)?.ip ?? "unknown";
+    const { success } = await this.env.RATE_LIMITER.limit({ key: ip });
+    if (!success) {
+      this.refuseFrame(connection, frame, "Too many requests; slow down.");
+      return false;
+    }
+    const { customerId } = this.identity();
+    const admitted = await this.ledger().gate({ customerId });
+    if (!admitted.ok) {
+      this.refuseFrame(connection, frame, admitted.message);
+      return false;
+    }
+    if (frame.kind !== "chat-request") return true;
+    if (frame.lastUserText.length > config.MESSAGE_MAX_CHARS) {
+      this.refuseFrame(
+        connection,
+        frame,
+        `Messages are limited to ${config.MESSAGE_MAX_CHARS} characters. Please shorten your message.`
+      );
+      return false;
+    }
+    const cap = await this.ledger().consumeMessage();
+    if (!cap.ok) {
+      this.refuseFrame(
+        connection,
+        frame,
+        cap.code === "cap_reached"
+          ? capMessage("chat messages", config.MESSAGES_PER_SANDBOX_DAY)
+          : cap.message
+      );
+      return false;
+    }
+    this.precharged.add(frame.id);
+    return true;
+  }
+
+  /**
+   * Answer a refused frame on its own connection without storing anything: a chat request gets
+   * the refusal as a one-off reply; any other frame gets the stored conversation back, so the
+   * client drops its unsaved change.
+   */
+  private refuseFrame(
+    connection: Connection,
+    frame: Frame,
+    text: string
+  ): void {
+    if (frame.kind === "chat-request") {
+      const id = crypto.randomUUID();
+      for (const chunk of [
+        { type: "start" },
+        { type: "text-start", id },
+        { type: "text-delta", id, delta: text },
+        { type: "text-end", id },
+        { type: "finish" }
+      ]) {
+        connection.send(
+          JSON.stringify({
+            type: "cf_agent_use_chat_response",
+            id: frame.id,
+            body: JSON.stringify(chunk),
+            done: false
+          })
+        );
+      }
+      connection.send(
+        JSON.stringify({
+          type: "cf_agent_use_chat_response",
+          id: frame.id,
+          body: "",
+          done: true
+        })
+      );
+      return;
+    }
+    connection.send(
+      JSON.stringify({
+        type: "cf_agent_chat_messages",
+        messages: this.messages
+      })
+    );
+  }
 
   /** Turn accounting keyed by the user message id that started the turn (read by /turn). */
   private turns = new Map<string, TurnRecord>();
@@ -455,7 +580,16 @@ export class BillingAgent extends AIChatAgent<Env> {
       ? await this.provenance.consumeAnsweredConfirmation(conversation)
       : null;
     const exempt = answered !== null;
-    if (!exempt) {
+    // A chat request from the socket was already counted, length-checked and charged as a
+    // message by the frame gate, before the SDK saved it.
+    const prepaid =
+      !continuation &&
+      options?.requestId !== undefined &&
+      this.precharged.delete(options.requestId);
+    if (prepaid) {
+      this.rememberQuestion(textOf(lastUser));
+      await this.touchActivity();
+    } else if (!exempt) {
       if (!continuation) {
         const text = textOf(lastUser);
         if (text.length > config.MESSAGE_MAX_CHARS) {

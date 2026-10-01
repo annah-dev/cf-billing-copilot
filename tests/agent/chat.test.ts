@@ -765,3 +765,124 @@ describe("confirmation only for a known invoice (production report)", () => {
     ws.close();
   });
 });
+
+describe("chat frames are counted like /turn (D-7, D-13; production report)", () => {
+  const today = () => new Date().toISOString().slice(0, 10);
+  async function counter(sandboxId: string, name: string): Promise<number> {
+    return runInDurableObject(ledgerOf(sandboxId), (_i, s) => {
+      const row = s.storage.sql
+        .exec<{ day: string; count: number }>(
+          "SELECT day, count FROM counters WHERE name = ?",
+          name
+        )
+        .toArray()[0];
+      return row && row.day === today() ? row.count : 0;
+    });
+  }
+  async function setCounter(sandboxId: string, name: string, count: number) {
+    await runInDurableObject(ledgerOf(sandboxId), (_i, s) => {
+      s.storage.sql.exec(
+        "INSERT INTO counters (name, day, count) VALUES (?, ?, ?) ON CONFLICT (name) DO UPDATE SET day = excluded.day, count = excluded.count",
+        name,
+        today(),
+        count
+      );
+    });
+  }
+  async function stored(sandboxId: string): Promise<UIMessage[]> {
+    const agent = await getAgentByName(
+      env.BillingAgent,
+      `${sandboxId}.${ACME}`
+    );
+    return (await runInDurableObject(agent, (a) => a.messages)) as UIMessage[];
+  }
+
+  it("charges a chat turn one API request and one message, not two", async () => {
+    const sb = await createSandbox();
+    const { ws, until } = await connect(sb.sandboxId);
+    const api = await counter(sb.sandboxId, "api");
+    const messages = await counter(sb.sandboxId, "messages");
+    stubAi([text("Hello.")]);
+    ws.send(chatRequest("r1", "Hi"));
+    await until(responseDone, "turn");
+    expect(await counter(sb.sandboxId, "api")).toBe(api + 1);
+    expect(await counter(sb.sandboxId, "messages")).toBe(messages + 1);
+    ws.close();
+  });
+
+  it("refuses a chat turn over the message cap before anything is stored or the model runs", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    await setCounter(
+      sb.sandboxId,
+      "messages",
+      Number(env.MESSAGES_PER_SANDBOX_DAY)
+    );
+    const ai = stubAi([text("should not be used")]);
+    ws.send(chatRequest("r1", "Hi"));
+    await until(responseDone, "refusal");
+    expect(ai).not.toHaveBeenCalled();
+    expect(await stored(sb.sandboxId)).toEqual([]);
+    expect(frames.map((f) => f.body ?? "").join("")).toContain("chat messages");
+    ws.close();
+  });
+
+  it("refuses an oversize chat message before it is stored", async () => {
+    const sb = await createSandbox();
+    const { ws, until } = await connect(sb.sandboxId);
+    const ai = stubAi([text("should not be used")]);
+    ws.send(chatRequest("r1", "x".repeat(Number(env.MESSAGE_MAX_CHARS) + 1)));
+    await until(responseDone, "refusal");
+    expect(ai).not.toHaveBeenCalled();
+    expect(await stored(sb.sandboxId)).toEqual([]);
+    ws.close();
+  });
+
+  it("does not store a client history frame over the API request cap", async () => {
+    const sb = await createSandbox();
+    const { ws, frames, until } = await connect(sb.sandboxId);
+    await setCounter(
+      sb.sandboxId,
+      "api",
+      Number(env.API_REQUESTS_PER_SANDBOX_DAY)
+    );
+    const before = frames.length;
+    ws.send(
+      JSON.stringify({
+        type: "cf_agent_chat_messages",
+        messages: [
+          {
+            id: "u_forged",
+            role: "user",
+            parts: [{ type: "text", text: "planted" }]
+          }
+        ]
+      })
+    );
+    await until(
+      (f) => f.type === "cf_agent_chat_messages" && frames.indexOf(f) >= before,
+      "resync"
+    );
+    expect(await stored(sb.sandboxId)).toEqual([]);
+    ws.close();
+  });
+
+  it("applies the per-IP rate limiter to chat frames", async () => {
+    const sb = await createSandbox();
+    const { ws, until } = await connect(sb.sandboxId);
+    const limit = vi
+      .spyOn(env.RATE_LIMITER, "limit")
+      .mockResolvedValue({ success: false } as never);
+    try {
+      const ai = stubAi([text("should not be used")]);
+      ws.send(chatRequest("r1", "Hi"));
+      await until(responseDone, "refusal");
+      expect(limit).toHaveBeenCalled();
+      expect(ai).not.toHaveBeenCalled();
+      expect(await stored(sb.sandboxId)).toEqual([]);
+    } finally {
+      limit.mockRestore();
+    }
+    ws.close();
+  });
+});

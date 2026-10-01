@@ -1070,3 +1070,25 @@ to call `getInvoice` before `startCreditRequest`. `/turn` is unchanged (D-20: `c
 Reason: the customer must never confirm something the server has not validated.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: chat-channel frames are counted like /turn
+
+Production report: chat messages over the WebSocket passed neither the per-IP rate limiter nor
+the daily API request cap (they run per HTTP request, and the socket is upgraded once), and the
+SDK saved a chat request's messages before `onChatMessage` checked the message cap, so frames over
+the cap still wrote storage. `BillingAgent` now wraps the SDK's frame handler after `super()` and
+admits each frame first (`src/agent/frames.ts`):
+
+- Chat requests: the per-IP `RATE_LIMITER` (the address captured when the socket connected), the
+  sandbox's API request cap (`Ledger.gate`), the length limit and the chat message cap, in that
+  order, as `/turn` does. The turn is then not charged a second time.
+- History, tool-result, tool-approval and clear frames: the rate limiter and the API request cap.
+  An approval's continuation keeps its message-cap rule (exempt once only for a server-issued
+  confirmation the customer answered).
+- Cancel, stream-resume and acknowledgement frames are not counted.
+- A refused chat request gets the refusal as a one-off reply on its own connection; another
+  refused frame gets the stored conversation back. Nothing is stored and no model runs.
+
+Reason: D-7 and D-13 promise the same limits on every path.
+
+Decided by: Agent fixes engineer under standing orders.
