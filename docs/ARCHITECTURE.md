@@ -1,5 +1,10 @@
 # Architecture
 
+![Architecture: one Worker routing to the BillingAgent, Ledger and Quota Durable Objects, the CreditRequestWorkflow, Workers AI and the billing engine](architecture.svg)
+
+Diagram source: [architecture.excalidraw](architecture.excalidraw), which opens at excalidraw.com
+(File, Open). The Mermaid diagrams below describe the same design in text.
+
 cf-billing-copilot is one Cloudflare Worker. It serves a chat UI and an admin page as static assets,
 hosts a chat agent per customer as a Durable Object, keeps the billing ledger in Durable Object
 SQLite, and runs credit requests through a Cloudflare Workflow that waits for a human approver.
