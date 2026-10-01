@@ -1,7 +1,7 @@
 // BillingAgent with a stubbed AI binding: the same onChatMessage path the chat uses, driven through
 // POST .../turn. No test reaches Workers AI (tests/setup/no-network.ts, stubAi).
 import { env } from "cloudflare:workers";
-import { runInDurableObject } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { getAgentByName } from "agents";
 import type { ModelMessage, UIMessage } from "ai";
 import { describe, expect, it, vi } from "vitest";
@@ -406,6 +406,34 @@ describe("memory and history", () => {
         .filter((n) => n === "billing_memory" || n.startsWith("cf_ai_chat"));
     });
     expect(tables).toEqual([]);
+  });
+
+  it("re-arms one future idleSweep when the alarm fires it for an active sandbox", async () => {
+    const sb = await createSandbox();
+    stubAi([text("hi")]);
+    await turnOk(sb.sandboxId, "hello");
+    const agent = await agentOf(sb.sandboxId);
+    // Make the pending idleSweep due now, so the SDK's alarm runs it (not a direct call).
+    await runInDurableObject(agent, async (_a, state) => {
+      state.storage.sql.exec(
+        "UPDATE cf_agents_schedules SET time = ? WHERE callback = 'idleSweep'",
+        Math.floor(Date.now() / 1000) - 1
+      );
+      // A future alarm, so it fires only when the test triggers it below.
+      await state.storage.setAlarm(Date.now() + 60_000);
+    });
+    expect(await runDurableObjectAlarm(agent)).toBe(true);
+    const pending = await runInDurableObject(agent, (a) =>
+      a.getSchedules().filter((s) => s.callback === "idleSweep")
+    );
+    // Recent activity: the sweep re-armed instead of deleting, and exactly one row remains, due in
+    // the future (an idempotent re-arm would have returned the executing row, deleted on return).
+    expect(pending).toHaveLength(1);
+    expect(pending[0].time * 1000).toBeGreaterThan(Date.now());
+    expect(
+      ((await runInDurableObject(agent, (a) => a.messages)) as UIMessage[])
+        .length
+    ).toBe(2);
   });
 
   it("schedules idle deletion even when no message is ever accepted", async () => {
