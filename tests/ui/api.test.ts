@@ -6,6 +6,8 @@ import {
   apiMode,
   awaitingWorkflow,
   createApi,
+  followUpCreditRequest,
+  CREDIT_FOLLOW_UP_DELAYS_MS,
   followUpDecision,
   serialQueue,
   parseAdminFragment,
@@ -332,5 +334,59 @@ describe("serial read queue", () => {
     const next = enqueue(async () => "ok");
     await expect(failed).rejects.toThrow("network");
     await expect(next).resolves.toBe("ok");
+  });
+});
+
+describe("panel follow-up after a credit confirmation", () => {
+  const known = new Set(["cr_historical_expired"]);
+  const panel = (...rows: [string, string][]) => ({
+    creditRequests: [
+      { id: "cr_historical_expired", status: "expired" },
+      ...rows.map(([id, status]) => ({ id, status }))
+    ]
+  });
+  function run(
+    panels: (ReturnType<typeof panel> | null)[],
+    active: () => boolean = () => true
+  ) {
+    const sleeps: number[] = [];
+    let reads = 0;
+    return followUpCreditRequest({
+      known,
+      read: async () => panels[Math.min(reads++, panels.length - 1)],
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+      active
+    }).then((count) => ({ count, sleeps, reads }));
+  }
+  it("reads until the new request leaves requested, then stops", async () => {
+    const r = await run([
+      panel(),
+      panel(["cr_new", "requested"]),
+      panel(["cr_new", "pending_approval"]),
+      panel(["cr_new", "pending_approval"])
+    ]);
+    expect(r.count).toBe(3);
+    expect(r.sleeps).toEqual(CREDIT_FOLLOW_UP_DELAYS_MS.slice(0, 3));
+  });
+  it("makes at most five reads", async () => {
+    expect(CREDIT_FOLLOW_UP_DELAYS_MS).toHaveLength(5);
+    const r = await run([panel(["cr_new", "requested"])]);
+    expect(r.count).toBe(5);
+  });
+  it("ignores requests that were already in the panel", async () => {
+    // The historical expired request is known, so it never ends the follow-up on its own.
+    expect((await run([panel()])).count).toBe(5);
+  });
+  it("stops after a failed read", async () => {
+    expect(
+      (await run([panel(), null, panel(["cr_new", "pending_approval"])])).count
+    ).toBe(2);
+  });
+  it("makes no read after the page unmounts during a delay", async () => {
+    const r = await run([panel(["cr_new", "pending_approval"])], () => false);
+    expect(r.count).toBe(0);
+    expect(r.reads).toBe(0);
   });
 });
