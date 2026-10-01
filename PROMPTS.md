@@ -3083,3 +3083,20 @@ squash-merged. When main comes back in, keep one copy of each duplicated PROMPTS
 ````text
 Merged #9. You're right: the production fixes come in a separate agent-fixes PR, still to come.
 ````
+
+## 40. Owner: WSL restart recovery (typed mid-session)
+
+- Timestamp: 2026-09-30T23:00:59-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06k-release-owner-wsl-restart.md
+- Outcome: (pending)
+
+````text
+WSL restarted while you were working, so every process you started is gone: dev servers,
+background terminals and any no-mistakes run in progress. Before continuing, check git status and
+your branch against origin, redo any step that was cut off, and check any gate run with the
+recovery steps in docs/agent/no-mistakes.md rather than restarting the daemon with --force. If
+your open PR conflicts with main, merge main into your branch and keep both sides of
+docs/DECISIONS.md. Then report where you are.
+````
