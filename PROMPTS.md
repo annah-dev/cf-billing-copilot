@@ -3098,192 +3098,6 @@ first, each with severity, file and line, what is wrong, and the fix. End with:
     VERIFIED:     <what you checked and how>
     NOT VERIFIED: <what you could not check, and why>
 
-## 41. Release lane phase note
-
-- Timestamp: 2026-09-30T16:58:44-07:00
-- Role: Reviewer and release engineer
-- Harness: Claude Code
-- Source: prompt-history/prompts/06a-release-phase-note.md
-- Outcome: (pending)
-
-````text
-Note first, then follow prompt-history/prompts/06-release.md as your lane prompt, including logging it in PROMPTS.md.
-
-Note: I am away for about five hours. Do not wait on me: take your recommended option on anything within your decision rights and log it. For anything reserved to me (merge, deploy, login, secrets, force-push to main, account changes, contract changes), add it to a FOR ANNA list and keep going with everything it does not block. If wrangler authentication fails, do not try to log in.
-You work in two phases because the evals PR and an agent-fixes lane are still in flight.
-Phase 1, now: Main is deployed at https://cf-billing-copilot.anna-hester.workers.dev; I ran npm run deploy just before leaving. Review main, then smoke-test the live site: the duplicate-charge credit flow end to end through the UI (request, pending, approve in admin, credit applied, audit visible) and by curl, with fewer than 20 model calls. Record anything that fails only in production; if the fix belongs in src/agent, describe it for me instead of changing it. Draft the README. Build the prompt-history export; gate review sessions live under ~/.claude/projects/-home-annah-dev--no-mistakes-worktrees-*/ with no repo name in the path, so include them explicitly (match by time and content), scrubbed of secrets and home paths. Do not change src/agent or evals/.
-Phase 2, after I tell you the evals and agent-fixes PRs have merged: I redeploy, you rerun eval:live against the deployed URL once, put that pass rate and its date in the README, finish the export and the PROMPTS.md cross-check, and open the release PR.
-````
-
-## 42. Release lane kickoff
-
-- Timestamp: 2026-09-30T16:58:44-07:00
-- Role: Reviewer and release engineer
-- Harness: Claude Code
-- Source: prompt-history/prompts/06-release.md
-- Outcome: (pending)
-
-````text
-# 06 - Release lane kickoff
-
-Role: Reviewer and release engineer. Harness: Claude Code. You start last, after the evals lane
-has merged. You work alone in this worktree (~/projects/wt/cf-billing-copilot-release, branch
-feat/release, cut from that main). You see this prompt, the assignment and the repo; nothing else.
-
-## Read first, in this order
-
-1. prompt-history/prompts/00-assignment.md: the deliverables and acceptance criteria you check.
-2. AGENTS.md: the rules, including Decision rights. They bind you.
-3. docs/agent/plan.md, section "release"; docs/agent/verification.md; docs/agent/cross-review.md.
-4. README.md, PROMPTS.md, docs/ARCHITECTURE.md, docs/DECISIONS.md, evals results.
-
-At session start, append this prompt to PROMPTS.md by copying this file with a tool (not by
-retyping), with an ISO-8601 timestamp with offset, role, harness "Claude Code", source path and
-outcome "(pending)". Fill in the outcome at the end.
-
-## Scope
-
-You own `README.md`, `scripts/export-transcripts.*`, `prompt-history/transcripts/` and the final
-PROMPTS.md pass, plus the append-only files. Application code is read only: a defect you find goes
-back to its owning lane as a small fix PR from that lane, or to the owner if no lane is open.
-
-Do, in order:
-
-1. **Reviewer pass over the whole repo**: no secrets or tokens anywhere (code, fixtures, recordings,
-   history); every tool input validated; no money math outside `src/engine/` and `formatUsd`;
-   approver-token and admission checks on every route; README claims match the code; no real
-   customer, employer or personal data; the only personal information is the owner's name as author.
-2. **README** with every section the assignment lists: pitch; how each of the four required
-   Cloudflare components is used; the architecture diagram; "the LLM never does money math"; the
-   demo script (5 clicks or questions covering every user story); local setup; deploy commands for
-   the owner; eval results with the live run's pass rate and date; known limitations and what a
-   production billing platform needs next; an honest note that it was built with AI-assisted
-   coding under the owner's direction; the Llama 3.3 streaming finding (docs/DECISIONS.md DEV-16
-   and D-14): with native streaming the tool arguments arrived garbled (quote the evidence
-   recorded in DEV-16), on both the pinned and the newest provider versions, and the fix is the AI
-   SDK's simulated streaming. Keep the existing "Cost and abuse controls" section (D-13) and the
-   scope line about duplicated debits versus refunds.
-   Put the demo URL at the top once the owner gives it to you.
-3. **Release checklist** in the README: deploy steps the owner runs, the smoke test of the credit
-   flow end to end, and the off switch: disable the workers.dev route in the Cloudflare dashboard,
-   which takes the demo offline without deleting data.
-4. **Transcript export**: a script that exports the raw Claude Code and Codex session transcripts
-   for this repo and its worktrees into prompt-history/transcripts/, scrubbed of secrets, tokens,
-   email addresses and home-directory paths, and cross-checks PROMPTS.md against them (every prompt
-   in a transcript is in PROMPTS.md and the other way round). Report any mismatch rather than
-   editing history.
-5. **PROMPTS.md**: complete, in order, every outcome filled in.
-
-README claims about the owner or about results are the owner's decision (AGENTS.md, Decision
-rights item 3): draft them, then put them in one batched question with a recommendation each.
-
-## Definition of done
-
-Every assignment acceptance box is checked with its evidence, or listed as not done with the
-reason. `npm run typecheck` and `npm test` pass.
-
-## Rules that are easy to miss
-
-- When web docs and the installed type definitions disagree, the installed types win.
-- No `wrangler deploy`, `wrangler secret put`, `wrangler login` or `gh pr merge`: give the owner the
-  exact command and stop.
-- Decisions go at the end of docs/DECISIONS.md headed `## release: <decision>` with "Decided by:
-  Release engineer under standing orders".
-- Plain ASCII in docs and comments. Small conventional commits, no co-author footers.
-
-## Review loop and finishing
-
-1. Rebase on origin/main, run the done-contract commands, push `feat/release` to origin and open
-   the PR with the evidence from docs/agent/verification.md, ending with VERIFIED and NOT VERIFIED
-   lines.
-2. Codex reviews it headless (docs/agent/cross-review.md): write the review prompt to
-   `prompt-history/prompts/06b-release-review-r1.md` (then `06c-...-r2`, `06d-...-r3`), log it in
-   PROMPTS.md with role "automated cross-review", and run
-   `codex exec -c model_reasoning_effort=high -o <scratch>/review-r1.md "$(cat <prompt-file>)"`.
-3. Fix or rebut each finding, push, post the round summary on the PR. Two full rounds, a third on
-   the delta only, then stop. Anything still disputed goes to the owner as a FOR ANNA list with
-   both positions.
-4. Never merge; the owner merges.
-````
-
-## 43. Owner answer: merge main, do not rebase (typed mid-session)
-
-- Timestamp: 2026-09-30T19:01:42-07:00
-- Role: Reviewer and release engineer
-- Harness: Claude Code
-- Source: prompt-history/prompts/06i-release-owner-merge-not-rebase.md
-- Outcome: (pending)
-
-````text
-Merging main into feat/release in phase 2 is fine, and no rebase is needed since PRs are
-squash-merged. When main comes back in, keep one copy of each duplicated PROMPTS.md entry.
-````
-
-## 44. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)
-
-- Timestamp: 2026-09-30T19:24:33-07:00
-- Role: Reviewer and release engineer
-- Harness: Claude Code
-- Source: prompt-history/prompts/06j-release-owner-pr9-merged.md
-- Outcome: (pending)
-
-````text
-Merged #9. You're right: the production fixes come in a separate agent-fixes PR, still to come.
-````
-
-## 45. Owner: WSL restart recovery (typed mid-session)
-
-- Timestamp: 2026-09-30T23:00:59-07:00
-- Role: Reviewer and release engineer
-- Harness: Claude Code
-- Source: prompt-history/prompts/06k-release-owner-wsl-restart.md
-- Outcome: (pending)
-
-````text
-WSL restarted while you were working, so every process you started is gone: dev servers,
-background terminals and any no-mistakes run in progress. Before continuing, check git status and
-your branch against origin, redo any step that was cut off, and check any gate run with the
-recovery steps in docs/agent/no-mistakes.md rather than restarting the daemon with --force. If
-your open PR conflicts with main, merge main into your branch and keep both sides of
-docs/DECISIONS.md. Then report where you are.
-````
-
-## 46. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)
-
-- Timestamp: 2026-09-30T23:14:09-07:00
-- Role: Reviewer and release engineer
-- Harness: Claude Code
-- Source: prompt-history/prompts/06l-release-owner-pr10-pr11.md
-- Outcome: (pending)
-
-````text
-A1: the evals lane handles #10. #11 is merged, so update the README cost section and its estimate
-in phase 2.
-````
-
-## 47. Owner: start phase 2 (typed mid-session)
-
-- Timestamp: 2026-10-01T00:06:13-07:00
-- Role: Reviewer and release engineer
-- Harness: Claude Code
-- Source: prompt-history/prompts/06m-release-phase2-start.md
-- Outcome: (pending)
-
-````text
-#12 (production fixes) and #10 are merged, and I have redeployed main. Start phase 2. Additions:
-- First recheck the credit flow through the UI on the live site (the confirmation shows the real
-  invoice id, no error after confirming, credit applied, audit visible), with wrangler tail
-  running; record any "internal error ... reference" lines you see.
-- The credential-free test run times out intermittently under load. Reviewers will run npm test,
-  so make it reliable (a suite timeout or less parallelism) without weakening any assertion.
-- Keep the top of the README scannable in 30 seconds (pitch, demo link, 5-step demo script), and
-  add a short "How this was built" section linking five moments where I made a call: D-20
-  confirmation on /turn, the debit vs card-payment correction, npm test checking the harness not
-  the model, the deterministic anomaly check, and the per-IP cap change.
-- I may rename the repository to start with cf_ai_ before submitting; keep repository links in one
-  place in the README.
-````
-
 ## 2026-09-30T18:32:32-07:00 - Evals figures and simulation follow-up
 
 Role: QA / evals engineer
@@ -3557,4 +3371,190 @@ you suggest. End with:
 
     VERIFIED:     <what you checked and how>
     NOT VERIFIED: <what you could not check, and why>
+````
+
+## 44. Release lane phase note
+
+- Timestamp: 2026-09-30T16:58:44-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06a-release-phase-note.md
+- Outcome: (pending)
+
+````text
+Note first, then follow prompt-history/prompts/06-release.md as your lane prompt, including logging it in PROMPTS.md.
+
+Note: I am away for about five hours. Do not wait on me: take your recommended option on anything within your decision rights and log it. For anything reserved to me (merge, deploy, login, secrets, force-push to main, account changes, contract changes), add it to a FOR ANNA list and keep going with everything it does not block. If wrangler authentication fails, do not try to log in.
+You work in two phases because the evals PR and an agent-fixes lane are still in flight.
+Phase 1, now: Main is deployed at https://cf-billing-copilot.anna-hester.workers.dev; I ran npm run deploy just before leaving. Review main, then smoke-test the live site: the duplicate-charge credit flow end to end through the UI (request, pending, approve in admin, credit applied, audit visible) and by curl, with fewer than 20 model calls. Record anything that fails only in production; if the fix belongs in src/agent, describe it for me instead of changing it. Draft the README. Build the prompt-history export; gate review sessions live under ~/.claude/projects/-home-annah-dev--no-mistakes-worktrees-*/ with no repo name in the path, so include them explicitly (match by time and content), scrubbed of secrets and home paths. Do not change src/agent or evals/.
+Phase 2, after I tell you the evals and agent-fixes PRs have merged: I redeploy, you rerun eval:live against the deployed URL once, put that pass rate and its date in the README, finish the export and the PROMPTS.md cross-check, and open the release PR.
+````
+
+## 45. Release lane kickoff
+
+- Timestamp: 2026-09-30T16:58:44-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06-release.md
+- Outcome: (pending)
+
+````text
+# 06 - Release lane kickoff
+
+Role: Reviewer and release engineer. Harness: Claude Code. You start last, after the evals lane
+has merged. You work alone in this worktree (~/projects/wt/cf-billing-copilot-release, branch
+feat/release, cut from that main). You see this prompt, the assignment and the repo; nothing else.
+
+## Read first, in this order
+
+1. prompt-history/prompts/00-assignment.md: the deliverables and acceptance criteria you check.
+2. AGENTS.md: the rules, including Decision rights. They bind you.
+3. docs/agent/plan.md, section "release"; docs/agent/verification.md; docs/agent/cross-review.md.
+4. README.md, PROMPTS.md, docs/ARCHITECTURE.md, docs/DECISIONS.md, evals results.
+
+At session start, append this prompt to PROMPTS.md by copying this file with a tool (not by
+retyping), with an ISO-8601 timestamp with offset, role, harness "Claude Code", source path and
+outcome "(pending)". Fill in the outcome at the end.
+
+## Scope
+
+You own `README.md`, `scripts/export-transcripts.*`, `prompt-history/transcripts/` and the final
+PROMPTS.md pass, plus the append-only files. Application code is read only: a defect you find goes
+back to its owning lane as a small fix PR from that lane, or to the owner if no lane is open.
+
+Do, in order:
+
+1. **Reviewer pass over the whole repo**: no secrets or tokens anywhere (code, fixtures, recordings,
+   history); every tool input validated; no money math outside `src/engine/` and `formatUsd`;
+   approver-token and admission checks on every route; README claims match the code; no real
+   customer, employer or personal data; the only personal information is the owner's name as author.
+2. **README** with every section the assignment lists: pitch; how each of the four required
+   Cloudflare components is used; the architecture diagram; "the LLM never does money math"; the
+   demo script (5 clicks or questions covering every user story); local setup; deploy commands for
+   the owner; eval results with the live run's pass rate and date; known limitations and what a
+   production billing platform needs next; an honest note that it was built with AI-assisted
+   coding under the owner's direction; the Llama 3.3 streaming finding (docs/DECISIONS.md DEV-16
+   and D-14): with native streaming the tool arguments arrived garbled (quote the evidence
+   recorded in DEV-16), on both the pinned and the newest provider versions, and the fix is the AI
+   SDK's simulated streaming. Keep the existing "Cost and abuse controls" section (D-13) and the
+   scope line about duplicated debits versus refunds.
+   Put the demo URL at the top once the owner gives it to you.
+3. **Release checklist** in the README: deploy steps the owner runs, the smoke test of the credit
+   flow end to end, and the off switch: disable the workers.dev route in the Cloudflare dashboard,
+   which takes the demo offline without deleting data.
+4. **Transcript export**: a script that exports the raw Claude Code and Codex session transcripts
+   for this repo and its worktrees into prompt-history/transcripts/, scrubbed of secrets, tokens,
+   email addresses and home-directory paths, and cross-checks PROMPTS.md against them (every prompt
+   in a transcript is in PROMPTS.md and the other way round). Report any mismatch rather than
+   editing history.
+5. **PROMPTS.md**: complete, in order, every outcome filled in.
+
+README claims about the owner or about results are the owner's decision (AGENTS.md, Decision
+rights item 3): draft them, then put them in one batched question with a recommendation each.
+
+## Definition of done
+
+Every assignment acceptance box is checked with its evidence, or listed as not done with the
+reason. `npm run typecheck` and `npm test` pass.
+
+## Rules that are easy to miss
+
+- When web docs and the installed type definitions disagree, the installed types win.
+- No `wrangler deploy`, `wrangler secret put`, `wrangler login` or `gh pr merge`: give the owner the
+  exact command and stop.
+- Decisions go at the end of docs/DECISIONS.md headed `## release: <decision>` with "Decided by:
+  Release engineer under standing orders".
+- Plain ASCII in docs and comments. Small conventional commits, no co-author footers.
+
+## Review loop and finishing
+
+1. Rebase on origin/main, run the done-contract commands, push `feat/release` to origin and open
+   the PR with the evidence from docs/agent/verification.md, ending with VERIFIED and NOT VERIFIED
+   lines.
+2. Codex reviews it headless (docs/agent/cross-review.md): write the review prompt to
+   `prompt-history/prompts/06b-release-review-r1.md` (then `06c-...-r2`, `06d-...-r3`), log it in
+   PROMPTS.md with role "automated cross-review", and run
+   `codex exec -c model_reasoning_effort=high -o <scratch>/review-r1.md "$(cat <prompt-file>)"`.
+3. Fix or rebut each finding, push, post the round summary on the PR. Two full rounds, a third on
+   the delta only, then stop. Anything still disputed goes to the owner as a FOR ANNA list with
+   both positions.
+4. Never merge; the owner merges.
+````
+
+## 46. Owner answer: merge main, do not rebase (typed mid-session)
+
+- Timestamp: 2026-09-30T19:01:42-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06i-release-owner-merge-not-rebase.md
+- Outcome: (pending)
+
+````text
+Merging main into feat/release in phase 2 is fine, and no rebase is needed since PRs are
+squash-merged. When main comes back in, keep one copy of each duplicated PROMPTS.md entry.
+````
+
+## 47. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)
+
+- Timestamp: 2026-09-30T19:24:33-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06j-release-owner-pr9-merged.md
+- Outcome: (pending)
+
+````text
+Merged #9. You're right: the production fixes come in a separate agent-fixes PR, still to come.
+````
+
+## 48. Owner: WSL restart recovery (typed mid-session)
+
+- Timestamp: 2026-09-30T23:00:59-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06k-release-owner-wsl-restart.md
+- Outcome: (pending)
+
+````text
+WSL restarted while you were working, so every process you started is gone: dev servers,
+background terminals and any no-mistakes run in progress. Before continuing, check git status and
+your branch against origin, redo any step that was cut off, and check any gate run with the
+recovery steps in docs/agent/no-mistakes.md rather than restarting the daemon with --force. If
+your open PR conflicts with main, merge main into your branch and keep both sides of
+docs/DECISIONS.md. Then report where you are.
+````
+
+## 49. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)
+
+- Timestamp: 2026-09-30T23:14:09-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06l-release-owner-pr10-pr11.md
+- Outcome: (pending)
+
+````text
+A1: the evals lane handles #10. #11 is merged, so update the README cost section and its estimate
+in phase 2.
+````
+
+## 50. Owner: start phase 2 (typed mid-session)
+
+- Timestamp: 2026-10-01T00:06:13-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06m-release-phase2-start.md
+- Outcome: (pending)
+
+````text
+#12 (production fixes) and #10 are merged, and I have redeployed main. Start phase 2. Additions:
+- First recheck the credit flow through the UI on the live site (the confirmation shows the real
+  invoice id, no error after confirming, credit applied, audit visible), with wrangler tail
+  running; record any "internal error ... reference" lines you see.
+- The credential-free test run times out intermittently under load. Reviewers will run npm test,
+  so make it reliable (a suite timeout or less parallelism) without weakening any assertion.
+- Keep the top of the README scannable in 30 seconds (pitch, demo link, 5-step demo script), and
+  add a short "How this was built" section linking five moments where I made a call: D-20
+  confirmation on /turn, the debit vs card-payment correction, npm test checking the harness not
+  the model, the deterministic anomaly check, and the per-IP cap change.
+- I may rename the repository to start with cf_ai_ before submitting; keep repository links in one
+  place in the README.
 ````
