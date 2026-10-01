@@ -935,3 +935,18 @@ returned by `getAccount`. Reason: give the model the exact value it needs to rec
 a dead end. Not chosen: guessing the intended invoice server-side (no reliable signal).
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: repair plan ids written in display case
+
+In the evals Llama 3.3 called `simulatePlan` with `plan_Pro` and `plan_Scale`; the contract's
+lowercase slug rejects them, and it repeated `plan_Scale` after `getAccount` had returned
+`plan_scale`. The agent now passes `experimental_repairToolCall` to `streamText`: a `simulatePlan`
+call that fails input validation is rewritten only when its `planId` names exactly one of the
+customer's available plans (from the Ledger's `account` read), ignoring case, spaces, hyphens and
+the `plan_` prefix, by id or by name. The repaired input is then validated with the contract
+schema as usual; no match, or two matches, stays a validation error. The prompt also asks for the
+id copied exactly, in lowercase. Reason: the intent is unambiguous and the mapping is a lookup, not
+a guess; the contract stays strict. Not chosen: loosening the schema (frozen contract) or relying
+on the prompt alone (it already said to use availablePlans).
+
+Decided by: Agent fixes engineer under standing orders.

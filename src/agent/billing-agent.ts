@@ -35,6 +35,7 @@ import { historyForModel } from "./history";
 import { billingModel, newTurnStats, type TurnStats } from "./model";
 import { EMPTY_MEMORY, systemPrompt, type Memory } from "./prompt";
 import { AnomalyChecks } from "./anomalies";
+import { planIdRepair } from "./repair";
 import { collectEvidence } from "./grounding";
 import { guardReply, type GroundingRecord } from "./guard";
 import { ToolProvenance } from "./provenance";
@@ -477,6 +478,10 @@ export class BillingAgent extends AIChatAgent<Env> {
           messages,
           tools,
           prepareStep: checks.prepareStep,
+          experimental_repairToolCall: planIdRepair(async () => {
+            const account = await ledger.account(customerId);
+            return account.ok ? account.value.availablePlans : [];
+          }),
           onStepFinish: (step) =>
             this.provenance.recordStep(
               step.toolCalls,

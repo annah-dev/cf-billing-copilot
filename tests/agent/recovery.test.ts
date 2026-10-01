@@ -77,3 +77,73 @@ describe("invented invoice and line ids (request-tiers, tax-line)", () => {
     );
   });
 });
+
+describe("plan ids in display case (pro-simulation, scale-simulation)", () => {
+  it("maps plan_Pro to the customer's plan_pro and runs the simulation", async () => {
+    const sb = await createSandbox();
+    stubAi([
+      toolCall("simulatePlan", { period: "2026-09", planId: "plan_Pro" }),
+      text("On Pro it would be $350.00."),
+    ]);
+    const body = await turnOk(
+      sb.sandboxId,
+      "What would September cost on Pro?",
+    );
+    expect(body.toolCalls).toHaveLength(1);
+    expect(body.toolCalls[0].input).toEqual({
+      period: "2026-09",
+      planId: "plan_pro",
+    });
+    expect(body.toolCalls[0].error).toBeNull();
+    expect(body.toolCalls[0].output).toMatchObject({
+      simulatedPlanId: "plan_pro",
+      simulatedTotal: { display: "$350.00" },
+    });
+    expect(body.text).toBe("On Pro it would be $350.00.");
+  });
+
+  it("maps a bare plan name too", async () => {
+    const sb = await createSandbox();
+    stubAi([
+      toolCall("simulatePlan", { period: "2026-09", planId: "Pro" }),
+      text("Done."),
+    ]);
+    const body = await turnOk(sb.sandboxId, "What about Pro?");
+    expect(body.toolCalls[0].input).toEqual({
+      period: "2026-09",
+      planId: "plan_pro",
+    });
+    expect(body.toolCalls[0].error).toBeNull();
+  });
+
+  it("leaves a plan the customer cannot choose as a validation error", async () => {
+    const sb = await createSandbox();
+    stubAi([
+      toolCall("simulatePlan", {
+        period: "2026-09",
+        planId: "plan_Enterprise",
+      }),
+      text("I could not simulate that plan."),
+    ]);
+    const body = await turnOk(sb.sandboxId, "What about Enterprise?");
+    expect(body.toolCalls[0].output).toBeNull();
+    expect(body.toolCalls[0].error).toMatch(
+      /^Invalid input for tool simulatePlan/,
+    );
+  });
+
+  it("matches only one plan, ignoring case, spaces and the plan_ prefix", async () => {
+    const { matchPlanId } = await import("../../src/agent/repair");
+    const plans = [
+      { planId: "plan_pro", name: "Pro" },
+      { planId: "plan_pro_plus", name: "Pro Plus" },
+    ];
+    expect(matchPlanId("plan_Pro", plans)).toBe("plan_pro");
+    expect(matchPlanId("Pro Plus", plans)).toBe("plan_pro_plus");
+    expect(matchPlanId("plan_Pro_Plus", plans)).toBe("plan_pro_plus");
+    expect(matchPlanId("plan_Scale", plans)).toBeNull();
+    expect(
+      matchPlanId("pro", [...plans, { planId: "plan_x", name: "PRO" }]),
+    ).toBeNull();
+  });
+});
