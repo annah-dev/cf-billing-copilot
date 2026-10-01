@@ -5,11 +5,11 @@ graded by the evals PR's harness and grader (unchanged). The harness writes into
 outputs were copied here and `evals/` was restored, so this lane changes nothing under `evals/`.
 Estimated neurons use the pinned `estimateNeurons` on reported token totals, not meter readings.
 
-| Run (UTC) | Code | Coverage | Result | Model calls | Est. neurons |
-|---|---|---|---|---|---|
-| Baseline, evals lane, 2026-09-30 20:42:51 | main | 15 cases, full set | 9/15 | 46 | 3,687 |
-| 2026-10-01 00:17:49, failing-only | guard and fixes, before the empty-tools fix | the 7 then-failing cases, once each | 6/7 | 19 | 1,585 |
-| 2026-10-01 00:20:33, full set | HEAD at the time (all fixes) | 15 planned, 13 completed | 13/13 completed pass (13/15 planned) | 34 | 2,946 |
+| Run (UTC)                                 | Code                                        | Coverage                            | Result                               | Model calls | Est. neurons |
+| ----------------------------------------- | ------------------------------------------- | ----------------------------------- | ------------------------------------ | ----------- | ------------ |
+| Baseline, evals lane, 2026-09-30 20:42:51 | main                                        | 15 cases, full set                  | 9/15                                 | 46          | 3,687        |
+| 2026-10-01 00:17:49, failing-only         | guard and fixes, before the empty-tools fix | the 7 then-failing cases, once each | 6/7                                  | 19          | 1,585        |
+| 2026-10-01 00:20:33, full set             | HEAD at the time (all fixes)                | 15 planned, 13 completed            | 13/13 completed pass (13/15 planned) | 34          | 2,946        |
 
 The full run stopped with `cap_reached` before remember-credit and expired-credit-history: the
 product's own per-IP sandbox cap (`SANDBOXES_PER_DAY_PER_IP` = 5; local dev has one IP) had been
