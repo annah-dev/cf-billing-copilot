@@ -5,6 +5,7 @@ import {
   type AdminCreditRequestsResponse
 } from "../contracts/http";
 import {
+  awaitingWorkflow,
   browserStorage,
   parseAdminFragment,
   readSession,
@@ -12,6 +13,10 @@ import {
   type SessionMode
 } from "../ui/api";
 import { CreditStatus, ErrorNotice } from "../ui/components";
+// After a decision the Workflow applies or rejects the request a moment later; re-fetch a few
+// times so the card shows the outcome, without polling against the daily request cap.
+const FOLLOW_UP_ATTEMPTS = 5;
+const FOLLOW_UP_DELAY_MS = 1000;
 function getCredentials(sessionMode: SessionMode) {
   try {
     const fragment = parseAdminFragment(window.location.hash);
@@ -67,6 +72,7 @@ export function Admin({
   const [notice, setNotice] = useState("");
   const generation = useRef(0);
   const deciding = useRef(false);
+  const mounted = useRef(true);
   const refresh = useCallback(async () => {
     if (!credentials) return;
     const current = ++generation.current;
@@ -79,15 +85,18 @@ export function Admin({
       if (current === generation.current) {
         setData(next);
         setError(null);
+        return next;
       }
     } catch (failure) {
       if (current === generation.current) setError(failure);
     } finally {
       if (current === generation.current) setBusy(false);
     }
+    return null;
   }, [api, credentials]);
   useEffect(() => {
     const requests = generation;
+    mounted.current = true;
     void refresh();
     const onFocus = () => {
       if (!deciding.current) void refresh();
@@ -95,6 +104,7 @@ export function Admin({
     window.addEventListener("focus", onFocus);
     return () => {
       requests.current++;
+      mounted.current = false;
       window.removeEventListener("focus", onFocus);
     };
   }, [refresh]);
@@ -130,7 +140,17 @@ export function Admin({
           ? "This same decision was already recorded."
           : "Decision recorded. The workflow will complete the credit request."
       );
-      await refresh();
+      let latest = await refresh();
+      for (
+        let attempt = 0;
+        attempt < FOLLOW_UP_ATTEMPTS &&
+        mounted.current &&
+        latest?.requests.some((r) => r.id === requestId && awaitingWorkflow(r));
+        attempt++
+      ) {
+        await new Promise((done) => setTimeout(done, FOLLOW_UP_DELAY_MS));
+        latest = await refresh();
+      }
     } catch (failure) {
       setError(failure);
     } finally {

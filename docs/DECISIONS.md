@@ -891,3 +891,25 @@ of blocking other work; do not log in if wrangler authentication fails. Finish t
 gated push and PR, then stop. After the PR opens, preserve published feat/evals history for the
 agent-fixes lane unless the gate itself requires a rewrite, which must be reported. Reason: Anna
 is away for about five hours and merges on return. Decided by: Anna.
+
+## ui: Production builds default to the live API
+
+`apiMode` (src/ui/api.ts) picks the backend: a production build talks to the live API, the dev
+server shows the fixture preview, and `VITE_BILLING_API_MODE=live` or `=fixture` overrides either.
+This supersedes the default in "ui: Fixture transport and live handoff". Reason: the release smoke
+test found the deployed site serving the fixture preview, because the handoff to live was an
+opt-in build variable that the deploy command did not set; production must not depend on
+remembering it, while `npm run dev` stays free of model calls.
+
+Decided by: Anna.
+
+## ui: Admin re-fetches until the Workflow finishes a decision
+
+After a decision the admin page re-fetches the list up to 5 times, 1 second apart, while the
+decided request is still `approved` or `pending_approval` with a recorded decision, and stops at
+the first terminal state or when the page unmounts. Reason: the Workflow applies or rejects a
+moment after the decision is recorded, so the single re-fetch left the card on "approved" in
+production; a bounded follow-up shows the outcome without polling against the 200-request daily
+cap ("ui: Approval links and refresh boundaries").
+
+Decided by: Anna (the fix); bounds by Release engineer under standing orders.

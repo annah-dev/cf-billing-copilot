@@ -3,6 +3,8 @@ import { z } from "zod";
 import {
   ApiError,
   adminLink,
+  apiMode,
+  awaitingWorkflow,
   createApi,
   parseAdminFragment,
   readSession,
@@ -186,5 +188,49 @@ describe("error presentation", () => {
       title: "Unable to connect",
       code: null
     });
+  });
+});
+
+describe("backend mode", () => {
+  it("talks to the live API in a production build by default", () => {
+    expect(apiMode({ DEV: false })).toBe("live");
+    expect(apiMode({ DEV: false, VITE_BILLING_API_MODE: "" })).toBe("live");
+  });
+  it("keeps the fixture preview on the dev server by default", () => {
+    expect(apiMode({ DEV: true })).toBe("fixture");
+  });
+  it("lets VITE_BILLING_API_MODE override either default", () => {
+    expect(apiMode({ DEV: true, VITE_BILLING_API_MODE: "live" })).toBe("live");
+    expect(apiMode({ DEV: false, VITE_BILLING_API_MODE: "fixture" })).toBe(
+      "fixture"
+    );
+    expect(apiMode({ DEV: false, VITE_BILLING_API_MODE: "preview" })).toBe(
+      "live"
+    );
+  });
+});
+
+describe("admin follow-up after a decision", () => {
+  const decision = {
+    decision: "approve",
+    reason: "verified",
+    actor: "approver:x",
+    at: "2026-10-01T00:00:00.000Z"
+  };
+  it("waits while the Workflow has not finished a decided request", () => {
+    expect(awaitingWorkflow({ status: "approved", decision })).toBe(true);
+    expect(awaitingWorkflow({ status: "pending_approval", decision })).toBe(
+      true
+    );
+  });
+  it("stops at a terminal state or when no decision is recorded", () => {
+    for (const status of ["applied", "rejected", "expired"])
+      expect(awaitingWorkflow({ status, decision })).toBe(false);
+    expect(
+      awaitingWorkflow({ status: "pending_approval", decision: null })
+    ).toBe(false);
+    expect(awaitingWorkflow({ status: "requested", decision: null })).toBe(
+      false
+    );
   });
 });

@@ -97,6 +97,32 @@ export interface StoragePort {
 }
 export const SESSION_KEY = "billing-copilot.session.v2.fixture";
 export type SessionMode = "fixture" | "live";
+/**
+ * Which backend the UI talks to. A production build defaults to the live API; the dev server
+ * defaults to the fixture preview, which makes no model calls. VITE_BILLING_API_MODE set to
+ * "live" or "fixture" overrides either default.
+ */
+export function apiMode(env: {
+  VITE_BILLING_API_MODE?: string;
+  DEV?: boolean;
+}): SessionMode {
+  const mode = env.VITE_BILLING_API_MODE;
+  if (mode === "live" || mode === "fixture") return mode;
+  return env.DEV ? "fixture" : "live";
+}
+/**
+ * True while a decided credit request is still being finished by the Workflow: approved but not
+ * yet applied, or a decision recorded while the status still reads pending_approval.
+ */
+export function awaitingWorkflow(request: {
+  status: string;
+  decision: unknown;
+}): boolean {
+  return (
+    request.status === "approved" ||
+    (request.status === "pending_approval" && request.decision != null)
+  );
+}
 const sessionKey = (mode: SessionMode) =>
   mode === "fixture" ? SESSION_KEY : "billing-copilot.session.v1.live";
 export function readSession(
