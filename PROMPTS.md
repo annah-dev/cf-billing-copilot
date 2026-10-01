@@ -3374,13 +3374,180 @@ you suggest. End with:
     NOT VERIFIED: <what you could not check, and why>
 ````
 
-## 44. Release lane phase note
+## 44. Owner: start release phase 2 (typed mid-session)
+
+- Timestamp: 2026-10-01T00:06:13-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06m-release-phase2-start.md
+- Outcome: the test-timeout item is this PR; the other items are handled in the release PR (feat/release).
+
+````text
+#12 (production fixes) and #10 are merged, and I have redeployed main. Start phase 2. Additions:
+- First recheck the credit flow through the UI on the live site (the confirmation shows the real
+  invoice id, no error after confirming, credit applied, audit visible), with wrangler tail
+  running; record any "internal error ... reference" lines you see.
+- The credential-free test run times out intermittently under load. Reviewers will run npm test,
+  so make it reliable (a suite timeout or less parallelism) without weakening any assertion.
+- Keep the top of the README scannable in 30 seconds (pitch, demo link, 5-step demo script), and
+  add a short "How this was built" section linking five moments where I made a call: D-20
+  confirmation on /turn, the debit vs card-payment correction, npm test checking the harness not
+  the model, the deterministic anomaly check, and the per-IP cap change.
+- I may rename the repository to start with cf_ai_ before submitting; keep repository links in one
+  place in the README.
+````
+
+## 45. Test timeouts PR cross-review, round 1
+
+- Timestamp: 2026-10-01T00:33:03-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06n-test-timeouts-review-r1.md
+- Outcome: CHANGES REQUESTED, 3 minor, all on evidence and rationale (implementation passed): npm ci evidence added; the UI test with its own 60 s timeout removed from the margin argument; the less-parallelism rationale softened. All accepted.
+
+````text
+# PR (fix/test-timeouts) cross-review, round 1 (full)
+
+You are reviewing a pull request in this repository, branch `fix/test-timeouts`, authored by
+Claude Code (release engineer) at the owner's request (prompt-history/prompts/06m-release-phase2-start.md:
+"The credential-free test run times out intermittently under load. Reviewers will run npm test,
+so make it reliable (a suite timeout or less parallelism) without weakening any assertion.").
+You are read-only: do not edit, commit, push, rebase or merge anything, and make no network or
+live model calls.
+
+The diff under review:
+
+    git diff origin/main...origin/fix/test-timeouts
+
+It changes vitest.config.ts, which AGENTS.md hard rule 4 freezes after the foundation PR; a change
+there is allowed only as its own PR to main, which this is. Check against AGENTS.md,
+docs/agent/cross-review.md ("What the reviewer checks"), docs/agent/verification.md and
+docs/DECISIONS.md (the new entry at the end).
+
+Focus on:
+
+1. Does the change weaken any gate? No assertion, skip, include pattern, setup file, pool option
+   or network guard may change; only `testTimeout` and `hookTimeout` (30 s) in both projects.
+   Confirm the collected tests are identical (`npx vitest list` at main and head).
+2. Is it effective? Vitest inline projects do not inherit root `test` options, so the values must
+   be set per project; are they applied in both? Would a hanging test now take 30 s to fail, and
+   is that acceptable? Do per-test timeouts already in tests (30 s, 60 s) still win?
+3. Is the evidence honest? The author could not reproduce a timeout on this machine (12 cores,
+   4 parallel runs, 1-core pinning, 2 runs on 1 core all passed) and justifies the change by the
+   margin of the slowest default-timeout test (about 3.4 to 3.6 s against 5 s) plus a probe test
+   (6 s) that fails at 5000 ms without the change and passes with it. Is the claim scoped
+   correctly in VERIFIED / NOT VERIFIED? Would less parallelism be the better fix?
+4. Rules: plain ASCII comment, DECISIONS entry appended with "Decided by", prompt log entries.
+
+You may run `npm ci`, `npm run typecheck`, `npm test` and `npx vitest list` in a scratch copy if
+your sandbox allows it; say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
+severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 46. Test timeouts PR cross-review, round 2
+
+- Timestamp: 2026-10-01T00:40:25-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06o-test-timeouts-review-r2.md
+- Outcome: APPROVE, no findings: both projects at 30 s, no gate changed, identical 484-test collection; the reviewer's own probes failed on main at the 5000 ms test and 10000 ms hook defaults and passed on the head.
+
+````text
+# PR (fix/test-timeouts) cross-review, round 2 (full)
+
+You are reviewing a pull request in this repository, branch `fix/test-timeouts`, authored by
+Claude Code (release engineer) at the owner's request (prompt-history/prompts/06m-release-phase2-start.md:
+"The credential-free test run times out intermittently under load. Reviewers will run npm test,
+so make it reliable (a suite timeout or less parallelism) without weakening any assertion.").
+You are read-only: do not edit, commit, push, rebase or merge anything, and make no network or
+live model calls.
+
+The diff under review:
+
+    git diff origin/main...origin/fix/test-timeouts
+
+It changes vitest.config.ts, which AGENTS.md hard rule 4 freezes after the foundation PR; a change
+there is allowed only as its own PR to main, which this is. Check against AGENTS.md,
+docs/agent/cross-review.md ("What the reviewer checks"), docs/agent/verification.md and
+docs/DECISIONS.md (the new entry at the end).
+
+Focus on:
+
+1. Does the change weaken any gate? No assertion, skip, include pattern, setup file, pool option
+   or network guard may change; only `testTimeout` and `hookTimeout` (30 s) in both projects.
+   Confirm the collected tests are identical (`npx vitest list` at main and head).
+2. Is it effective? Vitest inline projects do not inherit root `test` options, so the values must
+   be set per project; are they applied in both? Would a hanging test now take 30 s to fail, and
+   is that acceptable? Do per-test timeouts already in tests (30 s, 60 s) still win?
+3. Is the evidence honest? The author could not reproduce a timeout on this machine (12 cores,
+   4 parallel runs, 1-core pinning, 2 runs on 1 core all passed) and justifies the change by the
+   margin of the slowest default-timeout test (about 3.4 to 3.6 s against 5 s) plus a probe test
+   (6 s) that fails at 5000 ms without the change and passes with it. Is the claim scoped
+   correctly in VERIFIED / NOT VERIFIED? Would less parallelism be the better fix?
+4. Rules: plain ASCII comment, DECISIONS entry appended with "Decided by", prompt log entries.
+
+Round 1 (prompt 06n) requested changes, all on evidence and rationale; the author accepted all
+three: (1) the PR body now carries `npm ci` evidence; (2) the UI live-chat test, which sets its
+own 60 s timeout, is no longer cited as relying on the 5 s default; (3) the DECISIONS entry no
+longer says less parallelism cannot help a slow test; it says contention was not reproduced and
+timeout headroom keeps current concurrency. Re-check each round-1 item, then review the whole diff
+again as a full round. The current PR body is available with `gh pr view 13` if your sandbox has
+network; otherwise say so.
+
+You may run `npm ci`, `npm run typecheck`, `npm test` and `npx vitest list` in a scratch copy if
+your sandbox allows it; say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
+severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 47. Test timeouts PR cross-review, round 3 (delta only)
+
+- Timestamp: 2026-10-01T00:46:14-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06p-test-timeouts-review-r3-delta.md
+- Outcome: APPROVE, no findings: the delta only records review outcomes; logged prompts match their sources byte for byte. Review loop for PR #13 complete; the owner merges.
+
+````text
+# PR #13 (fix/test-timeouts) cross-review, round 3 (delta only)
+
+You are reviewing pull request #13, branch `fix/test-timeouts`, for the third and last round,
+covering only the changes since round 2. You are read-only: do not edit, commit, push, rebase or
+merge anything, and make no network or live model calls.
+
+Round 2 (prompt-history/prompts/06o-test-timeouts-review-r2.md) reviewed head f4b253d59134c20309182e13d3431553d83ffaeb and approved
+with no findings. The delta under review:
+
+    git diff f4b253d59134c20309182e13d3431553d83ffaeb..origin/fix/test-timeouts
+
+It should contain only prompt-history and PROMPTS.md records: the round-2 outcome and this
+round-3 prompt. Check that the delta changes no code, configuration or test; that the logged text
+matches its source files verbatim; and that every entry has a timestamp, role, harness, source and
+outcome. Report a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first,
+each with severity, file and line, what is wrong and the fix. End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 48. Release lane phase note
 
 - Timestamp: 2026-09-30T16:58:44-07:00
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06a-release-phase-note.md
-- Outcome: Phase 1: reviewed main (no secrets, no money math outside the engine, auth on every route); smoke-tested the live site by curl and, because the deployed UI was a fixture build, through a live-mode bundle against production; drafted the README; built the transcript export. Production findings went to PR #9 (UI) and PR #12 (agent). Phase 2 is entry 50.
+- Outcome: Phase 1: reviewed main (no secrets, no money math outside the engine, auth on every route); smoke-tested the live site by curl and, because the deployed UI was a fixture build, through a live-mode bundle against production; drafted the README; built the transcript export. Production findings went to PR #9 (UI) and PR #12 (agent). Phase 2 is the owner's phase 2 start note (entry 44, 06m).
 
 ````text
 Note first, then follow prompt-history/prompts/06-release.md as your lane prompt, including logging it in PROMPTS.md.
@@ -3391,13 +3558,13 @@ Phase 1, now: Main is deployed at https://cf-billing-copilot.anna-hester.workers
 Phase 2, after I tell you the evals and agent-fixes PRs have merged: I redeploy, you rerun eval:live against the deployed URL once, put that pass rate and its date in the README, finish the export and the PROMPTS.md cross-check, and open the release PR.
 ````
 
-## 45. Release lane kickoff
+## 49. Release lane kickoff
 
 - Timestamp: 2026-09-30T16:58:44-07:00
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06-release.md
-- Outcome: Release PR #14: README with every assignment section, deployed eval run (11/15 on 2026-10-01), scrubbed transcripts with the PROMPTS.md cross-check and time-order index, late entries 51 to 57. At the owner's request also PR #9 (UI live default, admin follow-up) and PR #13 (30 s test timeouts). Cross-review rounds for #14 follow this entry.
+- Outcome: Release PR #14: README with every assignment section, deployed eval run (11/15 on 2026-10-01), scrubbed transcripts with the PROMPTS.md cross-check and time-order index, late entries 54 to 60. At the owner's request also PR #9 (UI live default, admin follow-up) and PR #13 (30 s test timeouts). Cross-review rounds for #14 follow this entry.
 
 ````text
 # 06 - Release lane kickoff
@@ -3482,7 +3649,7 @@ reason. `npm run typecheck` and `npm test` pass.
 4. Never merge; the owner merges.
 ````
 
-## 46. Owner answer: merge main, do not rebase (typed mid-session)
+## 50. Owner answer: merge main, do not rebase (typed mid-session)
 
 - Timestamp: 2026-09-30T19:01:42-07:00
 - Role: Reviewer and release engineer
@@ -3495,7 +3662,7 @@ Merging main into feat/release in phase 2 is fine, and no rebase is needed since
 squash-merged. When main comes back in, keep one copy of each duplicated PROMPTS.md entry.
 ````
 
-## 47. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)
+## 51. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)
 
 - Timestamp: 2026-09-30T19:24:33-07:00
 - Role: Reviewer and release engineer
@@ -3507,7 +3674,7 @@ squash-merged. When main comes back in, keep one copy of each duplicated PROMPTS
 Merged #9. You're right: the production fixes come in a separate agent-fixes PR, still to come.
 ````
 
-## 48. Owner: WSL restart recovery (typed mid-session)
+## 52. Owner: WSL restart recovery (typed mid-session)
 
 - Timestamp: 2026-09-30T23:00:59-07:00
 - Role: Reviewer and release engineer
@@ -3524,7 +3691,7 @@ your open PR conflicts with main, merge main into your branch and keep both side
 docs/DECISIONS.md. Then report where you are.
 ````
 
-## 49. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)
+## 53. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)
 
 - Timestamp: 2026-09-30T23:14:09-07:00
 - Role: Reviewer and release engineer
@@ -3537,30 +3704,7 @@ A1: the evals lane handles #10. #11 is merged, so update the README cost section
 in phase 2.
 ````
 
-## 50. Owner: start phase 2 (typed mid-session)
-
-- Timestamp: 2026-10-01T00:06:13-07:00
-- Role: Reviewer and release engineer
-- Harness: Claude Code
-- Source: prompt-history/prompts/06m-release-phase2-start.md
-- Outcome: Live UI recheck passed with wrangler tail (no internal-error lines; panel needs a manual Refresh after confirming); PR #13 for test timeouts; README top, five owner calls and one Links block; eval:live once, 11/15; release PR #14.
-
-````text
-#12 (production fixes) and #10 are merged, and I have redeployed main. Start phase 2. Additions:
-- First recheck the credit flow through the UI on the live site (the confirmation shows the real
-  invoice id, no error after confirming, credit applied, audit visible), with wrangler tail
-  running; record any "internal error ... reference" lines you see.
-- The credential-free test run times out intermittently under load. Reviewers will run npm test,
-  so make it reliable (a suite timeout or less parallelism) without weakening any assertion.
-- Keep the top of the README scannable in 30 seconds (pitch, demo link, 5-step demo script), and
-  add a short "How this was built" section linking five moments where I made a call: D-20
-  confirmation on /turn, the debit vs card-payment correction, npm test checking the harness not
-  the model, the deterministic anomaly check, and the per-IP cap change.
-- I may rename the repository to start with cf_ai_ before submitting; keep repository links in one
-  place in the README.
-````
-
-## 51. UI owner answer: preserve the old head and synchronize (typed mid-session, logged late)
+## 54. UI owner answer: preserve the old head and synchronize (typed mid-session, logged late)
 
 - Timestamp: 2026-09-30T03:09:35.508Z
 - Role: Frontend engineer
@@ -3574,7 +3718,7 @@ in phase 2.
 </send_user_message_question_reply>
 ````
 
-## 52. Evals owner answer: base URL, local dev and budget (typed mid-session, logged late)
+## 55. Evals owner answer: base URL, local dev and budget (typed mid-session, logged late)
 
 - Timestamp: 2026-09-30T20:31:39.302Z
 - Role: QA / evals engineer
@@ -3588,7 +3732,7 @@ in phase 2.
 </send_user_message_question_reply>
 ````
 
-## 53. Agent fixes owner answer A1 (typed mid-session, logged late)
+## 56. Agent fixes owner answer A1 (typed mid-session, logged late)
 
 - Timestamp: 2026-10-01T01:34:36.299Z
 - Role: Agent fixes engineer
@@ -3600,7 +3744,7 @@ in phase 2.
 A1. Yes, those instructions are mine. Force-push feat/agent-fixes, run the two questions once, and start the second PR after #8 merges.
 ````
 
-## 54. Agent fixes: release-lane pointers pasted by the owner (typed mid-session, logged late)
+## 57. Agent fixes: release-lane pointers pasted by the owner (typed mid-session, logged late)
 
 - Timestamp: 2026-10-01T02:00:37.251Z
 - Role: Agent fixes engineer
@@ -3620,7 +3764,7 @@ Pointers from the release lane for your second PR (hints, not decisions; verify 
 </pasted_content id="62fd">
 ````
 
-## 55. Agent fixes owner answer A3: merge main, remember-credit run (typed mid-session, logged late)
+## 58. Agent fixes owner answer A3: merge main, remember-credit run (typed mid-session, logged late)
 
 - Timestamp: 2026-10-01T06:12:46.274Z
 - Role: Agent fixes engineer
@@ -3634,7 +3778,7 @@ cap of 20 in local dev, and include its result in PR B. Then continue PR B's Cod
 UI recheck, and open it when done.
 ````
 
-## 56. Evals owner note: recover the PR #10 gate run after the WSL restart (typed mid-session, logged late)
+## 59. Evals owner note: recover the PR #10 gate run after the WSL restart (typed mid-session, logged late)
 
 - Timestamp: 2026-10-01T06:13:43.476Z
 - Role: QA / evals engineer
@@ -3649,7 +3793,7 @@ restarting the daemon with --force. Merge main into fix/evals-figures-simulation
 of docs/DECISIONS.md, rerun the gate, and tell me when #10 is ready.
 ````
 
-## 57. Agent fixes owner note: guard follows the grader's ordinal rule (typed mid-session, logged late)
+## 60. Agent fixes owner note: guard follows the grader's ordinal rule (typed mid-session, logged late)
 
 - Timestamp: 2026-10-01T06:38:35.547Z
 - Role: Agent fixes engineer
@@ -3679,8 +3823,7 @@ points to where each outcome is:
 | 2026-09-30T13:33:04-07:00 - Evals local dev target and budget | 2026-09-30T14:04:40-07:00 - Evals local capture outcome |
 | 2026-09-30T14:54:53-07:00 - Evals harness verdict tests and failure analysis | 2026-09-30T15:11:47-07:00 - Verdict-test redesign outcome before gate |
 
-
-## 58. Release PR #14 cross-review, round 1
+## 61. Release PR #14 cross-review, round 1
 
 - Timestamp: 2026-10-01T01:03:08-07:00
 - Role: automated cross-review
@@ -3739,150 +3882,6 @@ sandbox allows; do not run the export itself, which writes files. Say which you 
 Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
 severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
 with:
-
-    VERIFIED:     <what you ran and observed>
-    NOT VERIFIED: <what you did not exercise, and why>
-````
-
-## 59. Test timeouts PR cross-review, round 1
-
-- Timestamp: 2026-10-01T00:33:03-07:00
-- Role: automated cross-review
-- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
-- Source: prompt-history/prompts/06n-test-timeouts-review-r1.md
-- Outcome: CHANGES REQUESTED, 3 minor, all on evidence and rationale (implementation passed): npm ci evidence added; the UI test with its own 60 s timeout removed from the margin argument; the less-parallelism rationale softened. All accepted.
-
-````text
-# PR (fix/test-timeouts) cross-review, round 1 (full)
-
-You are reviewing a pull request in this repository, branch `fix/test-timeouts`, authored by
-Claude Code (release engineer) at the owner's request (prompt-history/prompts/06m-release-phase2-start.md:
-"The credential-free test run times out intermittently under load. Reviewers will run npm test,
-so make it reliable (a suite timeout or less parallelism) without weakening any assertion.").
-You are read-only: do not edit, commit, push, rebase or merge anything, and make no network or
-live model calls.
-
-The diff under review:
-
-    git diff origin/main...origin/fix/test-timeouts
-
-It changes vitest.config.ts, which AGENTS.md hard rule 4 freezes after the foundation PR; a change
-there is allowed only as its own PR to main, which this is. Check against AGENTS.md,
-docs/agent/cross-review.md ("What the reviewer checks"), docs/agent/verification.md and
-docs/DECISIONS.md (the new entry at the end).
-
-Focus on:
-
-1. Does the change weaken any gate? No assertion, skip, include pattern, setup file, pool option
-   or network guard may change; only `testTimeout` and `hookTimeout` (30 s) in both projects.
-   Confirm the collected tests are identical (`npx vitest list` at main and head).
-2. Is it effective? Vitest inline projects do not inherit root `test` options, so the values must
-   be set per project; are they applied in both? Would a hanging test now take 30 s to fail, and
-   is that acceptable? Do per-test timeouts already in tests (30 s, 60 s) still win?
-3. Is the evidence honest? The author could not reproduce a timeout on this machine (12 cores,
-   4 parallel runs, 1-core pinning, 2 runs on 1 core all passed) and justifies the change by the
-   margin of the slowest default-timeout test (about 3.4 to 3.6 s against 5 s) plus a probe test
-   (6 s) that fails at 5000 ms without the change and passes with it. Is the claim scoped
-   correctly in VERIFIED / NOT VERIFIED? Would less parallelism be the better fix?
-4. Rules: plain ASCII comment, DECISIONS entry appended with "Decided by", prompt log entries.
-
-You may run `npm ci`, `npm run typecheck`, `npm test` and `npx vitest list` in a scratch copy if
-your sandbox allows it; say which you ran.
-
-Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
-severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
-with:
-
-    VERIFIED:     <what you ran and observed>
-    NOT VERIFIED: <what you did not exercise, and why>
-````
-
-## 60. Test timeouts PR cross-review, round 2
-
-- Timestamp: 2026-10-01T00:40:25-07:00
-- Role: automated cross-review
-- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
-- Source: prompt-history/prompts/06o-test-timeouts-review-r2.md
-- Outcome: APPROVE, no findings: both projects at 30 s, no gate changed, identical 484-test collection; the reviewer's own probes failed on main at the 5000 ms test and 10000 ms hook defaults and passed on the head.
-
-````text
-# PR (fix/test-timeouts) cross-review, round 2 (full)
-
-You are reviewing a pull request in this repository, branch `fix/test-timeouts`, authored by
-Claude Code (release engineer) at the owner's request (prompt-history/prompts/06m-release-phase2-start.md:
-"The credential-free test run times out intermittently under load. Reviewers will run npm test,
-so make it reliable (a suite timeout or less parallelism) without weakening any assertion.").
-You are read-only: do not edit, commit, push, rebase or merge anything, and make no network or
-live model calls.
-
-The diff under review:
-
-    git diff origin/main...origin/fix/test-timeouts
-
-It changes vitest.config.ts, which AGENTS.md hard rule 4 freezes after the foundation PR; a change
-there is allowed only as its own PR to main, which this is. Check against AGENTS.md,
-docs/agent/cross-review.md ("What the reviewer checks"), docs/agent/verification.md and
-docs/DECISIONS.md (the new entry at the end).
-
-Focus on:
-
-1. Does the change weaken any gate? No assertion, skip, include pattern, setup file, pool option
-   or network guard may change; only `testTimeout` and `hookTimeout` (30 s) in both projects.
-   Confirm the collected tests are identical (`npx vitest list` at main and head).
-2. Is it effective? Vitest inline projects do not inherit root `test` options, so the values must
-   be set per project; are they applied in both? Would a hanging test now take 30 s to fail, and
-   is that acceptable? Do per-test timeouts already in tests (30 s, 60 s) still win?
-3. Is the evidence honest? The author could not reproduce a timeout on this machine (12 cores,
-   4 parallel runs, 1-core pinning, 2 runs on 1 core all passed) and justifies the change by the
-   margin of the slowest default-timeout test (about 3.4 to 3.6 s against 5 s) plus a probe test
-   (6 s) that fails at 5000 ms without the change and passes with it. Is the claim scoped
-   correctly in VERIFIED / NOT VERIFIED? Would less parallelism be the better fix?
-4. Rules: plain ASCII comment, DECISIONS entry appended with "Decided by", prompt log entries.
-
-Round 1 (prompt 06n) requested changes, all on evidence and rationale; the author accepted all
-three: (1) the PR body now carries `npm ci` evidence; (2) the UI live-chat test, which sets its
-own 60 s timeout, is no longer cited as relying on the 5 s default; (3) the DECISIONS entry no
-longer says less parallelism cannot help a slow test; it says contention was not reproduced and
-timeout headroom keeps current concurrency. Re-check each round-1 item, then review the whole diff
-again as a full round. The current PR body is available with `gh pr view 13` if your sandbox has
-network; otherwise say so.
-
-You may run `npm ci`, `npm run typecheck`, `npm test` and `npx vitest list` in a scratch copy if
-your sandbox allows it; say which you ran.
-
-Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
-severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
-with:
-
-    VERIFIED:     <what you ran and observed>
-    NOT VERIFIED: <what you did not exercise, and why>
-````
-
-## 61. Test timeouts PR cross-review, round 3 (delta only)
-
-- Timestamp: 2026-10-01T00:46:14-07:00
-- Role: automated cross-review
-- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
-- Source: prompt-history/prompts/06p-test-timeouts-review-r3-delta.md
-- Outcome: APPROVE, no findings: the delta only records review outcomes; logged prompts match their sources byte for byte. Review loop for PR #13 complete; the owner merges.
-
-````text
-# PR #13 (fix/test-timeouts) cross-review, round 3 (delta only)
-
-You are reviewing pull request #13, branch `fix/test-timeouts`, for the third and last round,
-covering only the changes since round 2. You are read-only: do not edit, commit, push, rebase or
-merge anything, and make no network or live model calls.
-
-Round 2 (prompt-history/prompts/06o-test-timeouts-review-r2.md) reviewed head f4b253d59134c20309182e13d3431553d83ffaeb and approved
-with no findings. The delta under review:
-
-    git diff f4b253d59134c20309182e13d3431553d83ffaeb..origin/fix/test-timeouts
-
-It should contain only prompt-history and PROMPTS.md records: the round-2 outcome and this
-round-3 prompt. Check that the delta changes no code, configuration or test; that the logged text
-matches its source files verbatim; and that every entry has a timestamp, role, harness, source and
-outcome. Report a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first,
-each with severity, file and line, what is wrong and the fix. End with:
 
     VERIFIED:     <what you ran and observed>
     NOT VERIFIED: <what you did not exercise, and why>
@@ -3970,6 +3969,30 @@ severity, file and line, what is wrong and the fix. End with:
     NOT VERIFIED: <what you did not exercise, and why>
 ````
 
+## 64. Owner: C1 A1 B1 with changes, and the architecture diagram (typed mid-session)
+
+- Timestamp: 2026-10-01T03:07:31-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06x-release-owner-c1-a1-b1-diagram.md
+- Outcome: (pending)
+
+````text
+C1 A1 B1, with changes.
+
+C1: I merged #13. Merge origin/main into feat/release (merge, not rebase). Keep both sides of the PROMPTS.md and DECISIONS.md conflicts, with #13's entries once. Push and tell me when CI is green on #14.
+
+After I merge #14, open one follow-up PR from a fresh origin/main covering A, B and the diagram, with the usual three-round Codex review:
+
+A1: after the customer confirms a credit, refresh the panel on a short bounded schedule (at most 5 reads) until the request leaves "requested". Keep the focus refresh. Remove the manual Refresh from README demo steps 4 and 5 and from the release checklist.
+
+B1, but pass { idempotent: false }, not true. Reason: the SDK's idempotent mode matches callback and payload and ignores the time. When idleSweep runs from the alarm, its own row still exists until the callback returns, so an idempotent re-arm would return that row and the sandbox would never be swept again. armIdleSweep already keeps exactly one pending row; false only silences the warning. Add a test that fires the sweep through the alarm path with recent activity and checks that one future idleSweep remains.
+
+Diagram: copy cf-billing-copilot-architecture.excalidraw and cf-billing-copilot-architecture.svg from my Windows Downloads folder into docs/ as architecture.excalidraw and architecture.svg (chmod 644). Embed the SVG in the README Architecture section and at the top of docs/ARCHITECTURE.md, keeping the Mermaid. Note that the source opens at excalidraw.com. Check every label against the code and list anything wrong rather than editing the SVG. Log it in PROMPTS.md as drawn with Claude (Cowork); my prompt was "I'd like to include an architecture diagram built in excalidraw for the project. Build it for me".
+
+End the PR with one final transcript export so the prompt history covers this work too.
+````
+
 ## Chronological index
 
 Every entry in this file in time order (UTC), generated by `node scripts/export-transcripts.mjs --prompts-index` at the release pass. Lanes appended in parallel, so file order is not time order.
@@ -4013,7 +4036,7 @@ Every entry in this file in time order (UTC), generated by `node scripts/export-
 | 35 | 2026-09-30 02:26 | [18. /turn confirmation answer (A3) and live evidence (typed mid-session)](#18-turn-confirmation-answer-a3-and-live-evidence-typed-mid-session) | `prompt-history/prompts/03f-agent-owner-turn-confirm-and-live.md` |
 | 36 | 2026-09-30 02:29 | [19. Contract PR #6 cross-review (turn confirm, D-20)](#19-contract-pr-6-cross-review-turn-confirm-d-20) | `prompt-history/prompts/03g-agent-contract-pr6-review.md` |
 | 37 | 2026-09-30 02:35 | [20. Agent PR #4 cross-review, round 4 (delta only, owner-requested)](#20-agent-pr-4-cross-review-round-4-delta-only-owner-requested) | `prompt-history/prompts/03h-agent-review-r4-delta.md` |
-| 38 | 2026-09-30 03:09 | [51. UI owner answer: preserve the old head and synchronize (typed mid-session, logged late)](#51-ui-owner-answer-preserve-the-old-head-and-synchronize-typed-mid-session-logged-late) | `prompt-history/prompts/06q-late-ui-owner-sync-answer.md` |
+| 38 | 2026-09-30 03:09 | [54. UI owner answer: preserve the old head and synchronize (typed mid-session, logged late)](#54-ui-owner-answer-preserve-the-old-head-and-synchronize-typed-mid-session-logged-late) | `prompt-history/prompts/06q-late-ui-owner-sync-answer.md` |
 | 39 | 2026-09-30 03:10 | [19. UI shared-seed follow-up](#19-ui-shared-seed-follow-up) | `prompt-history/prompts/04d-ui-seed-followup.md` |
 | 40 | 2026-09-30 03:14 | [20. UI shared-seed gate intent](#20-ui-shared-seed-gate-intent) | `prompt-history/prompts/04h-ui-seed-gate-intent.md` |
 | 41 | 2026-09-30 03:20 | [21. UI shared-seed gate review, round 1](#21-ui-shared-seed-gate-review-round-1) | `prompt-history/prompts/04j-ui-seed-review-r1.md` |
@@ -4034,7 +4057,7 @@ Every entry in this file in time order (UTC), generated by `node scripts/export-
 | 56 | 2026-09-30 20:31 | [2026-09-30T13:31:37-07:00 - Evals historical gate review round 1](#2026-09-30t133137-0700---evals-historical-gate-review-round-1) | `prompt-history/prompts/05g-evals-gate-review-r1.md` |
 | 57 | 2026-09-30 20:31 | [2026-09-30T13:31:37-07:00 - Evals historical gate review round 2](#2026-09-30t133137-0700---evals-historical-gate-review-round-2) | `prompt-history/prompts/05g-evals-gate-review-r2.md` |
 | 58 | 2026-09-30 20:31 | [2026-09-30T13:31:37-07:00 - Evals historical gate review round 3](#2026-09-30t133137-0700---evals-historical-gate-review-round-3) | `prompt-history/prompts/05g-evals-gate-review-r3.md` |
-| 59 | 2026-09-30 20:31 | [52. Evals owner answer: base URL, local dev and budget (typed mid-session, logged late)](#52-evals-owner-answer-base-url-local-dev-and-budget-typed-mid-session-logged-late) | `prompt-history/prompts/06r-late-evals-owner-base-url-answer.md` |
+| 59 | 2026-09-30 20:31 | [55. Evals owner answer: base URL, local dev and budget (typed mid-session, logged late)](#55-evals-owner-answer-base-url-local-dev-and-budget-typed-mid-session-logged-late) | `prompt-history/prompts/06r-late-evals-owner-base-url-answer.md` |
 | 60 | 2026-09-30 20:33 | [2026-09-30T13:33:04-07:00 - Evals local dev target and budget](#2026-09-30t133304-0700---evals-local-dev-target-and-budget) | `prompt-history/prompts/05d-evals-local-dev-budget.md` |
 | 61 | 2026-09-30 20:46 | [30. UI agent-merge evidence refresh instruction](#30-ui-agent-merge-evidence-refresh-instruction) | `prompt-history/prompts/04r-ui-agent-merge-evidence-fix.md` |
 | 62 | 2026-09-30 20:46 | [31. UI agent-merge delta review provenance](#31-ui-agent-merge-delta-review-provenance) | `prompt-history/prompts/04s-ui-agent-merge-review.md` |
@@ -4051,8 +4074,8 @@ Every entry in this file in time order (UTC), generated by `node scripts/export-
 | 73 | 2026-09-30 23:52 | [2026-09-30T16:52:08-07:00 - Evals harness gate review round 2](#2026-09-30t165208-0700---evals-harness-gate-review-round-2) | `prompt-history/prompts/05g-evals-harness-review-r2.md` |
 | 74 | 2026-09-30 23:52 | [2026-09-30T16:52:08-07:00 - Evals gate grounding fix](#2026-09-30t165208-0700---evals-gate-grounding-fix) | `prompt-history/prompts/05m-evals-gate-grounding-fix.md` |
 | 75 | 2026-09-30 23:57 | [32. Agent fixes kickoff](#32-agent-fixes-kickoff) | `prompt-history/prompts/07-agent-fixes.md` |
-| 76 | 2026-09-30 23:58 | [44. Release lane phase note](#44-release-lane-phase-note) | `prompt-history/prompts/06a-release-phase-note.md` |
-| 77 | 2026-09-30 23:58 | [45. Release lane kickoff](#45-release-lane-kickoff) | `prompt-history/prompts/06-release.md` |
+| 76 | 2026-09-30 23:58 | [48. Release lane phase note](#48-release-lane-phase-note) | `prompt-history/prompts/06a-release-phase-note.md` |
+| 77 | 2026-09-30 23:58 | [49. Release lane kickoff](#49-release-lane-kickoff) | `prompt-history/prompts/06-release.md` |
 | 78 | 2026-10-01 00:00 | [2026-09-30T17:00:13-07:00 - Evals harness gate review round 3 (grounding delta only)](#2026-09-30t170013-0700---evals-harness-gate-review-round-3-grounding-delta-only) | `prompt-history/prompts/05n-evals-grounding-delta-review.md` |
 | 79 | 2026-10-01 00:00 | [2026-09-30T17:00:13-07:00 - Evals away standing orders](#2026-09-30t170013-0700---evals-away-standing-orders) | `prompt-history/prompts/05o-evals-away-standing-orders.md` |
 | 80 | 2026-10-01 00:26 | [33. Agent fixes cross-review, round 1](#33-agent-fixes-cross-review-round-1) | `prompt-history/prompts/07a-agent-fixes-review-r1.md` |
@@ -4060,7 +4083,7 @@ Every entry in this file in time order (UTC), generated by `node scripts/export-
 | 82 | 2026-10-01 00:57 | [35. Agent fixes cross-review, round 3 (delta only)](#35-agent-fixes-cross-review-round-3-delta-only) | `prompt-history/prompts/07c-agent-fixes-review-r3-delta.md` |
 | 83 | 2026-10-01 01:31 | [2026-09-30T18:31:21-07:00 - Owner answers to the release phase 1 report (typed mid-session)](#2026-09-30t183121-0700---owner-answers-to-the-release-phase-1-report-typed-mid-session) | `prompt-history/prompts/06e-release-owner-phase1-answers.md` |
 | 84 | 2026-10-01 01:32 | [2026-09-30T18:32:32-07:00 - Evals figures and simulation follow-up](#2026-09-30t183232-0700---evals-figures-and-simulation-follow-up) | `prompt-history/prompts/05p-evals-figures-simulation-followup.md` |
-| 85 | 2026-10-01 01:34 | [53. Agent fixes owner answer A1 (typed mid-session, logged late)](#53-agent-fixes-owner-answer-a1-typed-mid-session-logged-late) | `prompt-history/prompts/06t-late-agent-fixes-owner-a1.md` |
+| 85 | 2026-10-01 01:34 | [56. Agent fixes owner answer A1 (typed mid-session, logged late)](#56-agent-fixes-owner-answer-a1-typed-mid-session-logged-late) | `prompt-history/prompts/06t-late-agent-fixes-owner-a1.md` |
 | 86 | 2026-10-01 01:40 | [2026-09-30T18:40:16-07:00 - PR #9 cross-review, round 1](#2026-09-30t184016-0700---pr-9-cross-review-round-1) | `prompt-history/prompts/06f-ui-live-review-r1.md` |
 | 87 | 2026-10-01 01:42 | [2026-09-30T18:42:41-07:00 - Evals follow-up cross-review context](#2026-09-30t184241-0700---evals-follow-up-cross-review-context) | `prompt-history/prompts/05q-evals-followup-gate-context.md` |
 | 88 | 2026-10-01 01:47 | [36. Production chat fixes and rebase instructions (owner, mid-session)](#36-production-chat-fixes-and-rebase-instructions-owner-mid-session) | `prompt-history/prompts/08-prod-chat-fixes.md` |
@@ -4068,8 +4091,8 @@ Every entry in this file in time order (UTC), generated by `node scripts/export-
 | 90 | 2026-10-01 01:51 | [2026-09-30T18:51:14-07:00 - Evals follow-up review round 1](#2026-09-30t185114-0700---evals-follow-up-review-round-1) | `prompt-history/prompts/05g-evals-followup-review-r1.md` |
 | 91 | 2026-10-01 01:51 | [2026-09-30T18:51:14-07:00 - Evals follow-up cardinal-before-ordinal-label fix](#2026-09-30t185114-0700---evals-follow-up-cardinal-before-ordinal-label-fix) | `prompt-history/prompts/05r-evals-followup-cardinal-fix.md` |
 | 92 | 2026-10-01 01:55 | [2026-09-30T18:55:02-07:00 - PR #9 cross-review, round 2](#2026-09-30t185502-0700---pr-9-cross-review-round-2) | `prompt-history/prompts/06g-ui-live-review-r2.md` |
-| 93 | 2026-10-01 02:00 | [54. Agent fixes: release-lane pointers pasted by the owner (typed mid-session, logged late)](#54-agent-fixes-release-lane-pointers-pasted-by-the-owner-typed-mid-session-logged-late) | `prompt-history/prompts/06u-late-agent-fixes-release-pointers.md` |
-| 94 | 2026-10-01 02:01 | [46. Owner answer: merge main, do not rebase (typed mid-session)](#46-owner-answer-merge-main-do-not-rebase-typed-mid-session) | `prompt-history/prompts/06i-release-owner-merge-not-rebase.md` |
+| 93 | 2026-10-01 02:00 | [57. Agent fixes: release-lane pointers pasted by the owner (typed mid-session, logged late)](#57-agent-fixes-release-lane-pointers-pasted-by-the-owner-typed-mid-session-logged-late) | `prompt-history/prompts/06u-late-agent-fixes-release-pointers.md` |
+| 94 | 2026-10-01 02:01 | [50. Owner answer: merge main, do not rebase (typed mid-session)](#50-owner-answer-merge-main-do-not-rebase-typed-mid-session) | `prompt-history/prompts/06i-release-owner-merge-not-rebase.md` |
 | 95 | 2026-10-01 02:02 | [38. Sandbox IP cap cross-review, round 1](#38-sandbox-ip-cap-cross-review-round-1) | `prompt-history/prompts/08b-config-ip-cap-review-r1.md` |
 | 96 | 2026-10-01 02:07 | [2026-09-30T19:07:24-07:00 - Evals follow-up review round 2](#2026-09-30t190724-0700---evals-follow-up-review-round-2) | `prompt-history/prompts/05g-evals-followup-review-r2.md` |
 | 97 | 2026-10-01 02:07 | [2026-09-30T19:07:24-07:00 - Evals follow-up final delta review](#2026-09-30t190724-0700---evals-follow-up-final-delta-review) | `prompt-history/prompts/05s-evals-followup-final-delta.md` |
@@ -4078,21 +4101,22 @@ Every entry in this file in time order (UTC), generated by `node scripts/export-
 | 100 | 2026-10-01 02:16 | [39. Sandbox IP cap cross-review, round 2](#39-sandbox-ip-cap-cross-review-round-2) | `prompt-history/prompts/08b-config-ip-cap-review-r2.md` |
 | 101 | 2026-10-01 02:20 | [2026-09-30T19:20:00-07:00 - Evals follow-up review round 3 (delta only)](#2026-09-30t192000-0700---evals-follow-up-review-round-3-delta-only) | `prompt-history/prompts/05g-evals-followup-review-r3.md` |
 | 102 | 2026-10-01 02:22 | [40. Sandbox IP cap cross-review, round 3 (delta only)](#40-sandbox-ip-cap-cross-review-round-3-delta-only) | `prompt-history/prompts/08b-config-ip-cap-review-r3-delta.md` |
-| 103 | 2026-10-01 02:24 | [47. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)](#47-owner-pr-9-merged-production-agent-fixes-in-a-later-pr-typed-mid-session) | `prompt-history/prompts/06j-release-owner-pr9-merged.md` |
-| 104 | 2026-10-01 06:00 | [48. Owner: WSL restart recovery (typed mid-session)](#48-owner-wsl-restart-recovery-typed-mid-session) | `prompt-history/prompts/06k-release-owner-wsl-restart.md` |
+| 103 | 2026-10-01 02:24 | [51. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)](#51-owner-pr-9-merged-production-agent-fixes-in-a-later-pr-typed-mid-session) | `prompt-history/prompts/06j-release-owner-pr9-merged.md` |
+| 104 | 2026-10-01 06:00 | [52. Owner: WSL restart recovery (typed mid-session)](#52-owner-wsl-restart-recovery-typed-mid-session) | `prompt-history/prompts/06k-release-owner-wsl-restart.md` |
 | 105 | 2026-10-01 06:06 | [2026-09-30T23:06:30-07:00 - Evals WSL recovery](#2026-09-30t230630-0700---evals-wsl-recovery) | `prompt-history/prompts/05u-evals-wsl-recovery.md` |
-| 106 | 2026-10-01 06:12 | [55. Agent fixes owner answer A3: merge main, remember-credit run (typed mid-session, logged late)](#55-agent-fixes-owner-answer-a3-merge-main-remember-credit-run-typed-mid-session-logged-late) | `prompt-history/prompts/06v-late-agent-fixes-owner-a3.md` |
-| 107 | 2026-10-01 06:13 | [56. Evals owner note: recover the PR #10 gate run after the WSL restart (typed mid-session, logged late)](#56-evals-owner-note-recover-the-pr-10-gate-run-after-the-wsl-restart-typed-mid-session-logged-late) | `prompt-history/prompts/06s-late-evals-owner-wsl-recovery.md` |
-| 108 | 2026-10-01 06:14 | [49. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)](#49-owner-pr-10-to-the-evals-lane-readme-cost-update-in-phase-2-typed-mid-session) | `prompt-history/prompts/06l-release-owner-pr10-pr11.md` |
+| 106 | 2026-10-01 06:12 | [58. Agent fixes owner answer A3: merge main, remember-credit run (typed mid-session, logged late)](#58-agent-fixes-owner-answer-a3-merge-main-remember-credit-run-typed-mid-session-logged-late) | `prompt-history/prompts/06v-late-agent-fixes-owner-a3.md` |
+| 107 | 2026-10-01 06:13 | [59. Evals owner note: recover the PR #10 gate run after the WSL restart (typed mid-session, logged late)](#59-evals-owner-note-recover-the-pr-10-gate-run-after-the-wsl-restart-typed-mid-session-logged-late) | `prompt-history/prompts/06s-late-evals-owner-wsl-recovery.md` |
+| 108 | 2026-10-01 06:14 | [53. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)](#53-owner-pr-10-to-the-evals-lane-readme-cost-update-in-phase-2-typed-mid-session) | `prompt-history/prompts/06l-release-owner-pr10-pr11.md` |
 | 109 | 2026-10-01 06:17 | [41. Production chat fixes cross-review, round 1](#41-production-chat-fixes-cross-review-round-1) | `prompt-history/prompts/08c-prod-chat-review-r1.md` |
 | 110 | 2026-10-01 06:18 | [2026-09-30T23:18:03-07:00 - Evals WSL recovery review](#2026-09-30t231803-0700---evals-wsl-recovery-review) | `prompt-history/prompts/05g-evals-wsl-recovery-review.md` |
 | 111 | 2026-10-01 06:32 | [42. Production chat fixes cross-review, round 2](#42-production-chat-fixes-cross-review-round-2) | `prompt-history/prompts/08c-prod-chat-review-r2.md` |
-| 112 | 2026-10-01 06:38 | [57. Agent fixes owner note: guard follows the grader's ordinal rule (typed mid-session, logged late)](#57-agent-fixes-owner-note-guard-follows-the-graders-ordinal-rule-typed-mid-session-logged-late) | `prompt-history/prompts/06w-late-agent-fixes-owner-guard-ordinals.md` |
+| 112 | 2026-10-01 06:38 | [60. Agent fixes owner note: guard follows the grader's ordinal rule (typed mid-session, logged late)](#60-agent-fixes-owner-note-guard-follows-the-graders-ordinal-rule-typed-mid-session-logged-late) | `prompt-history/prompts/06w-late-agent-fixes-owner-guard-ordinals.md` |
 | 113 | 2026-10-01 06:42 | [43. Production chat fixes cross-review, round 3 (delta only)](#43-production-chat-fixes-cross-review-round-3-delta-only) | `prompt-history/prompts/08c-prod-chat-review-r3-delta.md` |
-| 114 | 2026-10-01 07:06 | [50. Owner: start phase 2 (typed mid-session)](#50-owner-start-phase-2-typed-mid-session) | `prompt-history/prompts/06m-release-phase2-start.md` |
-| 115 | 2026-10-01 07:33 | [59. Test timeouts PR cross-review, round 1](#59-test-timeouts-pr-cross-review-round-1) | `prompt-history/prompts/06n-test-timeouts-review-r1.md` |
-| 116 | 2026-10-01 07:40 | [60. Test timeouts PR cross-review, round 2](#60-test-timeouts-pr-cross-review-round-2) | `prompt-history/prompts/06o-test-timeouts-review-r2.md` |
-| 117 | 2026-10-01 07:46 | [61. Test timeouts PR cross-review, round 3 (delta only)](#61-test-timeouts-pr-cross-review-round-3-delta-only) | `prompt-history/prompts/06p-test-timeouts-review-r3-delta.md` |
-| 118 | 2026-10-01 08:03 | [58. Release PR #14 cross-review, round 1](#58-release-pr-14-cross-review-round-1) | `prompt-history/prompts/06b-release-review-r1.md` |
+| 114 | 2026-10-01 07:06 | [44. Owner: start release phase 2 (typed mid-session)](#44-owner-start-release-phase-2-typed-mid-session) | `prompt-history/prompts/06m-release-phase2-start.md` |
+| 115 | 2026-10-01 07:33 | [45. Test timeouts PR cross-review, round 1](#45-test-timeouts-pr-cross-review-round-1) | `prompt-history/prompts/06n-test-timeouts-review-r1.md` |
+| 116 | 2026-10-01 07:40 | [46. Test timeouts PR cross-review, round 2](#46-test-timeouts-pr-cross-review-round-2) | `prompt-history/prompts/06o-test-timeouts-review-r2.md` |
+| 117 | 2026-10-01 07:46 | [47. Test timeouts PR cross-review, round 3 (delta only)](#47-test-timeouts-pr-cross-review-round-3-delta-only) | `prompt-history/prompts/06p-test-timeouts-review-r3-delta.md` |
+| 118 | 2026-10-01 08:03 | [61. Release PR #14 cross-review, round 1](#61-release-pr-14-cross-review-round-1) | `prompt-history/prompts/06b-release-review-r1.md` |
 | 119 | 2026-10-01 08:20 | [62. Release PR #14 cross-review, round 2](#62-release-pr-14-cross-review-round-2) | `prompt-history/prompts/06c-release-review-r2.md` |
 | 120 | 2026-10-01 08:32 | [63. Release PR #14 cross-review, round 3 (delta only)](#63-release-pr-14-cross-review-round-3-delta-only) | `prompt-history/prompts/06d-release-review-r3-delta.md` |
+| 121 | 2026-10-01 10:07 | [64. Owner: C1 A1 B1 with changes, and the architecture diagram (typed mid-session)](#64-owner-c1-a1-b1-with-changes-and-the-architecture-diagram-typed-mid-session) | `prompt-history/prompts/06x-release-owner-c1-a1-b1-diagram.md` |
