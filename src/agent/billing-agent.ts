@@ -509,7 +509,10 @@ export class BillingAgent extends AIChatAgent<Env> {
           abortSignal: options?.abortSignal
         });
         const draft = await forwardHoldingText(
-          result.toUIMessageStream({ onError: toolErrorText, sendFinish: false }),
+          result.toUIMessageStream({
+            onError: toolErrorText,
+            sendFinish: false
+          }),
           writer
         );
         // The grounding guard (guard.ts): figures must come from this turn's tool results, dates

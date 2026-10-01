@@ -16,7 +16,7 @@ const numberPattern =
   /(?<![\w])\d{4}-\d{2}-\d{2}(?=T\d{2}:\d{2})|(?<![\w])\d{4}-\d{2}(?:-\d{2})?(?![\w])|(?<![\w])[-+]?\d[\d,]*(?:\.\d+)?(?:[eE][-+]?\d+|\/\d+)?(?:%|x|st|nd|rd|th|[kKmMbB])?(?![\w])/g;
 const numbers = (text: string) =>
   [...text.matchAll(numberPattern)].map((match) =>
-    match[0].replaceAll(",", "").replace(/(st|nd|rd|th)$/, ""),
+    match[0].replaceAll(",", "").replace(/(st|nd|rd|th)$/, "")
   );
 const moneyStrings = (text: string) =>
   [...text.matchAll(moneyPattern)].map((match) => match[0]);
@@ -42,7 +42,7 @@ const smallNumbers = [
   "sixteen",
   "seventeen",
   "eighteen",
-  "nineteen",
+  "nineteen"
 ];
 const tens = [
   "twenty",
@@ -52,13 +52,13 @@ const tens = [
   "sixty",
   "seventy",
   "eighty",
-  "ninety",
+  "ninety"
 ];
 const scaleWords = ["hundred", "thousand", "million", "billion"];
 const wordAlternatives = [...smallNumbers, ...tens, ...scaleWords].join("|");
 const numberWords = new RegExp(
   `\\b(?:${wordAlternatives})(?:[ -]+(?:and[ -]+)?(?:${wordAlternatives}))*\\b`,
-  "gi",
+  "gi"
 );
 const ordinals = [
   "first",
@@ -70,7 +70,7 @@ const ordinals = [
   "seventh",
   "eighth",
   "ninth",
-  "tenth",
+  "tenth"
 ];
 
 function wordValue(text: string): string {
@@ -83,7 +83,7 @@ function wordValue(text: string): string {
       const scale = {
         thousand: 1000,
         million: 1_000_000,
-        billion: 1_000_000_000,
+        billion: 1_000_000_000
       };
       total += (segment || 1) * scale[word];
       segment = 0;
@@ -100,7 +100,7 @@ function normalizeNumberWords(text: string): string {
     .replace(numberWords, (words) => wordValue(words))
     .replace(
       new RegExp(`\\b(${ordinals.join("|")})\\b`, "gi"),
-      (word) => `${ordinals.indexOf(word.toLowerCase()) + 1}th`,
+      (word) => `${ordinals.indexOf(word.toLowerCase()) + 1}th`
     )
     .replace(/(\d+(?:\.\d+)?)\s+percent\b/gi, "$1%")
     .replace(/(\d+(?:\.\d+)?)\s+times\b/gi, "$1x");
@@ -124,7 +124,7 @@ const COUNTED_ARRAYS: Record<string, string> = {
   anomalies: "anomalies",
   requests: "credit requests",
   openCreditRequests: "credit requests",
-  byMeter: "meters",
+  byMeter: "meters"
 };
 
 function countEvidence(value: unknown, counts: Counts): void {
@@ -163,7 +163,7 @@ const monthNames = [
   "September",
   "October",
   "November",
-  "December",
+  "December"
 ];
 const month = String.raw`(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?`;
 const day = String.raw`(\d{1,2})(?:st|nd|rd|th)?`;
@@ -171,34 +171,34 @@ const yearSep = String.raw`(?:,\s*|\s+)(\d{4})(?!\d)`;
 const monthNumber = (name: string) =>
   String(
     monthNames.findIndex((full) =>
-      full.toLowerCase().startsWith(name.slice(0, 3).toLowerCase()),
-    ) + 1,
+      full.toLowerCase().startsWith(name.slice(0, 3).toLowerCase())
+    ) + 1
   ).padStart(2, "0");
 const pad = (value: string) => value.padStart(2, "0");
 const namedDates: [RegExp, (m: string[]) => [string, string, string?]][] = [
   [
     new RegExp(String.raw`\b${month}\s+${day}${yearSep}`, "gi"),
-    (m) => [m[3], monthNumber(m[1]), pad(m[2])],
+    (m) => [m[3], monthNumber(m[1]), pad(m[2])]
   ],
   [
     new RegExp(
       String.raw`(?<![\w])${day}\s+(?:of\s+)?${month}${yearSep}`,
-      "gi",
+      "gi"
     ),
-    (m) => [m[3], monthNumber(m[2]), pad(m[1])],
+    (m) => [m[3], monthNumber(m[2]), pad(m[1])]
   ],
   [
     new RegExp(String.raw`\b${month}${yearSep}`, "gi"),
-    (m) => [m[2], monthNumber(m[1])],
+    (m) => [m[2], monthNumber(m[1])]
   ],
   [
     new RegExp(String.raw`\b${month}\s+${day}(?![\w])`, "gi"),
-    (m) => ["", monthNumber(m[1]), pad(m[2])],
+    (m) => ["", monthNumber(m[1]), pad(m[2])]
   ],
   [
     new RegExp(String.raw`(?<![\w])${day}\s+(?:of\s+)?${month}(?![\w])`, "gi"),
-    (m) => ["", monthNumber(m[2]), pad(m[1])],
-  ],
+    (m) => ["", monthNumber(m[2]), pad(m[1])]
+  ]
 ];
 
 /**
@@ -208,7 +208,7 @@ const namedDates: [RegExp, (m: string[]) => [string, string, string?]][] = [
  */
 function normalizeDates(
   text: string,
-  periods: Set<string>,
+  periods: Set<string>
 ): { text: string; unresolved: string[] } {
   const unresolved: string[] = [];
   let result = text;
@@ -221,7 +221,7 @@ function normalizeDates(
       const years = new Set(
         [...periods]
           .filter((token) => token.slice(4, 7) === `-${monthPart}`)
-          .map((token) => token.slice(0, 4)),
+          .map((token) => token.slice(0, 4))
       );
       if (years.size === 1) return ` ${[...years][0]}-${monthPart}-${dayPart} `;
       unresolved.push(match[0]);
@@ -246,12 +246,12 @@ function addNumericToken(numeric: Set<string>, token: string): void {
 function collect(
   value: unknown,
   amounts: Set<string>,
-  numeric: Set<string>,
+  numeric: Set<string>
 ): void {
   if (typeof value === "string") {
     moneyStrings(value).forEach((amount) => amounts.add(amount));
     numbers(stripMoney(value)).forEach((token) =>
-      addNumericToken(numeric, token),
+      addNumericToken(numeric, token)
     );
   } else if (typeof value === "number") {
     numeric.add(String(value));
@@ -287,7 +287,7 @@ export type Evidence = {
 /** Evidence from the turn's successful tool outputs and the customer's message. */
 export function collectEvidence(
   toolOutputs: readonly unknown[],
-  customerMessage: string,
+  customerMessage: string
 ): Evidence {
   const amounts = new Set<string>();
   const numeric = new Set<string>();
@@ -318,7 +318,7 @@ export function unsupportedFigures(text: string, evidence: Evidence): string[] {
   const normalized = normalizeNumberWords(dated.text);
   for (const amount of new Set([
     ...moneyStrings(text),
-    ...moneyStrings(normalized),
+    ...moneyStrings(normalized)
   ])) {
     if (!evidence.amounts.has(amount)) add(amount.trim());
   }
@@ -353,9 +353,9 @@ export function withoutUnsupported(text: string, evidence: Evidence): string {
       line
         .split(/(?<=[.!?])\s+/)
         .filter(
-          (sentence) => unsupportedFigures(sentence, evidence).length === 0,
+          (sentence) => unsupportedFigures(sentence, evidence).length === 0
         )
-        .join(" "),
+        .join(" ")
     )
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")

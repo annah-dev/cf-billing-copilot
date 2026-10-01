@@ -7,7 +7,7 @@
 import {
   InvalidToolInputError,
   type ToolCallRepairFunction,
-  type ToolSet,
+  type ToolSet
 } from "ai";
 
 type Plan = { planId: string; name: string };
@@ -23,13 +23,13 @@ const plain = (value: string) =>
 export function matchPlanId(raw: string, plans: Plan[]): string | null {
   const wanted = plain(raw);
   const matches = plans.filter(
-    (p) => plain(p.planId) === wanted || plain(p.name) === wanted,
+    (p) => plain(p.planId) === wanted || plain(p.name) === wanted
   );
   return matches.length === 1 ? matches[0].planId : null;
 }
 
 export function planIdRepair(
-  availablePlans: () => Promise<Plan[]>,
+  availablePlans: () => Promise<Plan[]>
 ): ToolCallRepairFunction<ToolSet> {
   return async ({ toolCall, error }) => {
     if (

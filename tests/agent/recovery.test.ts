@@ -5,7 +5,7 @@ import { ACME, INV_AUG, INV_SEP } from "./support/fake-engine";
 import { createSandbox, stubAi, text, toolCall, turn } from "./support/helpers";
 
 vi.mock("../../src/engine", async () => ({
-  engine: (await import("./support/fake-engine")).fakeEngine,
+  engine: (await import("./support/fake-engine")).fakeEngine
 }));
 
 type TurnBody = {
@@ -31,9 +31,9 @@ describe("invented invoice and line ids (request-tiers, tax-line)", () => {
     stubAi([
       toolCall("explainLineItem", {
         invoiceId: "inv_1234567890",
-        lineId: "line_1234567890",
+        lineId: "line_1234567890"
       }),
-      text("I could not find it."),
+      text("I could not find it.")
     ]);
     const body = await turnOk(sb.sandboxId, "Explain the requests line");
     const [failed] = body.toolCalls;
@@ -49,21 +49,21 @@ describe("invented invoice and line ids (request-tiers, tax-line)", () => {
     const ai = stubAi([
       toolCall("explainLineItem", {
         invoiceId: INV_SEP,
-        lineId: "line_1234567890",
+        lineId: "line_1234567890"
       }),
       toolCall("explainLineItem", {
         invoiceId: INV_SEP,
-        lineId: "line_acme_2026_09_req",
+        lineId: "line_acme_2026_09_req"
       }),
-      text("Explained."),
+      text("Explained.")
     ]);
     const body = await turnOk(sb.sandboxId, "Explain the requests line");
     expect(body.toolCalls[0].error).toContain(
-      "line_acme_2026_09_req (usage line)",
+      "line_acme_2026_09_req (usage line)"
     );
     // The listed id is what the model needs to recover on its next step.
     expect(JSON.stringify(ai.mock.calls[1][1])).toContain(
-      "line_acme_2026_09_req (usage line)",
+      "line_acme_2026_09_req (usage line)"
     );
     expect(body.toolCalls[1].error).toBeNull();
     expect(body.toolCalls[1].output).toMatchObject({ invoiceId: INV_SEP });
@@ -73,7 +73,7 @@ describe("invented invoice and line ids (request-tiers, tax-line)", () => {
     const { systemPrompt, EMPTY_MEMORY } =
       await import("../../src/agent/prompt");
     expect(systemPrompt(EMPTY_MEMORY, "2026-10-01")).toContain(
-      "call getInvoice for its period first, then explainLineItem with the invoice id and line id exactly as getInvoice returned them",
+      "call getInvoice for its period first, then explainLineItem with the invoice id and line id exactly as getInvoice returned them"
     );
   });
 });
@@ -83,21 +83,21 @@ describe("plan ids in display case (pro-simulation, scale-simulation)", () => {
     const sb = await createSandbox();
     stubAi([
       toolCall("simulatePlan", { period: "2026-09", planId: "plan_Pro" }),
-      text("On Pro it would be $350.00."),
+      text("On Pro it would be $350.00.")
     ]);
     const body = await turnOk(
       sb.sandboxId,
-      "What would September cost on Pro?",
+      "What would September cost on Pro?"
     );
     expect(body.toolCalls).toHaveLength(1);
     expect(body.toolCalls[0].input).toEqual({
       period: "2026-09",
-      planId: "plan_pro",
+      planId: "plan_pro"
     });
     expect(body.toolCalls[0].error).toBeNull();
     expect(body.toolCalls[0].output).toMatchObject({
       simulatedPlanId: "plan_pro",
-      simulatedTotal: { display: "$350.00" },
+      simulatedTotal: { display: "$350.00" }
     });
     expect(body.text).toBe("On Pro it would be $350.00.");
   });
@@ -106,12 +106,12 @@ describe("plan ids in display case (pro-simulation, scale-simulation)", () => {
     const sb = await createSandbox();
     stubAi([
       toolCall("simulatePlan", { period: "2026-09", planId: "Pro" }),
-      text("Done."),
+      text("Done.")
     ]);
     const body = await turnOk(sb.sandboxId, "What about Pro?");
     expect(body.toolCalls[0].input).toEqual({
       period: "2026-09",
-      planId: "plan_pro",
+      planId: "plan_pro"
     });
     expect(body.toolCalls[0].error).toBeNull();
   });
@@ -121,14 +121,14 @@ describe("plan ids in display case (pro-simulation, scale-simulation)", () => {
     stubAi([
       toolCall("simulatePlan", {
         period: "2026-09",
-        planId: "plan_Enterprise",
+        planId: "plan_Enterprise"
       }),
-      text("I could not simulate that plan."),
+      text("I could not simulate that plan.")
     ]);
     const body = await turnOk(sb.sandboxId, "What about Enterprise?");
     expect(body.toolCalls[0].output).toBeNull();
     expect(body.toolCalls[0].error).toMatch(
-      /^Invalid input for tool simulatePlan/,
+      /^Invalid input for tool simulatePlan/
     );
   });
 
@@ -136,14 +136,14 @@ describe("plan ids in display case (pro-simulation, scale-simulation)", () => {
     const { matchPlanId } = await import("../../src/agent/repair");
     const plans = [
       { planId: "plan_pro", name: "Pro" },
-      { planId: "plan_pro_plus", name: "Pro Plus" },
+      { planId: "plan_pro_plus", name: "Pro Plus" }
     ];
     expect(matchPlanId("plan_Pro", plans)).toBe("plan_pro");
     expect(matchPlanId("Pro Plus", plans)).toBe("plan_pro_plus");
     expect(matchPlanId("plan_Pro_Plus", plans)).toBe("plan_pro_plus");
     expect(matchPlanId("plan_Scale", plans)).toBeNull();
     expect(
-      matchPlanId("pro", [...plans, { planId: "plan_x", name: "PRO" }]),
+      matchPlanId("pro", [...plans, { planId: "plan_x", name: "PRO" }])
     ).toBeNull();
   });
 });
@@ -154,16 +154,16 @@ describe("spike missing from a comparison (august-september-change)", () => {
     const ai = stubAi([
       toolCall("compareInvoices", {
         fromPeriod: "2026-08",
-        toPeriod: "2026-09",
+        toPeriod: "2026-09"
       }),
-      text("Your bill rose 38%; note the spike on 2026-09-18."),
+      text("Your bill rose 38%; note the spike on 2026-09-18.")
     ]);
     const body = await turnOk(sb.sandboxId, "Why did my bill change?");
     expect(ai).toHaveBeenCalledTimes(2); // no extra model call
     const checks = body.toolCalls.filter((c) => c.name === "detectAnomalies");
     expect(checks.map((c) => c.input)).toEqual([
       { period: "2026-09" },
-      { period: "2026-08" },
+      { period: "2026-08" }
     ]);
     expect(checks.every((c) => c.error === null)).toBe(true);
     const seen = JSON.stringify(ai.mock.calls[1][1]);

@@ -11,13 +11,13 @@ import { money } from "../../src/contracts";
 import {
   collectEvidence,
   unsupportedFigures,
-  withoutUnsupported,
+  withoutUnsupported
 } from "../../src/agent/grounding";
 import {
   OMITTED_NOTE,
   SAFE_ANSWER,
   correctionPrompt,
-  type GroundingRecord,
+  type GroundingRecord
 } from "../../src/agent/guard";
 import { ACME, INV_SEP } from "./support/fake-engine";
 import {
@@ -26,11 +26,11 @@ import {
   stubAi,
   text,
   toolCall,
-  turn,
+  turn
 } from "./support/helpers";
 
 vi.mock("../../src/engine", async () => ({
-  engine: (await import("./support/fake-engine")).fakeEngine,
+  engine: (await import("./support/fake-engine")).fakeEngine
 }));
 
 // The fake engine's September invoice for Acme: three lines totalling $412.87, a spike on
@@ -54,7 +54,7 @@ async function groundingOf(sandboxId: string): Promise<GroundingRecord> {
   const agent = await getAgentByName(env.BillingAgent, `${sandboxId}.${ACME}`);
   const messages = (await runInDurableObject(
     agent,
-    (a) => a.messages,
+    (a) => a.messages
   )) as UIMessage[];
   const last = messages.filter((m) => m.role === "assistant").at(-1);
   return (last?.metadata as { grounding: GroundingRecord }).grounding;
@@ -76,26 +76,26 @@ describe("grounding rule", () => {
     lines: [
       { id: "l1", amount: money(2000) },
       { id: "l2", amount: money(37534) },
-      { id: "l3", amount: money(1753) },
+      { id: "l3", amount: money(1753) }
     ],
-    total: money(41287),
+    total: money(41287)
   };
   const comparison = {
     fromTotal: money(29918),
     toTotal: money(41287),
-    totalChange: { basisPoints: 3762, display: "38%" },
+    totalChange: { basisPoints: 3762, display: "38%" }
   };
 
   it("accepts amounts, percentages and counts copied from the tool results", () => {
     const evidence = collectEvidence(
       [invoice, comparison],
-      "Why did it go up?",
+      "Why did it go up?"
     );
     expect(
       unsupportedFigures(
         "Your September 2026 invoice has 3 lines and totals $412.87, up 38% from $299.18. The first line is $20.00.",
-        evidence,
-      ),
+        evidence
+      )
     ).toEqual([]);
   });
 
@@ -103,43 +103,43 @@ describe("grounding rule", () => {
     const evidence = collectEvidence([invoice], "Explain my bill");
     expect(unsupportedFigures("It has 4 lines.", evidence)).toEqual([
       "4 lines",
-      "4",
+      "4"
     ]);
     expect(unsupportedFigures("It has seven invoice lines.", evidence)).toEqual(
-      ["7 lines", "7"],
+      ["7 lines", "7"]
     );
   });
 
   it("rejects money and percentages that only the customer said", () => {
     const evidence = collectEvidence(
       [invoice],
-      "Is my bill $999.00, 50% more than August?",
+      "Is my bill $999.00, 50% more than August?"
     );
     expect(
-      unsupportedFigures("Yes, $999.00 is 50% more than August.", evidence),
+      unsupportedFigures("Yes, $999.00 is 50% more than August.", evidence)
     ).toEqual(["$999.00", "50%"]);
   });
 
   it("accepts dates and periods from the customer's message, not from nowhere", () => {
     const evidence = collectEvidence(
       [],
-      "What happened on 2026-07-04 and in August 2026?",
+      "What happened on 2026-07-04 and in August 2026?"
     );
     expect(
       unsupportedFigures(
         "I have no data for 2026-07-04 or for August 2026.",
-        evidence,
-      ),
+        evidence
+      )
     ).toEqual([]);
     expect(
-      unsupportedFigures("Your next invoice is due on 2026-10-28.", evidence),
+      unsupportedFigures("Your next invoice is due on 2026-10-28.", evidence)
     ).toEqual(["2026-10-28"]);
   });
 
   it("does not ground a figure in machine fields such as basis points", () => {
     const evidence = collectEvidence([comparison], "Why?");
     expect(
-      unsupportedFigures("The change is 3762 basis points.", evidence),
+      unsupportedFigures("The change is 3762 basis points.", evidence)
     ).toEqual(["3762"]);
   });
 
@@ -148,14 +148,14 @@ describe("grounding rule", () => {
     expect(
       withoutUnsupported(
         `Your bill is ${SEP_TOTAL}. It has 7 lines.\nTax is $17.53. You saved $50.00.`,
-        evidence,
-      ),
+        evidence
+      )
     ).toBe(`Your bill is ${SEP_TOTAL}.\nTax is $17.53.`);
   });
 
   it("names every unsupported figure in the correction", () => {
     expect(correctionPrompt(["4 lines", "$9.99"])).toContain(
-      'stated "4 lines", "$9.99"',
+      'stated "4 lines", "$9.99"'
     );
   });
 });
@@ -165,17 +165,17 @@ describe("grounding guard on a turn", () => {
     const sb = await createSandbox();
     const ai = stubAi([
       toolCall("getInvoice", { period: "2026-09" }),
-      text(`Your September bill is ${SEP_TOTAL} across 3 lines.`),
+      text(`Your September bill is ${SEP_TOTAL} across 3 lines.`)
     ]);
     const body = await turnOk(sb.sandboxId, "Explain my September bill");
     expect(ai).toHaveBeenCalledTimes(2);
     expect(body.text).toBe(
-      `Your September bill is ${SEP_TOTAL} across 3 lines.`,
+      `Your September bill is ${SEP_TOTAL} across 3 lines.`
     );
     expect(await groundingOf(sb.sandboxId)).toEqual({
       outcome: "grounded",
       unsupported: [],
-      retryUnsupported: null,
+      retryUnsupported: null
     });
   });
 
@@ -184,13 +184,13 @@ describe("grounding guard on a turn", () => {
     const ai = stubAi([
       toolCall("getInvoice", { period: "2026-09" }),
       text(`Your September bill is ${SEP_TOTAL} across 4 lines.`),
-      text(`Your September bill is ${SEP_TOTAL} across 3 lines.`),
+      text(`Your September bill is ${SEP_TOTAL} across 3 lines.`)
     ]);
     const body = await turnOk(sb.sandboxId, "Explain my September bill");
     expect(ai).toHaveBeenCalledTimes(3);
     expect(body.usage.modelCalls).toBe(3);
     expect(body.text).toBe(
-      `Your September bill is ${SEP_TOTAL} across 3 lines.`,
+      `Your September bill is ${SEP_TOTAL} across 3 lines.`
     );
     expect(body.text).not.toContain("4 lines");
 
@@ -200,14 +200,14 @@ describe("grounding guard on a turn", () => {
     expect(seen).toContain(INV_SEP);
     expect(seen).toContain("2026-09-18"); // the server's anomaly check is in its context
     expect(JSON.stringify(retry.messages.at(-1))).toContain(
-      'stated \\"4 lines\\"',
+      'stated \\"4 lines\\"'
     );
     expect(retry.tools ?? []).toEqual([]);
 
     expect(await groundingOf(sb.sandboxId)).toEqual({
       outcome: "corrected",
       unsupported: ["4 lines", "4"],
-      retryUnsupported: [],
+      retryUnsupported: []
     });
   });
 
@@ -216,16 +216,16 @@ describe("grounding guard on a turn", () => {
     stubAi([
       toolCall("getInvoice", { period: "2026-09" }),
       text(`Your September bill is ${SEP_TOTAL}. It has 4 lines.`),
-      text(`Your September bill is ${SEP_TOTAL}. It has 5 lines.`),
+      text(`Your September bill is ${SEP_TOTAL}. It has 5 lines.`)
     ]);
     const body = await turnOk(sb.sandboxId, "Explain my September bill");
     expect(body.text).toBe(
-      `Your September bill is ${SEP_TOTAL}.\n\n${OMITTED_NOTE}`,
+      `Your September bill is ${SEP_TOTAL}.\n\n${OMITTED_NOTE}`
     );
     expect(await groundingOf(sb.sandboxId)).toEqual({
       outcome: "safe_answer",
       unsupported: ["4 lines", "4"],
-      retryUnsupported: ["5 lines", "5"],
+      retryUnsupported: ["5 lines", "5"]
     });
   });
 
@@ -242,12 +242,12 @@ describe("grounding guard on a turn", () => {
     const sb = await createSandbox();
     const ai = stubAi([
       text("Yes, your bill is $999.00."),
-      text("I need to look up your invoice before I can confirm an amount."),
+      text("I need to look up your invoice before I can confirm an amount.")
     ]);
     const body = await turnOk(sb.sandboxId, "Is my bill $999.00?");
     expect(ai).toHaveBeenCalledTimes(2);
     expect(body.text).toBe(
-      "I need to look up your invoice before I can confirm an amount.",
+      "I need to look up your invoice before I can confirm an amount."
     );
   });
 
@@ -264,10 +264,10 @@ describe("grounding guard on a turn", () => {
     stubAi([
       toolCall("getInvoice", { period: "2026-09" }),
       text("DRAFT has 4 lines."),
-      text(`Your bill is ${SEP_TOTAL}.`),
+      text(`Your bill is ${SEP_TOTAL}.`)
     ]);
     const res = await call(`/agents/billing-agent/${sb.sandboxId}.${ACME}`, {
-      headers: { Upgrade: "websocket" },
+      headers: { Upgrade: "websocket" }
     });
     const ws = res.webSocket as WebSocket;
     ws.accept();
@@ -289,7 +289,7 @@ describe("grounding guard on a turn", () => {
     const user: UIMessage = {
       id: "u_g1",
       role: "user",
-      parts: [{ type: "text", text: "Explain my September bill" }],
+      parts: [{ type: "text", text: "Explain my September bill" }]
     };
     ws.send(
       JSON.stringify({
@@ -297,9 +297,9 @@ describe("grounding guard on a turn", () => {
         id: "g1",
         init: {
           method: "POST",
-          body: JSON.stringify({ messages: [user], trigger: "submit-message" }),
-        },
-      }),
+          body: JSON.stringify({ messages: [user], trigger: "submit-message" })
+        }
+      })
     );
     await done;
     ws.close();

@@ -6,7 +6,7 @@
 import {
   unsupportedFigures,
   withoutUnsupported,
-  type Evidence,
+  type Evidence
 } from "./grounding";
 
 /** Sent when no sentence of the reply could be verified. Contains no figure. */
@@ -41,7 +41,7 @@ export function correctionPrompt(unsupported: string[]): string {
     `Your last answer stated ${named}, which the tool results in this turn do not support.`,
     "Answer the customer's question again. State only figures that appear in the tool results above, copying each display string exactly; dates and billing periods may also come from the customer's message.",
     "Count items only by the entries a tool result actually lists. If a figure is not in the tool results, say you do not have it instead of giving one.",
-    "Do not mention this correction.",
+    "Do not mention this correction."
   ].join(" ");
 }
 
@@ -65,7 +65,7 @@ export async function guardReply(input: {
   if (unsupported.length === 0) {
     return {
       text: draft,
-      grounding: { outcome: "grounded", unsupported, retryUnsupported: null },
+      grounding: { outcome: "grounded", unsupported, retryUnsupported: null }
     };
   }
   const retried = await input.retry(correctionPrompt(unsupported));
@@ -75,19 +75,19 @@ export async function guardReply(input: {
       grounding: {
         outcome: "safe_answer",
         unsupported,
-        retryUnsupported: null,
-      },
+        retryUnsupported: null
+      }
     };
   }
   const retryUnsupported = unsupportedFigures(retried, evidence);
   if (retryUnsupported.length === 0) {
     return {
       text: retried.trim(),
-      grounding: { outcome: "corrected", unsupported, retryUnsupported },
+      grounding: { outcome: "corrected", unsupported, retryUnsupported }
     };
   }
   return {
     text: safeAnswer(retried, evidence),
-    grounding: { outcome: "safe_answer", unsupported, retryUnsupported },
+    grounding: { outcome: "safe_answer", unsupported, retryUnsupported }
   };
 }
