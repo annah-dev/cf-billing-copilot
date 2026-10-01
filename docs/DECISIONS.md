@@ -1037,3 +1037,20 @@ abandoned or unrelated run cannot leave it for a later one. An end-to-end WebSoc
 tool-result frame goes red on the round-1 code.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: the chat UI confirms a credit through the SDK's approval frame only
+
+Production report: after the customer confirmed a credit request the stream failed ("An internal
+error occurred", then "Unable to connect"). Reproduced in local dev with the live UI: on "Confirm
+request" `useAgentChat` sends `cf_agent_tool_approval` with `autoContinue` (its default), and the
+server continues the turn; the UI also set the AI SDK's `sendAutomaticallyWhen:
+lastAssistantMessageIsCompleteWithApprovalResponses`, so the client sent a second,
+full-conversation chat request. The two continuations raced: the client's ran as a new,
+cap-charged turn (the question was remembered twice) and the server's stream was left pending, so
+the UI stayed busy. The UI now relies on the SDK's approval frame alone (`src/ui/chat.tsx`;
+`tests/ui/live-chat.test.ts` goes red on the old wiring). `toolErrorText` now logs the raw error
+before returning the generic text. Reason: one continuation per confirmation; a masked error must
+still be diagnosable from the logs. This touches the UI lane's file because the defect is in its
+wiring.
+
+Decided by: Agent fixes engineer under standing orders.

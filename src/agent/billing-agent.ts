@@ -111,6 +111,8 @@ function toolErrorText(error: unknown): string {
   }
   if (NoSuchToolError.isInstance(error)) return error.message;
   if (error instanceof ToolError) return error.message;
+  // The customer sees a generic text; the raw error goes to the log so it can be diagnosed.
+  console.error("chat stream error", error);
   return "An internal error occurred.";
 }
 

@@ -2,11 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@cloudflare/kumo";
 import { useAgent } from "agents/react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
-import {
-  lastAssistantMessageIsCompleteWithApprovalResponses,
-  isToolUIPart,
-  type UIMessage
-} from "ai";
+import { isToolUIPart, type UIMessage } from "ai";
 import {
   agentInstanceName,
   TurnRequestSchema,
@@ -167,10 +163,12 @@ export function LiveChat({
     onOpen: () => setConnected(true),
     onClose: () => setConnected(false)
   });
+  // No sendAutomaticallyWhen: useAgentChat already sends cf_agent_tool_approval with
+  // autoContinue, and the server continues the turn. A second, client-sent request raced that
+  // continuation (production: "An internal error occurred" and "Unable to connect").
   const chat = useAgentChat({
     agent,
-    onFinish: changed,
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses
+    onFinish: changed
   });
   return (
     <ChatView
