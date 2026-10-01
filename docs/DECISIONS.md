@@ -241,11 +241,15 @@ Decided by: Anna.
 
 ## D-14 Simulated streaming for Llama 3.3 tool calls
 
-`BillingAgent` wraps the model as
-`wrapLanguageModel({ model: workersai(MODEL_ID), middleware: simulateStreamingMiddleware() })` and
-keeps `streamText` and `AIChatAgent`. Reason: native streaming garbles tool arguments (DEV-16);
-the simulated stream produced a correct tool call, tool result and answer in the Stop 2 round trip.
-Cost: the UI shows each step's text at once instead of token by token.
+`BillingAgent` wraps the model with `wrapLanguageModel` and keeps `streamText` and `AIChatAgent`.
+Reason: native streaming garbles tool arguments (DEV-16); the simulated stream produced a correct
+tool call, tool result and answer in the Stop 2 round trip. Cost: no token-by-token text.
+
+As built (updated 2026-10-01, `billingModel` in src/agent/model.ts), the middleware list is, from
+the outside in: `simulateStreamingMiddleware()`, `noEmptyToolsMiddleware` (Workers AI refuses
+`tools: []`) and the budget middleware (neuron reservation per call). The reply text reaches the
+client only after the grounding guard has checked it ("agent: runtime grounding guard"); tool
+parts still stream as each step finishes.
 
 Decided by: Architect under standing orders.
 
@@ -557,7 +561,12 @@ Anna).
 
 ## agent: model settings, budget estimate and history
 
-- `temperature: 0`, `maxOutputTokens` from `MAX_OUTPUT_TOKENS`, `stopWhen: stepCountIs(4)`.
+- `temperature: 0`, `maxOutputTokens` from `MAX_OUTPUT_TOKENS` (512), `stopWhen:
+  stepCountIs(MAX_STEPS)` with `MAX_STEPS = 4`. Updated 2026-10-01 to match the code: the last
+  step, and any step after one that only repeated earlier calls, gets no tools (`mustAnswer`); the
+  grounding guard may add one retry call without tools; so a turn makes at most `MAX_STEPS + 1`
+  model calls. `maxRetries` is the AI SDK default (2): a failed call can be retried twice, each
+  attempt reserved and settled by the budget middleware, so the neuron stop still holds.
 - The budget middleware sits inside `simulateStreamingMiddleware` (the simulated stream calls
   `doGenerate`, which it wraps). Input tokens are bounded by the UTF-8 byte length of the
   serialised prompt and tool definitions plus 8 template tokens per message (Llama 3's tokenizer
@@ -908,7 +917,8 @@ the customer's dates.
 - An unsupported draft gets exactly one retry: the same context (server checks included), the
   draft, and a user-role correction naming each unsupported figure, with no tools, so the retry
   restates what the turn fetched and cannot start a new tool loop. It is one more budget-reserved
-  model call (worst case `MAX_STEPS + 2` per turn).
+  model call (worst case `MAX_STEPS + 2` per turn as first written; `MAX_STEPS + 1` since the last
+  step has no tools, see "agent: the last step answers, and an empty reply is asked for once").
 - If the retry is still unsupported, empty or refused by the budget, the customer gets the reply
   with every sentence carrying an unsupported figure removed plus a fixed note, or a fixed safe
   answer (no figures) when nothing verifiable is left.
@@ -1090,5 +1100,17 @@ admits each frame first (`src/agent/frames.ts`):
   refused frame gets the stored conversation back. Nothing is stored and no model runs.
 
 Reason: D-7 and D-13 promise the same limits on every path.
+
+Decided by: Agent fixes engineer under standing orders.
+
+## agent: every tool validates its own input
+
+The AI SDK validates each tool call against its `inputSchema` before `execute` runs. Every tool
+now also checks its input against the contract schema inside `execute` (the shared `read` helper,
+`startCreditRequest` and `getCreditRequestStatus`) and answers a bad input with a `ToolError`
+naming the tool, before any Ledger read or write. Reason: AGENTS.md hard rule 2 must not depend on
+the caller; a direct call to `execute` (tests, recovery code, a future path) gets the same check.
+The D-14 and model-settings entries were updated in place to match the code (middleware list,
+held reply text, `mustAnswer`, at most `MAX_STEPS + 1` calls, `maxRetries` default).
 
 Decided by: Agent fixes engineer under standing orders.
