@@ -1010,3 +1010,17 @@ regression (three go red without the middleware). Reason: the offline stub accep
 real binding rejects; it now mirrors that constraint.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: guard evidence is server-owned, not read from history positions
+
+Codex review round 1 found that the guard took a continuation's earlier tool outputs from the
+messages after the last customer message, positions a client controls. Now a run that stops at
+a credit proposal stores its outputs server-side (`awaiting_evidence`, keyed by the proposed tool
+call ids); the next run uses them only if it is a continuation whose last assistant message holds
+one of those calls, and the stored row is cleared at the start of every run. Every other run cites
+only its own outputs. Observed while testing: the SDK's persistence currently merges a moved tool
+part back into its original message by call id, so the end-to-end replay did not reproduce;
+the rule no longer depends on that. Also from this round: a retry call that throws now falls back
+to the safe answer instead of erroring the turn.
+
+Decided by: Agent fixes engineer under standing orders.

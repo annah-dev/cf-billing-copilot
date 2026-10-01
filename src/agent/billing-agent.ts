@@ -114,21 +114,34 @@ function toolErrorText(error: unknown): string {
   return "An internal error occurred.";
 }
 
-/** Successful tool outputs after the last user message: a continuation's earlier steps. */
-function toolOutputsSinceLastUser(messages: UIMessage[]): unknown[] {
-  let start = 0;
-  messages.forEach((m, index) => {
-    if (m.role === "user") start = index + 1;
-  });
-  return messages
-    .slice(start)
-    .flatMap((m) => m.parts)
-    .flatMap((part) =>
-      part.type.startsWith("tool-") &&
-      (part as { state?: string }).state === "output-available"
-        ? [(part as { output?: unknown }).output]
+/**
+ * The evidence a turn that stopped at a credit proposal leaves for the continuation that resumes
+ * it: the outputs its steps produced, keyed by the proposed tool calls. Stored server-side, so a
+ * client cannot move an older result into a new turn by rearranging its history (PR review r1).
+ */
+export type AwaitingEvidence = { toolCallIds: string[]; outputs: unknown[] };
+
+/**
+ * Earlier outputs a run may cite besides its own: only for a continuation, only those the run that
+ * proposed the credit request stored server-side, and only when the conversation's last assistant
+ * message holds one of the proposed calls. Positions in the client-supplied history count for
+ * nothing.
+ */
+export function continuationEvidence(
+  continuation: boolean,
+  stored: AwaitingEvidence | null,
+  conversation: UIMessage[]
+): unknown[] {
+  const last = conversation.at(-1);
+  if (!continuation || !stored || last?.role !== "assistant") return [];
+  const resumed = new Set(
+    last.parts.flatMap((p) =>
+      "toolCallId" in p && typeof p.toolCallId === "string"
+        ? [p.toolCallId]
         : []
-    );
+    )
+  );
+  return stored.toolCallIds.some((id) => resumed.has(id)) ? stored.outputs : [];
 }
 
 /**
@@ -141,11 +154,12 @@ async function forwardHoldingText(
 ): Promise<{
   text: string;
   outputs: unknown[];
-  awaitingConfirmation: boolean;
+  /** Tool calls proposed for the customer's confirmation (empty when none). */
+  awaiting: string[];
 }> {
   const texts = new Map<string, string>();
   const outputs: unknown[] = [];
-  let awaitingConfirmation = false;
+  const awaiting: string[] = [];
   const reader = stream.getReader();
   for (;;) {
     const { done, value } = await reader.read();
@@ -155,7 +169,8 @@ async function forwardHoldingText(
       texts.set(value.id, (texts.get(value.id) ?? "") + value.delta);
     } else if (value.type !== "text-end") {
       if (value.type === "tool-output-available") outputs.push(value.output);
-      if (value.type === "tool-approval-request") awaitingConfirmation = true;
+      if (value.type === "tool-approval-request")
+        awaiting.push(value.toolCallId);
       writer.write(value);
     }
   }
@@ -163,7 +178,7 @@ async function forwardHoldingText(
     .map((t) => t.trim())
     .filter((t) => t !== "")
     .join("\n\n");
-  return { text, outputs, awaitingConfirmation };
+  return { text, outputs, awaiting };
 }
 
 /** A reply that never reaches the model: a cap, the budget stop or an oversize message. */
@@ -482,7 +497,14 @@ export class BillingAgent extends AIChatAgent<Env> {
       continuation,
       confirmedTurn: preConfirmed
     });
-    const earlierOutputs = toolOutputsSinceLastUser(verified);
+    // Evidence comes only from this run's tool outputs, plus, for a continuation that resumes a
+    // credit proposal, the outputs the proposing run stored server-side (used once).
+    const stored = this.readKey<AwaitingEvidence | null>(
+      "awaiting_evidence",
+      null
+    );
+    this.writeKey("awaiting_evidence", null);
+    const earlierOutputs = continuationEvidence(continuation, stored, verified);
     const customerText = textOf(lastUser);
     const system = systemPrompt(this.memory(), utcDay(Date.now()));
     const stream = createUIMessageStream({
@@ -550,6 +572,13 @@ export class BillingAgent extends AIChatAgent<Env> {
           }),
           writer
         );
+        if (draft.awaiting.length > 0) {
+          const pending: AwaitingEvidence = {
+            toolCallIds: draft.awaiting,
+            outputs: [...earlierOutputs, ...draft.outputs, ...checks.outputs]
+          };
+          this.writeKey("awaiting_evidence", pending);
+        }
         // The grounding guard (guard.ts): figures must come from this turn's tool results, dates
         // and periods also from the customer's message. One corrective retry, then a safe answer.
         let reply: string;
@@ -563,7 +592,7 @@ export class BillingAgent extends AIChatAgent<Env> {
         } else {
           const guarded = await guardReply({
             draft: draft.text,
-            awaitingConfirmation: draft.awaitingConfirmation,
+            awaitingConfirmation: draft.awaiting.length > 0,
             evidence: collectEvidence(
               [...earlierOutputs, ...draft.outputs, ...checks.outputs],
               customerText

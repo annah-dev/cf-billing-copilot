@@ -8,6 +8,7 @@ import { getAgentByName } from "agents";
 import type { UIMessage } from "ai";
 import { describe, expect, it, vi } from "vitest";
 import { money } from "../../src/contracts";
+import { continuationEvidence } from "../../src/agent/billing-agent";
 import {
   collectEvidence,
   unsupportedFigures,
@@ -322,5 +323,56 @@ describe("grounding guard when the retry fails", () => {
       `Your September bill is ${SEP_TOTAL}.\n\n${OMITTED_NOTE}`
     );
     expect((await groundingOf(sb.sandboxId)).outcome).toBe("safe_answer");
+  });
+});
+
+describe("evidence from earlier steps (PR review r1)", () => {
+  const invoicePart = {
+    type: "tool-getInvoice",
+    toolCallId: "call_old",
+    state: "output-available",
+    input: { period: "2026-09" },
+    output: { total: money(41287) }
+  } as unknown as UIMessage["parts"][number];
+  const proposal = {
+    type: "tool-startCreditRequest",
+    toolCallId: "call_credit",
+    state: "approval-responded",
+    input: {}
+  } as unknown as UIMessage["parts"][number];
+  const user = (id: string): UIMessage => ({
+    id,
+    role: "user",
+    parts: [{ type: "text", text: "How much do I owe?" }]
+  });
+
+  it("ignores tool results the history places after the last question", () => {
+    const conversation: UIMessage[] = [
+      user("u1"),
+      user("u2"),
+      { id: "a", role: "assistant", parts: [invoicePart] }
+    ];
+    expect(continuationEvidence(false, null, conversation)).toEqual([]);
+    expect(continuationEvidence(true, null, conversation)).toEqual([]);
+  });
+
+  it("uses the proposing run's stored outputs only for the continuation that resumes it", () => {
+    const stored = {
+      toolCallIds: ["call_credit"],
+      outputs: [{ total: money(41287) }]
+    };
+    const resuming: UIMessage[] = [
+      user("u1"),
+      { id: "a", role: "assistant", parts: [invoicePart, proposal] }
+    ];
+    expect(continuationEvidence(true, stored, resuming)).toEqual(
+      stored.outputs
+    );
+    expect(continuationEvidence(false, stored, resuming)).toEqual([]);
+    const other: UIMessage[] = [
+      user("u1"),
+      { id: "a", role: "assistant", parts: [invoicePart] }
+    ];
+    expect(continuationEvidence(true, stored, other)).toEqual([]);
   });
 });
