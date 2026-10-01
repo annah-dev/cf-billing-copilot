@@ -1067,3 +1067,16 @@ compound ordinals such as twenty-first and one hundred and second remain exclude
 prose such as "twenty first time" is therefore checked as 20. Reason: conservative handling
 keeps real quantities under the every-number rule rather than erasing them. Decided by: QA
 engineer under standing orders.
+
+## evals: final evidence after the gate rebase
+
+Keep PR #10's final review identifiers and refreshed validation in one documentation-only
+commit, reviewed as the third, delta-only round against 4dc3e9e. Reason: agent-fixes PR #8
+merged during delivery, so the gate rebased to main 5b288f3 and the earlier 372-test evidence
+predates that base. No grader, expected value, recording or result changes in this final delta.
+Decided by: QA engineer under standing orders.
+
+After the gate-required rebase, synchronized the local worktree to published 4dc3e9e using
+Anna's worktree-sync authorization, preserving 7f552e7 under
+refs/no-mistakes/recover/evals-followup-pre-sync-7f552e7. The original pre-PR-7 sync ref remains.
+No published history was rewritten by this synchronization. Decided by: Anna.

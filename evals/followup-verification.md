@@ -67,7 +67,7 @@ Tests 5 failed | 85 passed (90)
 ```
 
 The fix keeps a whitespace-separated cardinal when the ordinal is used as a label
-(`first-time`, `second-hand`, spaced `first time`/`second hand`); hyphenated compound ordinals
+(`first-time`, `second-hand`, spaced `first time`/`second hand`); compound ordinals
 such as twenty-first and one hundred and second stay excluded, and "one second" still counts 1.
 After the fix `npx vitest run evals/grounding.test.ts` reports `Tests 90 passed (90)`. The
 explicit EVAL_REGRADE_ALL=1 shared regrade then reprocessed all 39 recordings: the only diff is
@@ -131,3 +131,36 @@ synchronization are recorded in DECISIONS.md; receipt identity is a lane impleme
 
 VERIFIED: Red-first ordinal/receipt and cardinal-label regressions; all 39-recording shared regrades with immutable raw evidence and no changed verdict; independent grader guards; exact-verdict replay; 367 passing offline and credential-free tests before review round 1; 90 passing grader tests after it; npm ci/typecheck; zero coverage disappeared, 19 added (372 collected); scope/prefix checks; no new model calls.
 NOT VERIFIED: Exact Claude review round 1 prompt (not exposed by axi logs); full and credential-free npm test at the final head until the gate test step runs; later review rounds, PR and CI until executed; deployed/public evaluation, Cloudflare meter usage and proposed agent/prompt fixes inherited from the local-dev run. No merge or deployment.
+
+## Final evidence after agent-fixes main merged
+
+The gate opened PR #10, then detected an append-only-log merge conflict after PR #8 merged.
+Its CI auto-fix rebased the follow-up to main 5b288f3 and force-with-lease repushed published
+4dc3e9e. This gate-required history rewrite was reported to Anna; no manual published rewrite.
+Both source-review rounds completed before the rebase; the rebase left lane source unchanged.
+Main 5b288f3's PROMPTS.md and DECISIONS.md bytes remain prefixes. App source, frozen files,
+recordings and original grades are unchanged relative to this new base.
+
+GitHub CI passed npm ci/typecheck/test on 4dc3e9e. An independent git-archive snapshot of the
+same head, with the unchanged pinned installed modules, ran credential-free npm test and
+typecheck. Direct execution in the gate worktree first hit its read-only Vite-temp directory;
+that failed attempt is not passing evidence. The isolated snapshot completed successfully:
+
+```text
+npm run typecheck: exit 0
+> tsc --noEmit && tsc --noEmit -p tests/agent
+env -i PATH="$PATH" HOME="$(mktemp -d)" CI=1 npm test: exit 0
+Test Files 25 passed (25)
+Tests 449 passed (449)
+```
+
+The post-rebase collection compares main 5b288f3 (430 tests) with head 4dc3e9e (449 tests):
+19 added, zero disappeared, project/relative path/full name compared. Added names are those
+listed above. Historical 367/372-test tails refer to the earlier main; these final numbers
+include the merged agent-fixes tests. Zero new model calls; immutable local-dev captures and
+raw/corrected rates are unchanged. The second full source review log is now archived in
+05g-evals-followup-review-r2.md; exact generated prompt was not exposed. This last evidence
+commit changes only docs/logs and receives the third review on its delta only.
+
+VERIFIED: Two full Claude source reviews and corrected cardinal-label finding; gate-required rebase with preserved main prefixes and unchanged lane source; CI on 4dc3e9e; independent 449-test credential-free run/typecheck; 430/449 collection with no disappearance; all earlier red-first/regrade/immutable-evidence proofs; zero model calls.
+NOT VERIFIED: Third, documentation-only delta review and final PR CI until executed; exact generated gate prompts (not exposed); deployed/public evaluation, metered neurons and proposed agent/prompt fixes inherited from the local-dev run. No merge or deployment.
