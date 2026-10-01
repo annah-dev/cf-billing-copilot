@@ -7,6 +7,7 @@ import {
   awaitingWorkflow,
   createApi,
   followUpCreditRequest,
+  SUPERSEDED,
   CREDIT_FOLLOW_UP_DELAYS_MS,
   followUpDecision,
   serialQueue,
@@ -346,7 +347,7 @@ describe("panel follow-up after a credit confirmation", () => {
     ]
   });
   function run(
-    panels: (ReturnType<typeof panel> | null)[],
+    panels: (ReturnType<typeof panel> | typeof SUPERSEDED | null)[],
     active: () => boolean = () => true
   ) {
     const sleeps: number[] = [];
@@ -383,6 +384,15 @@ describe("panel follow-up after a credit confirmation", () => {
     expect(
       (await run([panel(), null, panel(["cr_new", "pending_approval"])])).count
     ).toBe(2);
+  });
+  it("keeps going when a focus refresh supersedes a follow-up read", async () => {
+    // Read 2 is replaced by a newer (focus) read; the follow-up must not treat it as a failure.
+    const r = await run([
+      panel(["cr_new", "requested"]),
+      SUPERSEDED,
+      panel(["cr_new", "pending_approval"])
+    ]);
+    expect(r.count).toBe(3);
   });
   it("makes no read after the page unmounts during a delay", async () => {
     const r = await run([panel(["cr_new", "pending_approval"])], () => false);

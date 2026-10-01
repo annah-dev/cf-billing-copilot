@@ -180,11 +180,14 @@ export async function followUpDecision({
  */
 export const CREDIT_FOLLOW_UP_DELAYS_MS = [2000, 3000, 5000, 8000, 12000];
 type PanelRequests = { creditRequests: { id: string; status: string }[] };
+/** A panel read that a newer read (for example the focus refresh) replaced before it landed. */
+export const SUPERSEDED = "superseded" as const;
 /**
  * After a credit confirmation, read the panel after each delay until a credit request that was not
  * there before (`known`) has left "requested". Stops at that point, at a failed read (`read`
- * returns null) or when `active()` turns false, checked after every delay. Returns the number of
- * reads made.
+ * returns null) or when `active()` turns false, checked after every delay. A superseded read is not
+ * a failure: the newer read owns the panel, and the follow-up keeps its schedule. Returns the
+ * number of reads made.
  */
 export async function followUpCreditRequest({
   known,
@@ -194,7 +197,7 @@ export async function followUpCreditRequest({
   delaysMs = CREDIT_FOLLOW_UP_DELAYS_MS
 }: {
   known: ReadonlySet<string>;
-  read: () => Promise<PanelRequests | null | undefined>;
+  read: () => Promise<PanelRequests | typeof SUPERSEDED | null | undefined>;
   sleep: (ms: number) => Promise<void>;
   active: () => boolean;
   delaysMs?: readonly number[];
@@ -205,6 +208,7 @@ export async function followUpCreditRequest({
     if (!active()) break;
     const panel = await read();
     reads++;
+    if (panel === SUPERSEDED) continue;
     if (!panel) break;
     if (
       panel.creditRequests.some(

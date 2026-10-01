@@ -9,6 +9,7 @@ import {
   apiMode,
   browserStorage,
   followUpCreditRequest,
+  SUPERSEDED,
   createApi,
   readSession,
   saveSession
@@ -47,7 +48,11 @@ function CustomerWorkspace({
   const [busy, setBusy] = useState(false);
   const generation = useRef(0);
   const mounted = useRef(true);
-  const refresh = useCallback(async (): Promise<PanelResponse | null> => {
+  // Resolves to the panel, to SUPERSEDED when a newer read replaced this one, or to null when the
+  // read failed (the error is shown).
+  const refresh = useCallback(async (): Promise<
+    PanelResponse | typeof SUPERSEDED | null
+  > => {
     const current = ++generation.current;
     setBusy(true);
     try {
@@ -57,8 +62,10 @@ function CustomerWorkspace({
         setError(null);
         return next;
       }
+      return SUPERSEDED;
     } catch (failure) {
-      if (current === generation.current) setError(failure);
+      if (current !== generation.current) return SUPERSEDED;
+      setError(failure);
     } finally {
       if (current === generation.current) setBusy(false);
     }
