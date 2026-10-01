@@ -1333,3 +1333,38 @@ changed. Reason: PROMPTS.md must hold every prompt, and history is completed by 
 by editing other lanes' entries (owner answer D1).
 
 Decided by: Anna.
+
+## ui: The panel follows a confirmed credit request
+
+After the customer confirms a credit request in the live chat, the panel re-reads on a bounded
+schedule (2, 3, 5, 8 and 12 s, at most five reads) until a credit request it had not seen before
+leaves "requested", and stops on a failed read or when the page unmounts. The focus refresh stays.
+Reason: since PR #12 the server continues the turn after the approval frame, so the client's
+`onFinish` does not fire and the panel showed the new request only after a manual Refresh
+(release smoke test, 2026-10-01). About 30 s covers the Workflow's validation, which took about
+13 s in production.
+
+Decided by: Anna (refresh on a bounded schedule, at most 5 reads); the delays by Release engineer
+under standing orders.
+
+## agent: idleSweep is scheduled with idempotent false
+
+`armIdleSweep` passes `{ idempotent: false }` to `schedule`. The SDK's idempotent mode matches
+callback and payload and ignores the time; when `idleSweep` runs from the alarm its own row still
+exists until the callback returns, so an idempotent re-arm would return that row, which the SDK
+then deletes, and the sandbox would never be swept again. `armIdleSweep` already cancels other
+pending `idleSweep` rows, so exactly one stays pending; `false` only silences the SDK warning for a
+`schedule()` call made inside `onStart()`. A test fires the sweep through the alarm for an active
+sandbox and checks that one future `idleSweep` remains; with `idempotent: true` it fails with none.
+
+Decided by: Anna.
+
+## docs: Architecture diagram from Excalidraw
+
+docs/architecture.svg (exported) and docs/architecture.excalidraw (source, opens at
+excalidraw.com) are embedded at the top of docs/ARCHITECTURE.md and in the README's Architecture
+section; the Mermaid diagrams stay as the text version. The diagram was drawn with Claude (Cowork)
+from the owner's prompt, logged in PROMPTS.md. Its labels were checked against the code; findings
+are listed in the PR rather than edited into the SVG, so the exported file matches its source.
+
+Decided by: Anna.

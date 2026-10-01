@@ -173,6 +173,52 @@ export async function followUpDecision({
   }
   return reads;
 }
+/**
+ * Delays before each panel read after the customer confirms a credit request: at most five reads
+ * over about 30 s, because the request is created by the server-continued turn and validated by
+ * the Workflow a few seconds later.
+ */
+export const CREDIT_FOLLOW_UP_DELAYS_MS = [2000, 3000, 5000, 8000, 12000];
+type PanelRequests = { creditRequests: { id: string; status: string }[] };
+/** A panel read that a newer read (for example the focus refresh) replaced before it landed. */
+export const SUPERSEDED = "superseded" as const;
+/**
+ * After a credit confirmation, read the panel after each delay until a credit request that was not
+ * there before (`known`) has left "requested". Stops at that point, at a failed read (`read`
+ * returns null) or when `active()` turns false, checked after every delay. A superseded read is not
+ * a failure: the newer read owns the panel, and the follow-up keeps its schedule. Returns the
+ * number of reads made.
+ */
+export async function followUpCreditRequest({
+  known,
+  read,
+  sleep,
+  active,
+  delaysMs = CREDIT_FOLLOW_UP_DELAYS_MS
+}: {
+  known: ReadonlySet<string>;
+  read: () => Promise<PanelRequests | typeof SUPERSEDED | null | undefined>;
+  sleep: (ms: number) => Promise<void>;
+  active: () => boolean;
+  delaysMs?: readonly number[];
+}): Promise<number> {
+  let reads = 0;
+  for (const delay of delaysMs) {
+    await sleep(delay);
+    if (!active()) break;
+    const panel = await read();
+    reads++;
+    if (panel === SUPERSEDED) continue;
+    if (!panel) break;
+    if (
+      panel.creditRequests.some(
+        (r) => !known.has(r.id) && r.status !== "requested"
+      )
+    )
+      break;
+  }
+  return reads;
+}
 const sessionKey = (mode: SessionMode) =>
   mode === "fixture" ? SESSION_KEY : "billing-copilot.session.v1.live";
 export function readSession(

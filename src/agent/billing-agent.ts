@@ -447,7 +447,14 @@ export class BillingAgent extends AIChatAgent<Env> {
         await this.cancelSchedule(pending.id);
       }
     }
-    const schedule = await this.schedule(new Date(at), "idleSweep");
+    // Not idempotent: the SDK's idempotent mode matches callback and payload and ignores the time,
+    // so a re-arm from inside idleSweep (run by the alarm) would return the row being executed,
+    // which the SDK deletes when the callback returns, and the sandbox would never be swept again.
+    // The loop above already keeps exactly one pending row; `false` only silences the SDK's
+    // warning for a schedule() call made inside onStart().
+    const schedule = await this.schedule(new Date(at), "idleSweep", undefined, {
+      idempotent: false
+    });
     this.writeKey("idle_schedule", schedule.id);
   }
 

@@ -3975,7 +3975,7 @@ severity, file and line, what is wrong and the fix. End with:
 - Role: Reviewer and release engineer
 - Harness: Claude Code
 - Source: prompt-history/prompts/06x-release-owner-c1-a1-b1-diagram.md
-- Outcome: (pending)
+- Outcome: C1: main merged into feat/release, #13's entries kept once, CI green on #14 (merged). A1, B1 and the diagram: follow-up PR #15 (panel follow-up after a credit confirmation, idleSweep with idempotent false and an alarm-path test, the Excalidraw diagram embedded with a label check against the code), three Codex review rounds, final transcript export.
 
 ````text
 C1 A1 B1, with changes.
@@ -3991,6 +3991,190 @@ B1, but pass { idempotent: false }, not true. Reason: the SDK's idempotent mode 
 Diagram: copy cf-billing-copilot-architecture.excalidraw and cf-billing-copilot-architecture.svg from my Windows Downloads folder into docs/ as architecture.excalidraw and architecture.svg (chmod 644). Embed the SVG in the README Architecture section and at the top of docs/ARCHITECTURE.md, keeping the Mermaid. Note that the source opens at excalidraw.com. Check every label against the code and list anything wrong rather than editing the SVG. Log it in PROMPTS.md as drawn with Claude (Cowork); my prompt was "I'd like to include an architecture diagram built in excalidraw for the project. Build it for me".
 
 End the PR with one final transcript export so the prompt history covers this work too.
+````
+
+## 65. Owner: diagram files in place; start the follow-up PR (typed mid-session)
+
+- Timestamp: 2026-10-01T03:23:49-07:00
+- Role: Reviewer and release engineer
+- Harness: Claude Code
+- Source: prompt-history/prompts/06y-release-owner-followup-start.md
+- Outcome: both files copied unchanged into docs/ (mode 644) and included in PR #15.
+
+````text
+A1: both files are now in C:\Users\anna_\Downloads under the exact names (cf-billing-copilot-architecture.excalidraw and cf-billing-copilot-architecture.svg). #14 is merged. Start the follow-up PR from a fresh origin/main as planned, with the diagram included.
+````
+
+## 66. Architecture diagram (owner, in a separate Claude Cowork conversation)
+
+- Timestamp: 2026-10-01 (date the owner supplied the files; the Cowork conversation is not an agent session in this repo, so it is not exported)
+- Role: Owner, drawing with Claude
+- Harness: Claude (Cowork)
+- Source: prompt-history/prompts/06z-architecture-diagram-cowork.md
+- Outcome: Claude drew docs/architecture.excalidraw and exported docs/architecture.svg; the owner placed both files and the release lane added them unchanged in the follow-up PR, with a label check against the code reported in that PR.
+
+````text
+I'd like to include an architecture diagram built in excalidraw for the project. Build it for me
+````
+
+## 67. Follow-up PR #15 cross-review, round 1
+
+- Timestamp: 2026-10-01T03:28:57-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06za-followup-review-r1.md
+- Outcome: CHANGES REQUESTED, 1 major: a focus refresh superseding a follow-up read ended the credit follow-up early. Fixed: superseded reads are distinguished from failures, with a regression test. idleSweep, diagram files, links and append-only rules were confirmed.
+
+````text
+# PR #15 (fix/panel-sweep-diagram) cross-review, round 1 (full)
+
+You are reviewing pull request #15, branch `fix/panel-sweep-diagram`, authored by Claude Code
+(release engineer) at the owner's request (prompt-history/prompts/06x-release-owner-c1-a1-b1-diagram.md
+and 06y). You are read-only: do not edit, commit, push, rebase or merge anything, and make no
+network calls or live model calls.
+
+The diff under review:
+
+    git diff origin/main...origin/fix/panel-sweep-diagram
+
+Check it against the owner's instruction (06x), AGENTS.md, docs/agent/cross-review.md ("What the
+reviewer checks"), docs/agent/verification.md and the appended docs/DECISIONS.md entries.
+
+Focus on:
+
+1. Panel follow-up (src/ui/api.ts `followUpCreditRequest`, src/app.tsx, src/ui/chat.tsx). Does it
+   start only on a confirmation (approved true), read at most five times, stop when a request not
+   seen before leaves "requested", on a failed read and on unmount? Can a stale `panel` closure
+   make it miss the new request or stop early? Can its reads race the focus refresh or a customer
+   switch (generation counter, mounted flag)? Is the focus refresh kept? Does the README still
+   mention a manual Refresh anywhere in the demo or the release checklist?
+2. idleSweep (src/agent/billing-agent.ts). Is `{ idempotent: false }` correct against the
+   installed SDK (`node_modules/agents/dist/index.js`, `schedule` and the onStart warning)? Does
+   `armIdleSweep` still keep exactly one pending row on every path (onStart, touchActivity,
+   idleSweep re-arm)? Does the new test really go through the alarm (`runDurableObjectAlarm`),
+   and would it fail with `idempotent: true`?
+3. Diagram. docs/architecture.excalidraw and docs/architecture.svg must be byte-identical to what
+   the owner supplied (the PR copies them unchanged; you cannot see the originals, so check they
+   are valid Excalidraw JSON and a self-contained SVG with no scripts or external references, and
+   mode 644). Are the embeds and the "opens at excalidraw.com" notes correct, with relative paths
+   that render on GitHub? Spot-check the PR's label-check list against the code: is anything listed
+   as wrong actually right, or anything important missed?
+4. Rules: no frozen file changed (src/contracts, wrangler.jsonc, package files, vitest config,
+   tsconfig, .github, AGENTS.md), plain ASCII in docs and comments, DECISIONS and PROMPTS.md
+   append-only (the regenerated chronological index at the end of PROMPTS.md is the only rewritten
+   block), and VERIFIED / NOT VERIFIED honesty.
+
+You may run `npm ci`, `npm run typecheck`, `npm test` and `npx vitest list` in a scratch copy if
+your sandbox allows; say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
+severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 68. Follow-up PR #15 cross-review, round 2
+
+- Timestamp: 2026-10-01T03:40:33-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06zb-followup-review-r2.md
+- Outcome: APPROVE, no actionable findings: the round-1 fix keeps polling across a superseded read and still stops on a real failure; both regression mutations fail as claimed; 521 tests pass credential-free.
+
+````text
+# PR #15 (fix/panel-sweep-diagram) cross-review, round 2 (full)
+
+You are reviewing pull request #15, branch `fix/panel-sweep-diagram`, authored by Claude Code
+(release engineer) at the owner's request (prompt-history/prompts/06x-release-owner-c1-a1-b1-diagram.md
+and 06y). You are read-only: do not edit, commit, push, rebase or merge anything, and make no
+network calls or live model calls.
+
+The diff under review:
+
+    git diff origin/main...origin/fix/panel-sweep-diagram
+
+Check it against the owner's instruction (06x), AGENTS.md, docs/agent/cross-review.md ("What the
+reviewer checks"), docs/agent/verification.md and the appended docs/DECISIONS.md entries.
+
+Focus on:
+
+1. Panel follow-up (src/ui/api.ts `followUpCreditRequest`, src/app.tsx, src/ui/chat.tsx). Does it
+   start only on a confirmation (approved true), read at most five times, stop when a request not
+   seen before leaves "requested", on a failed read and on unmount? Can a stale `panel` closure
+   make it miss the new request or stop early? Can its reads race the focus refresh or a customer
+   switch (generation counter, mounted flag)? Is the focus refresh kept? Does the README still
+   mention a manual Refresh anywhere in the demo or the release checklist?
+2. idleSweep (src/agent/billing-agent.ts). Is `{ idempotent: false }` correct against the
+   installed SDK (`node_modules/agents/dist/index.js`, `schedule` and the onStart warning)? Does
+   `armIdleSweep` still keep exactly one pending row on every path (onStart, touchActivity,
+   idleSweep re-arm)? Does the new test really go through the alarm (`runDurableObjectAlarm`),
+   and would it fail with `idempotent: true`?
+3. Diagram. docs/architecture.excalidraw and docs/architecture.svg must be byte-identical to what
+   the owner supplied (the PR copies them unchanged; you cannot see the originals, so check they
+   are valid Excalidraw JSON and a self-contained SVG with no scripts or external references, and
+   mode 644). Are the embeds and the "opens at excalidraw.com" notes correct, with relative paths
+   that render on GitHub? Spot-check the PR's label-check list against the code: is anything listed
+   as wrong actually right, or anything important missed?
+4. Rules: no frozen file changed (src/contracts, wrangler.jsonc, package files, vitest config,
+   tsconfig, .github, AGENTS.md), plain ASCII in docs and comments, DECISIONS and PROMPTS.md
+   append-only (the regenerated chronological index at the end of PROMPTS.md is the only rewritten
+   block), and VERIFIED / NOT VERIFIED honesty.
+
+Round 1 (prompt 06za) requested one change, which the author fixed: a focus refresh that
+superseded a follow-up read made `refresh` return null, which the helper treated as a failed read,
+so polling stopped early. `refresh` in src/app.tsx now returns `SUPERSEDED` (src/ui/api.ts) when a
+newer read replaced it, both on success and on error; `followUpCreditRequest` keeps its schedule on
+`SUPERSEDED` and still stops on a real failure (null). New test: "keeps going when a focus refresh
+supersedes a follow-up read"; turning `SUPERSEDED` back into a stop fails it. Re-check the round-1
+finding, then review the whole diff again as a full round.
+
+You may run `npm ci`, `npm run typecheck`, `npm test` and `npx vitest list` in a scratch copy if
+your sandbox allows; say which you ran.
+
+Report: a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
+severity (blocker, major, minor, nit), file and line, what is wrong and the fix you suggest. End
+with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
+````
+
+## 69. Follow-up PR #15 cross-review, round 3 (delta only)
+
+- Timestamp: 2026-10-01T03:46:36-07:00
+- Role: automated cross-review
+- Harness: Codex CLI (codex exec, read-only sandbox, model_reasoning_effort=high)
+- Source: prompt-history/prompts/06zc-followup-review-r3-delta.md
+- Outcome: APPROVE, no findings: records-only delta; logged prompts match byte for byte; indexes match the generator; the changed transcripts carry no personal, unrelated or secret content. Review loop for PR #15 complete; the owner merges.
+
+````text
+# PR #15 (fix/panel-sweep-diagram) cross-review, round 3 (delta only)
+
+You are reviewing pull request #15 for the third and last round, covering only the changes since
+round 2. You are read-only: do not edit, commit, push, rebase or merge anything, and make no network
+or live model calls (do not run the transcript export).
+
+Round 2 (prompt-history/prompts/06zb-followup-review-r2.md) reviewed head 8a2def9223fb30d43c87ded6c10fd144e1fb396c and approved with no
+findings. The delta under review:
+
+    git diff 8a2def9223fb30d43c87ded6c10fd144e1fb396c..origin/fix/panel-sweep-diagram
+
+It should contain only records: the round-2 outcome and this round-3 entry in PROMPTS.md, the
+regenerated chronological index, this prompt file, and the transcript export the owner asked for
+at the end of the PR (prompt-history/transcripts/, regenerated by scripts/export-transcripts.mjs,
+which is unchanged). Check that the delta changes no code, configuration, test or README text;
+that the logged prompts match their files byte for byte; that the index matches
+`node scripts/export-transcripts.mjs --prompts-index`; that CROSS-CHECK.md reports nothing missing
+except this round-3 prompt if its session ran after the export; and sample the new or changed
+transcripts (`gzip -dc`) for anything personal, unrelated or secret.
+
+Report a verdict first (APPROVE or CHANGES REQUESTED), then findings most severe first, each with
+severity, file and line, what is wrong and the fix. End with:
+
+    VERIFIED:     <what you ran and observed>
+    NOT VERIFIED: <what you did not exercise, and why>
 ````
 
 ## Chronological index
@@ -4076,47 +4260,52 @@ Every entry in this file in time order (UTC), generated by `node scripts/export-
 | 75 | 2026-09-30 23:57 | [32. Agent fixes kickoff](#32-agent-fixes-kickoff) | `prompt-history/prompts/07-agent-fixes.md` |
 | 76 | 2026-09-30 23:58 | [48. Release lane phase note](#48-release-lane-phase-note) | `prompt-history/prompts/06a-release-phase-note.md` |
 | 77 | 2026-09-30 23:58 | [49. Release lane kickoff](#49-release-lane-kickoff) | `prompt-history/prompts/06-release.md` |
-| 78 | 2026-10-01 00:00 | [2026-09-30T17:00:13-07:00 - Evals harness gate review round 3 (grounding delta only)](#2026-09-30t170013-0700---evals-harness-gate-review-round-3-grounding-delta-only) | `prompt-history/prompts/05n-evals-grounding-delta-review.md` |
-| 79 | 2026-10-01 00:00 | [2026-09-30T17:00:13-07:00 - Evals away standing orders](#2026-09-30t170013-0700---evals-away-standing-orders) | `prompt-history/prompts/05o-evals-away-standing-orders.md` |
-| 80 | 2026-10-01 00:26 | [33. Agent fixes cross-review, round 1](#33-agent-fixes-cross-review-round-1) | `prompt-history/prompts/07a-agent-fixes-review-r1.md` |
-| 81 | 2026-10-01 00:41 | [34. Agent fixes cross-review, round 2](#34-agent-fixes-cross-review-round-2) | `prompt-history/prompts/07b-agent-fixes-review-r2.md` |
-| 82 | 2026-10-01 00:57 | [35. Agent fixes cross-review, round 3 (delta only)](#35-agent-fixes-cross-review-round-3-delta-only) | `prompt-history/prompts/07c-agent-fixes-review-r3-delta.md` |
-| 83 | 2026-10-01 01:31 | [2026-09-30T18:31:21-07:00 - Owner answers to the release phase 1 report (typed mid-session)](#2026-09-30t183121-0700---owner-answers-to-the-release-phase-1-report-typed-mid-session) | `prompt-history/prompts/06e-release-owner-phase1-answers.md` |
-| 84 | 2026-10-01 01:32 | [2026-09-30T18:32:32-07:00 - Evals figures and simulation follow-up](#2026-09-30t183232-0700---evals-figures-and-simulation-follow-up) | `prompt-history/prompts/05p-evals-figures-simulation-followup.md` |
-| 85 | 2026-10-01 01:34 | [56. Agent fixes owner answer A1 (typed mid-session, logged late)](#56-agent-fixes-owner-answer-a1-typed-mid-session-logged-late) | `prompt-history/prompts/06t-late-agent-fixes-owner-a1.md` |
-| 86 | 2026-10-01 01:40 | [2026-09-30T18:40:16-07:00 - PR #9 cross-review, round 1](#2026-09-30t184016-0700---pr-9-cross-review-round-1) | `prompt-history/prompts/06f-ui-live-review-r1.md` |
-| 87 | 2026-10-01 01:42 | [2026-09-30T18:42:41-07:00 - Evals follow-up cross-review context](#2026-09-30t184241-0700---evals-follow-up-cross-review-context) | `prompt-history/prompts/05q-evals-followup-gate-context.md` |
-| 88 | 2026-10-01 01:47 | [36. Production chat fixes and rebase instructions (owner, mid-session)](#36-production-chat-fixes-and-rebase-instructions-owner-mid-session) | `prompt-history/prompts/08-prod-chat-fixes.md` |
-| 89 | 2026-10-01 01:51 | [37. Sandbox per-IP cap (owner, mid-session)](#37-sandbox-per-ip-cap-owner-mid-session) | `prompt-history/prompts/08a-sandbox-ip-cap.md` |
-| 90 | 2026-10-01 01:51 | [2026-09-30T18:51:14-07:00 - Evals follow-up review round 1](#2026-09-30t185114-0700---evals-follow-up-review-round-1) | `prompt-history/prompts/05g-evals-followup-review-r1.md` |
-| 91 | 2026-10-01 01:51 | [2026-09-30T18:51:14-07:00 - Evals follow-up cardinal-before-ordinal-label fix](#2026-09-30t185114-0700---evals-follow-up-cardinal-before-ordinal-label-fix) | `prompt-history/prompts/05r-evals-followup-cardinal-fix.md` |
-| 92 | 2026-10-01 01:55 | [2026-09-30T18:55:02-07:00 - PR #9 cross-review, round 2](#2026-09-30t185502-0700---pr-9-cross-review-round-2) | `prompt-history/prompts/06g-ui-live-review-r2.md` |
-| 93 | 2026-10-01 02:00 | [57. Agent fixes: release-lane pointers pasted by the owner (typed mid-session, logged late)](#57-agent-fixes-release-lane-pointers-pasted-by-the-owner-typed-mid-session-logged-late) | `prompt-history/prompts/06u-late-agent-fixes-release-pointers.md` |
-| 94 | 2026-10-01 02:01 | [50. Owner answer: merge main, do not rebase (typed mid-session)](#50-owner-answer-merge-main-do-not-rebase-typed-mid-session) | `prompt-history/prompts/06i-release-owner-merge-not-rebase.md` |
-| 95 | 2026-10-01 02:02 | [38. Sandbox IP cap cross-review, round 1](#38-sandbox-ip-cap-cross-review-round-1) | `prompt-history/prompts/08b-config-ip-cap-review-r1.md` |
-| 96 | 2026-10-01 02:07 | [2026-09-30T19:07:24-07:00 - Evals follow-up review round 2](#2026-09-30t190724-0700---evals-follow-up-review-round-2) | `prompt-history/prompts/05g-evals-followup-review-r2.md` |
-| 97 | 2026-10-01 02:07 | [2026-09-30T19:07:24-07:00 - Evals follow-up final delta review](#2026-09-30t190724-0700---evals-follow-up-final-delta-review) | `prompt-history/prompts/05s-evals-followup-final-delta.md` |
-| 98 | 2026-10-01 02:08 | [2026-09-30T19:08:21-07:00 - PR #9 cross-review, round 3 (delta only)](#2026-09-30t190821-0700---pr-9-cross-review-round-3-delta-only) | `prompt-history/prompts/06h-ui-live-review-r3-delta.md` |
-| 99 | 2026-10-01 02:13 | [2026-09-30T19:13:43-07:00 - Evals follow-up test-phase install fix](#2026-09-30t191343-0700---evals-follow-up-test-phase-install-fix) | `prompt-history/prompts/05t-evals-followup-install-fix.md` |
-| 100 | 2026-10-01 02:16 | [39. Sandbox IP cap cross-review, round 2](#39-sandbox-ip-cap-cross-review-round-2) | `prompt-history/prompts/08b-config-ip-cap-review-r2.md` |
-| 101 | 2026-10-01 02:20 | [2026-09-30T19:20:00-07:00 - Evals follow-up review round 3 (delta only)](#2026-09-30t192000-0700---evals-follow-up-review-round-3-delta-only) | `prompt-history/prompts/05g-evals-followup-review-r3.md` |
-| 102 | 2026-10-01 02:22 | [40. Sandbox IP cap cross-review, round 3 (delta only)](#40-sandbox-ip-cap-cross-review-round-3-delta-only) | `prompt-history/prompts/08b-config-ip-cap-review-r3-delta.md` |
-| 103 | 2026-10-01 02:24 | [51. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)](#51-owner-pr-9-merged-production-agent-fixes-in-a-later-pr-typed-mid-session) | `prompt-history/prompts/06j-release-owner-pr9-merged.md` |
-| 104 | 2026-10-01 06:00 | [52. Owner: WSL restart recovery (typed mid-session)](#52-owner-wsl-restart-recovery-typed-mid-session) | `prompt-history/prompts/06k-release-owner-wsl-restart.md` |
-| 105 | 2026-10-01 06:06 | [2026-09-30T23:06:30-07:00 - Evals WSL recovery](#2026-09-30t230630-0700---evals-wsl-recovery) | `prompt-history/prompts/05u-evals-wsl-recovery.md` |
-| 106 | 2026-10-01 06:12 | [58. Agent fixes owner answer A3: merge main, remember-credit run (typed mid-session, logged late)](#58-agent-fixes-owner-answer-a3-merge-main-remember-credit-run-typed-mid-session-logged-late) | `prompt-history/prompts/06v-late-agent-fixes-owner-a3.md` |
-| 107 | 2026-10-01 06:13 | [59. Evals owner note: recover the PR #10 gate run after the WSL restart (typed mid-session, logged late)](#59-evals-owner-note-recover-the-pr-10-gate-run-after-the-wsl-restart-typed-mid-session-logged-late) | `prompt-history/prompts/06s-late-evals-owner-wsl-recovery.md` |
-| 108 | 2026-10-01 06:14 | [53. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)](#53-owner-pr-10-to-the-evals-lane-readme-cost-update-in-phase-2-typed-mid-session) | `prompt-history/prompts/06l-release-owner-pr10-pr11.md` |
-| 109 | 2026-10-01 06:17 | [41. Production chat fixes cross-review, round 1](#41-production-chat-fixes-cross-review-round-1) | `prompt-history/prompts/08c-prod-chat-review-r1.md` |
-| 110 | 2026-10-01 06:18 | [2026-09-30T23:18:03-07:00 - Evals WSL recovery review](#2026-09-30t231803-0700---evals-wsl-recovery-review) | `prompt-history/prompts/05g-evals-wsl-recovery-review.md` |
-| 111 | 2026-10-01 06:32 | [42. Production chat fixes cross-review, round 2](#42-production-chat-fixes-cross-review-round-2) | `prompt-history/prompts/08c-prod-chat-review-r2.md` |
-| 112 | 2026-10-01 06:38 | [60. Agent fixes owner note: guard follows the grader's ordinal rule (typed mid-session, logged late)](#60-agent-fixes-owner-note-guard-follows-the-graders-ordinal-rule-typed-mid-session-logged-late) | `prompt-history/prompts/06w-late-agent-fixes-owner-guard-ordinals.md` |
-| 113 | 2026-10-01 06:42 | [43. Production chat fixes cross-review, round 3 (delta only)](#43-production-chat-fixes-cross-review-round-3-delta-only) | `prompt-history/prompts/08c-prod-chat-review-r3-delta.md` |
-| 114 | 2026-10-01 07:06 | [44. Owner: start release phase 2 (typed mid-session)](#44-owner-start-release-phase-2-typed-mid-session) | `prompt-history/prompts/06m-release-phase2-start.md` |
-| 115 | 2026-10-01 07:33 | [45. Test timeouts PR cross-review, round 1](#45-test-timeouts-pr-cross-review-round-1) | `prompt-history/prompts/06n-test-timeouts-review-r1.md` |
-| 116 | 2026-10-01 07:40 | [46. Test timeouts PR cross-review, round 2](#46-test-timeouts-pr-cross-review-round-2) | `prompt-history/prompts/06o-test-timeouts-review-r2.md` |
-| 117 | 2026-10-01 07:46 | [47. Test timeouts PR cross-review, round 3 (delta only)](#47-test-timeouts-pr-cross-review-round-3-delta-only) | `prompt-history/prompts/06p-test-timeouts-review-r3-delta.md` |
-| 118 | 2026-10-01 08:03 | [61. Release PR #14 cross-review, round 1](#61-release-pr-14-cross-review-round-1) | `prompt-history/prompts/06b-release-review-r1.md` |
-| 119 | 2026-10-01 08:20 | [62. Release PR #14 cross-review, round 2](#62-release-pr-14-cross-review-round-2) | `prompt-history/prompts/06c-release-review-r2.md` |
-| 120 | 2026-10-01 08:32 | [63. Release PR #14 cross-review, round 3 (delta only)](#63-release-pr-14-cross-review-round-3-delta-only) | `prompt-history/prompts/06d-release-review-r3-delta.md` |
-| 121 | 2026-10-01 10:07 | [64. Owner: C1 A1 B1 with changes, and the architecture diagram (typed mid-session)](#64-owner-c1-a1-b1-with-changes-and-the-architecture-diagram-typed-mid-session) | `prompt-history/prompts/06x-release-owner-c1-a1-b1-diagram.md` |
+| 78 | 2026-10-01 00:00 | [66. Architecture diagram (owner, in a separate Claude Cowork conversation)](#66-architecture-diagram-owner-in-a-separate-claude-cowork-conversation) | `prompt-history/prompts/06z-architecture-diagram-cowork.md` |
+| 79 | 2026-10-01 00:00 | [2026-09-30T17:00:13-07:00 - Evals harness gate review round 3 (grounding delta only)](#2026-09-30t170013-0700---evals-harness-gate-review-round-3-grounding-delta-only) | `prompt-history/prompts/05n-evals-grounding-delta-review.md` |
+| 80 | 2026-10-01 00:00 | [2026-09-30T17:00:13-07:00 - Evals away standing orders](#2026-09-30t170013-0700---evals-away-standing-orders) | `prompt-history/prompts/05o-evals-away-standing-orders.md` |
+| 81 | 2026-10-01 00:26 | [33. Agent fixes cross-review, round 1](#33-agent-fixes-cross-review-round-1) | `prompt-history/prompts/07a-agent-fixes-review-r1.md` |
+| 82 | 2026-10-01 00:41 | [34. Agent fixes cross-review, round 2](#34-agent-fixes-cross-review-round-2) | `prompt-history/prompts/07b-agent-fixes-review-r2.md` |
+| 83 | 2026-10-01 00:57 | [35. Agent fixes cross-review, round 3 (delta only)](#35-agent-fixes-cross-review-round-3-delta-only) | `prompt-history/prompts/07c-agent-fixes-review-r3-delta.md` |
+| 84 | 2026-10-01 01:31 | [2026-09-30T18:31:21-07:00 - Owner answers to the release phase 1 report (typed mid-session)](#2026-09-30t183121-0700---owner-answers-to-the-release-phase-1-report-typed-mid-session) | `prompt-history/prompts/06e-release-owner-phase1-answers.md` |
+| 85 | 2026-10-01 01:32 | [2026-09-30T18:32:32-07:00 - Evals figures and simulation follow-up](#2026-09-30t183232-0700---evals-figures-and-simulation-follow-up) | `prompt-history/prompts/05p-evals-figures-simulation-followup.md` |
+| 86 | 2026-10-01 01:34 | [56. Agent fixes owner answer A1 (typed mid-session, logged late)](#56-agent-fixes-owner-answer-a1-typed-mid-session-logged-late) | `prompt-history/prompts/06t-late-agent-fixes-owner-a1.md` |
+| 87 | 2026-10-01 01:40 | [2026-09-30T18:40:16-07:00 - PR #9 cross-review, round 1](#2026-09-30t184016-0700---pr-9-cross-review-round-1) | `prompt-history/prompts/06f-ui-live-review-r1.md` |
+| 88 | 2026-10-01 01:42 | [2026-09-30T18:42:41-07:00 - Evals follow-up cross-review context](#2026-09-30t184241-0700---evals-follow-up-cross-review-context) | `prompt-history/prompts/05q-evals-followup-gate-context.md` |
+| 89 | 2026-10-01 01:47 | [36. Production chat fixes and rebase instructions (owner, mid-session)](#36-production-chat-fixes-and-rebase-instructions-owner-mid-session) | `prompt-history/prompts/08-prod-chat-fixes.md` |
+| 90 | 2026-10-01 01:51 | [37. Sandbox per-IP cap (owner, mid-session)](#37-sandbox-per-ip-cap-owner-mid-session) | `prompt-history/prompts/08a-sandbox-ip-cap.md` |
+| 91 | 2026-10-01 01:51 | [2026-09-30T18:51:14-07:00 - Evals follow-up review round 1](#2026-09-30t185114-0700---evals-follow-up-review-round-1) | `prompt-history/prompts/05g-evals-followup-review-r1.md` |
+| 92 | 2026-10-01 01:51 | [2026-09-30T18:51:14-07:00 - Evals follow-up cardinal-before-ordinal-label fix](#2026-09-30t185114-0700---evals-follow-up-cardinal-before-ordinal-label-fix) | `prompt-history/prompts/05r-evals-followup-cardinal-fix.md` |
+| 93 | 2026-10-01 01:55 | [2026-09-30T18:55:02-07:00 - PR #9 cross-review, round 2](#2026-09-30t185502-0700---pr-9-cross-review-round-2) | `prompt-history/prompts/06g-ui-live-review-r2.md` |
+| 94 | 2026-10-01 02:00 | [57. Agent fixes: release-lane pointers pasted by the owner (typed mid-session, logged late)](#57-agent-fixes-release-lane-pointers-pasted-by-the-owner-typed-mid-session-logged-late) | `prompt-history/prompts/06u-late-agent-fixes-release-pointers.md` |
+| 95 | 2026-10-01 02:01 | [50. Owner answer: merge main, do not rebase (typed mid-session)](#50-owner-answer-merge-main-do-not-rebase-typed-mid-session) | `prompt-history/prompts/06i-release-owner-merge-not-rebase.md` |
+| 96 | 2026-10-01 02:02 | [38. Sandbox IP cap cross-review, round 1](#38-sandbox-ip-cap-cross-review-round-1) | `prompt-history/prompts/08b-config-ip-cap-review-r1.md` |
+| 97 | 2026-10-01 02:07 | [2026-09-30T19:07:24-07:00 - Evals follow-up review round 2](#2026-09-30t190724-0700---evals-follow-up-review-round-2) | `prompt-history/prompts/05g-evals-followup-review-r2.md` |
+| 98 | 2026-10-01 02:07 | [2026-09-30T19:07:24-07:00 - Evals follow-up final delta review](#2026-09-30t190724-0700---evals-follow-up-final-delta-review) | `prompt-history/prompts/05s-evals-followup-final-delta.md` |
+| 99 | 2026-10-01 02:08 | [2026-09-30T19:08:21-07:00 - PR #9 cross-review, round 3 (delta only)](#2026-09-30t190821-0700---pr-9-cross-review-round-3-delta-only) | `prompt-history/prompts/06h-ui-live-review-r3-delta.md` |
+| 100 | 2026-10-01 02:13 | [2026-09-30T19:13:43-07:00 - Evals follow-up test-phase install fix](#2026-09-30t191343-0700---evals-follow-up-test-phase-install-fix) | `prompt-history/prompts/05t-evals-followup-install-fix.md` |
+| 101 | 2026-10-01 02:16 | [39. Sandbox IP cap cross-review, round 2](#39-sandbox-ip-cap-cross-review-round-2) | `prompt-history/prompts/08b-config-ip-cap-review-r2.md` |
+| 102 | 2026-10-01 02:20 | [2026-09-30T19:20:00-07:00 - Evals follow-up review round 3 (delta only)](#2026-09-30t192000-0700---evals-follow-up-review-round-3-delta-only) | `prompt-history/prompts/05g-evals-followup-review-r3.md` |
+| 103 | 2026-10-01 02:22 | [40. Sandbox IP cap cross-review, round 3 (delta only)](#40-sandbox-ip-cap-cross-review-round-3-delta-only) | `prompt-history/prompts/08b-config-ip-cap-review-r3-delta.md` |
+| 104 | 2026-10-01 02:24 | [51. Owner: PR #9 merged; production agent fixes in a later PR (typed mid-session)](#51-owner-pr-9-merged-production-agent-fixes-in-a-later-pr-typed-mid-session) | `prompt-history/prompts/06j-release-owner-pr9-merged.md` |
+| 105 | 2026-10-01 06:00 | [52. Owner: WSL restart recovery (typed mid-session)](#52-owner-wsl-restart-recovery-typed-mid-session) | `prompt-history/prompts/06k-release-owner-wsl-restart.md` |
+| 106 | 2026-10-01 06:06 | [2026-09-30T23:06:30-07:00 - Evals WSL recovery](#2026-09-30t230630-0700---evals-wsl-recovery) | `prompt-history/prompts/05u-evals-wsl-recovery.md` |
+| 107 | 2026-10-01 06:12 | [58. Agent fixes owner answer A3: merge main, remember-credit run (typed mid-session, logged late)](#58-agent-fixes-owner-answer-a3-merge-main-remember-credit-run-typed-mid-session-logged-late) | `prompt-history/prompts/06v-late-agent-fixes-owner-a3.md` |
+| 108 | 2026-10-01 06:13 | [59. Evals owner note: recover the PR #10 gate run after the WSL restart (typed mid-session, logged late)](#59-evals-owner-note-recover-the-pr-10-gate-run-after-the-wsl-restart-typed-mid-session-logged-late) | `prompt-history/prompts/06s-late-evals-owner-wsl-recovery.md` |
+| 109 | 2026-10-01 06:14 | [53. Owner: PR #10 to the evals lane; README cost update in phase 2 (typed mid-session)](#53-owner-pr-10-to-the-evals-lane-readme-cost-update-in-phase-2-typed-mid-session) | `prompt-history/prompts/06l-release-owner-pr10-pr11.md` |
+| 110 | 2026-10-01 06:17 | [41. Production chat fixes cross-review, round 1](#41-production-chat-fixes-cross-review-round-1) | `prompt-history/prompts/08c-prod-chat-review-r1.md` |
+| 111 | 2026-10-01 06:18 | [2026-09-30T23:18:03-07:00 - Evals WSL recovery review](#2026-09-30t231803-0700---evals-wsl-recovery-review) | `prompt-history/prompts/05g-evals-wsl-recovery-review.md` |
+| 112 | 2026-10-01 06:32 | [42. Production chat fixes cross-review, round 2](#42-production-chat-fixes-cross-review-round-2) | `prompt-history/prompts/08c-prod-chat-review-r2.md` |
+| 113 | 2026-10-01 06:38 | [60. Agent fixes owner note: guard follows the grader's ordinal rule (typed mid-session, logged late)](#60-agent-fixes-owner-note-guard-follows-the-graders-ordinal-rule-typed-mid-session-logged-late) | `prompt-history/prompts/06w-late-agent-fixes-owner-guard-ordinals.md` |
+| 114 | 2026-10-01 06:42 | [43. Production chat fixes cross-review, round 3 (delta only)](#43-production-chat-fixes-cross-review-round-3-delta-only) | `prompt-history/prompts/08c-prod-chat-review-r3-delta.md` |
+| 115 | 2026-10-01 07:06 | [44. Owner: start release phase 2 (typed mid-session)](#44-owner-start-release-phase-2-typed-mid-session) | `prompt-history/prompts/06m-release-phase2-start.md` |
+| 116 | 2026-10-01 07:33 | [45. Test timeouts PR cross-review, round 1](#45-test-timeouts-pr-cross-review-round-1) | `prompt-history/prompts/06n-test-timeouts-review-r1.md` |
+| 117 | 2026-10-01 07:40 | [46. Test timeouts PR cross-review, round 2](#46-test-timeouts-pr-cross-review-round-2) | `prompt-history/prompts/06o-test-timeouts-review-r2.md` |
+| 118 | 2026-10-01 07:46 | [47. Test timeouts PR cross-review, round 3 (delta only)](#47-test-timeouts-pr-cross-review-round-3-delta-only) | `prompt-history/prompts/06p-test-timeouts-review-r3-delta.md` |
+| 119 | 2026-10-01 08:03 | [61. Release PR #14 cross-review, round 1](#61-release-pr-14-cross-review-round-1) | `prompt-history/prompts/06b-release-review-r1.md` |
+| 120 | 2026-10-01 08:20 | [62. Release PR #14 cross-review, round 2](#62-release-pr-14-cross-review-round-2) | `prompt-history/prompts/06c-release-review-r2.md` |
+| 121 | 2026-10-01 08:32 | [63. Release PR #14 cross-review, round 3 (delta only)](#63-release-pr-14-cross-review-round-3-delta-only) | `prompt-history/prompts/06d-release-review-r3-delta.md` |
+| 122 | 2026-10-01 10:07 | [64. Owner: C1 A1 B1 with changes, and the architecture diagram (typed mid-session)](#64-owner-c1-a1-b1-with-changes-and-the-architecture-diagram-typed-mid-session) | `prompt-history/prompts/06x-release-owner-c1-a1-b1-diagram.md` |
+| 123 | 2026-10-01 10:23 | [65. Owner: diagram files in place; start the follow-up PR (typed mid-session)](#65-owner-diagram-files-in-place-start-the-follow-up-pr-typed-mid-session) | `prompt-history/prompts/06y-release-owner-followup-start.md` |
+| 124 | 2026-10-01 10:28 | [67. Follow-up PR #15 cross-review, round 1](#67-follow-up-pr-15-cross-review-round-1) | `prompt-history/prompts/06za-followup-review-r1.md` |
+| 125 | 2026-10-01 10:40 | [68. Follow-up PR #15 cross-review, round 2](#68-follow-up-pr-15-cross-review-round-2) | `prompt-history/prompts/06zb-followup-review-r2.md` |
+| 126 | 2026-10-01 10:46 | [69. Follow-up PR #15 cross-review, round 3 (delta only)](#69-follow-up-pr-15-cross-review-round-3-delta-only) | `prompt-history/prompts/06zc-followup-review-r3-delta.md` |

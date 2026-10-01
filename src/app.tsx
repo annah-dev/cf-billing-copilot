@@ -8,6 +8,8 @@ import { Admin } from "./admin/admin";
 import {
   apiMode,
   browserStorage,
+  followUpCreditRequest,
+  SUPERSEDED,
   createApi,
   readSession,
   saveSession
@@ -45,7 +47,12 @@ function CustomerWorkspace({
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const generation = useRef(0);
-  const refresh = useCallback(async () => {
+  const mounted = useRef(true);
+  // Resolves to the panel, to SUPERSEDED when a newer read replaced this one, or to null when the
+  // read failed (the error is shown).
+  const refresh = useCallback(async (): Promise<
+    PanelResponse | typeof SUPERSEDED | null
+  > => {
     const current = ++generation.current;
     setBusy(true);
     try {
@@ -53,22 +60,39 @@ function CustomerWorkspace({
       if (current === generation.current) {
         setPanel(next);
         setError(null);
+        return next;
       }
+      return SUPERSEDED;
     } catch (failure) {
-      if (current === generation.current) setError(failure);
+      if (current !== generation.current) return SUPERSEDED;
+      setError(failure);
     } finally {
       if (current === generation.current) setBusy(false);
     }
+    return null;
   }, [session.sandboxId, customerId]);
   useEffect(() => {
     const requests = generation;
+    mounted.current = true;
     void refresh();
-    window.addEventListener("focus", refresh);
+    const onFocus = () => void refresh();
+    window.addEventListener("focus", onFocus);
     return () => {
       requests.current++;
-      window.removeEventListener("focus", refresh);
+      mounted.current = false;
+      window.removeEventListener("focus", onFocus);
     };
   }, [refresh]);
+  // After a credit confirmation, follow the new request until it leaves "requested".
+  const followCredit = useCallback(() => {
+    const known = new Set(panel?.creditRequests.map((r) => r.id) ?? []);
+    void followUpCreditRequest({
+      known,
+      read: refresh,
+      sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
+      active: () => mounted.current
+    });
+  }, [panel, refresh]);
   return (
     <>
       {error && (
@@ -91,7 +115,11 @@ function CustomerWorkspace({
               changed={() => void refresh()}
             />
           ) : (
-            <LiveChat panel={panel} changed={() => void refresh()} />
+            <LiveChat
+              panel={panel}
+              changed={() => void refresh()}
+              confirmed={followCredit}
+            />
           )}
           <InvoicePanel
             panel={panel}

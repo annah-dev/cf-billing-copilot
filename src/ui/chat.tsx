@@ -153,10 +153,13 @@ function ChatView({
 }
 export function LiveChat({
   panel,
-  changed
+  changed,
+  confirmed
 }: {
   panel: PanelResponse;
   changed: () => void;
+  /** The customer confirmed a credit request; the server continues the turn on its own. */
+  confirmed?: () => void;
 }) {
   const [connected, setConnected] = useState(false);
   // A frame the agent refused (rate limit, daily cap) is answered with a billing-refusal message;
@@ -192,6 +195,9 @@ export function LiveChat({
       approve={(id, approved) => {
         setRefused(null);
         void chat.addToolApprovalResponse({ id, approved });
+        // The server continues the turn after the approval frame, so the client's onFinish does
+        // not fire for it; the panel follows the new request on a bounded schedule instead.
+        if (approved) confirmed?.();
       }}
       stop={() => void chat.stop()}
     />

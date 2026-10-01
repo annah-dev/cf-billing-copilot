@@ -21,10 +21,11 @@ Velvet Comet Workshop is selected; its September invoice is $412.87.
 3. **Plan simulation.** Click "What would I pay on Pro?": the same usage re-rated on Pro, with both
    totals and the difference. Story 3.
 4. **Credit request.** Click "I was double-charged. Can I request a credit?", confirm the dialog
-   (it names the real invoice), then click Refresh in the side panel: Pending Approval for $412.87,
-   with `credit_requested`, `credit_validated` and `memo_pending` in the audit trail. Story 5.
+   (it names the real invoice). Within a few seconds the side panel shows Pending Approval for
+   $412.87, with `credit_requested`, `credit_validated` and `memo_pending` in the audit trail.
+   Story 5.
 5. **Approve and come back.** Click "Approver view", give a reason, approve: the card turns Applied
-   by itself. Back in the chat, Refresh shows `credit_approved` and `credit_applied`. Reload and ask
+   by itself. Back in the chat tab the panel shows `credit_approved` and `credit_applied`. Reload and ask
    "What's the status of my credit request?": the copilot remembers it. Stories 5 and 6.
 
 The credit story is a duplicated debit: the September invoice charge posted twice by a billing run
@@ -102,6 +103,11 @@ Five moments where the owner made the call:
   [prompt](PROMPTS.md#37-sandbox-per-ip-cap-owner-mid-session)).
 
 ## Architecture
+
+![Architecture: one Worker routing to the BillingAgent, Ledger and Quota Durable Objects, the CreditRequestWorkflow, Workers AI and the billing engine](docs/architecture.svg)
+
+The diagram's source is [docs/architecture.excalidraw](docs/architecture.excalidraw); open it at
+excalidraw.com (File, Open) to edit it. The Mermaid version below is the same design in text.
 
 ```mermaid
 flowchart LR
@@ -198,10 +204,10 @@ the Workflow and the rate limiter are all declared in `wrangler.jsonc`; nothing 
 2. **Deploy.** `VITE_BILLING_API_MODE=live npm run deploy` (above).
 3. **Smoke test the live UI** (about 5 model calls). Open the demo URL in a private window.
    Confirm the "Seed preview" banner is absent. Request a credit ("My September invoice debit was
-   posted twice. Please request a credit for the duplicate charge."), confirm it, click Refresh in
-   the side panel and check it shows Pending Approval. Open "Approver view", approve with a reason, return, click
-   Refresh: Applied, with `decision_received`, `credit_approved` and `credit_applied` in the audit
-   trail.
+   posted twice. Please request a credit for the duplicate charge."), confirm it, and check that
+   the side panel shows Pending Approval within a few seconds. Open "Approver view", approve with a
+   reason, and return to the chat tab: Applied, with `decision_received`, `credit_approved` and
+   `credit_applied` in the audit trail.
 4. **Smoke test by curl** (one `/turn`, about 3 model calls). Requires `jq`.
 
         U=<the live demo URL from Links>

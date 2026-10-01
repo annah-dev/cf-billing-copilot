@@ -1,0 +1,1 @@
+A1: both files are now in C:\Users\anna_\Downloads under the exact names (cf-billing-copilot-architecture.excalidraw and cf-billing-copilot-architecture.svg). #14 is merged. Start the follow-up PR from a fresh origin/main as planned, with the diagram included.
