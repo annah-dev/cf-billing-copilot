@@ -923,3 +923,15 @@ six-line invoice); a prompt rule alone does not stop them. Not chosen: retrying 
 second loop with its own grounding question) and silently dropping figures without a retry.
 
 Decided by: Agent fixes engineer under standing orders.
+
+## agent: unknown-id errors name the real ids
+
+In the evals Llama 3.3 called `explainLineItem` and `startCreditRequest` with invented ids
+(`inv_1234567890`, `inv_202609`) and then gave up. An unknown invoice id now gets an error listing
+the customer's invoice ids with their periods and pointing to `getInvoice`; an unknown line id gets
+the invoice's line ids with their descriptions. The prompt says to call `getInvoice` before
+`explainLineItem` and to retry with the listed ids. The ids are the customer's own, already
+returned by `getAccount`. Reason: give the model the exact value it needs to recover, instead of
+a dead end. Not chosen: guessing the intended invoice server-side (no reliable signal).
+
+Decided by: Agent fixes engineer under standing orders.
